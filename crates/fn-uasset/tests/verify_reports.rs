@@ -14,7 +14,11 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 fn fn_root() -> PathBuf {
-    PathBuf::from(std::env::var("FN_ROOT").unwrap_or_else(|_| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into()))
+    PathBuf::from(
+        std::env::var("FN_ROOT").unwrap_or_else(|_| {
+            r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into()
+        }),
+    )
 }
 fn reports() -> PathBuf {
     PathBuf::from(
@@ -61,7 +65,10 @@ fn load<'a>(s: &'a PakSet, path: &str) -> PackageData<'a> {
 }
 
 fn export_json(pkg: &Package, name: &str) -> J {
-    let o = pkg.read_export_named(name).unwrap_or_else(|| panic!("no export {name} in {}", pkg.name)).unwrap();
+    let o = pkg
+        .read_export_named(name)
+        .unwrap_or_else(|| panic!("no export {name} in {}", pkg.name))
+        .unwrap();
     assert!(o.error.is_none(), "{name}: {:?}", o.error);
     o.props.to_json(pkg)
 }
@@ -84,7 +91,10 @@ fn eq_node(node: &J, mine: &J, path: &str) -> Result<(), String> {
             }
         }
         (J::String(a), J::String(b)) => {
-            if let Some(n) = a.strip_prefix("import:").or_else(|| a.strip_prefix("export:")) {
+            if let Some(n) = a
+                .strip_prefix("import:")
+                .or_else(|| a.strip_prefix("export:"))
+            {
                 if last_component(b) == n {
                     return Ok(());
                 }
@@ -99,7 +109,11 @@ fn eq_node(node: &J, mine: &J, path: &str) -> Result<(), String> {
         }
         (J::Array(a), J::Array(b)) => {
             if a.len() != b.len() {
-                return Err(format!("{path}: node array len {} != rust {}", a.len(), b.len()));
+                return Err(format!(
+                    "{path}: node array len {} != rust {}",
+                    a.len(),
+                    b.len()
+                ));
             }
             for (i, (x, y)) in a.iter().zip(b).enumerate() {
                 eq_node(x, y, &format!("{path}[{i}]"))?;
@@ -161,14 +175,22 @@ fn day_postprocess() {
     let mut errs = Vec::new();
     let params = rep["parameters"].as_object().unwrap();
     for (k, v) in params {
-        check(v, &settings[k], &format!("DayPostProcessComponent.Settings.{k}"), &mut errs);
+        check(
+            v,
+            &settings[k],
+            &format!("DayPostProcessComponent.Settings.{k}"),
+            &mut errs,
+        );
     }
     assert_clean(errs, params.len());
 }
 
 fn find_prop_offset(pkg: &Package, export: &str, prop: &str) -> Option<u32> {
     let o = pkg.read_export_named(export)?.ok()?;
-    o.props.iter().find(|p| p.name == prop).map(|p| p.offset - pkg.asset_bytes().len() as u32)
+    o.props
+        .iter()
+        .find(|p| p.name == prop)
+        .map(|p| p.offset - pkg.asset_bytes().len() as u32)
 }
 
 #[test]
@@ -188,23 +210,55 @@ fn sun_shadow_lighting() {
     let mut n = 0;
     let mut chk = |key: &str, mine: &J| {
         n += 1;
-        check(&dl[key], mine, &format!("directionalLight.{key}"), &mut errs);
+        check(
+            &dl[key],
+            mine,
+            &format!("directionalLight.{key}"),
+            &mut errs,
+        );
     };
-    chk("RelativeRotation_PitchYawRoll_deg", &light["RelativeRotation"]);
-    chk("SunriseDirectionalLightRotation_deg", &cdo["SunriseDirectionalLightRotation"]);
-    chk("SunsetDirectionalLightRotation_deg", &cdo["SunsetDirectionalLightRotation"]);
-    chk("DirectionalLightRotation_deg", &cdo["DirectionalLightRotation"]);
+    chk(
+        "RelativeRotation_PitchYawRoll_deg",
+        &light["RelativeRotation"],
+    );
+    chk(
+        "SunriseDirectionalLightRotation_deg",
+        &cdo["SunriseDirectionalLightRotation"],
+    );
+    chk(
+        "SunsetDirectionalLightRotation_deg",
+        &cdo["SunsetDirectionalLightRotation"],
+    );
+    chk(
+        "DirectionalLightRotation_deg",
+        &cdo["DirectionalLightRotation"],
+    );
     chk("StartTimeOfDayInGame", &cdo["StartTimeOfDayInGame"]);
     chk("DefaultTimeOfDaySpeed", &cdo["DefaultTimeOfDaySpeed"]);
-    chk("DynamicShadowDistanceMovableLight_cm", &light["DynamicShadowDistanceMovableLight"]);
-    chk("CascadeDistributionExponent", &light["CascadeDistributionExponent"]);
+    chk(
+        "DynamicShadowDistanceMovableLight_cm",
+        &light["DynamicShadowDistanceMovableLight"],
+    );
+    chk(
+        "CascadeDistributionExponent",
+        &light["CascadeDistributionExponent"],
+    );
     chk("ShadowSharpen", &light["ShadowSharpen"]);
     chk("Intensity_parent", &light["Intensity"]);
     chk("DisabledBrightness_parent", &light["DisabledBrightness"]);
     chk("DisabledBrightness_athena", &light_c["DisabledBrightness"]);
-    chk("bUsedAsAtmosphereSunLight", &light["bUsedAsAtmosphereSunLight"]);
-    chk("bUseRayTracedDistanceFieldShadows", &light["bUseRayTracedDistanceFieldShadows"]);
-    chk("LightShaftOverrideDirection", &light["LightShaftOverrideDirection"]);
+    chk(
+        "bUsedAsAtmosphereSunLight",
+        &light["bUsedAsAtmosphereSunLight"],
+    );
+    chk(
+        "bUseRayTracedDistanceFieldShadows",
+        &light["bUseRayTracedDistanceFieldShadows"],
+    );
+    chk(
+        "LightShaftOverrideDirection",
+        &light["LightShaftOverrideDirection"],
+    );
     for (k, v) in rep["skyLight"]["parent"].as_object().unwrap() {
         n += 1;
         check(v, &sky[k], &format!("skyLight.parent.{k}"), &mut errs);
@@ -220,9 +274,22 @@ fn sun_shadow_lighting() {
     let mut found: Vec<(String, J)> = Vec::new();
     fn walk(v: &Value, name: &str, out: &mut Vec<(String, J)>) {
         match v {
-            Value::Float(f) if matches!(name, "TimePhaseBegins" | "PhaseLengthInHours" | "Brightness") => out.push((name.into(), serde_json::json!(*f as f64))),
-            Value::LinearColor(c) if name == "SkyLightColor" => out.push((name.into(), serde_json::json!(c.iter().map(|x| *x as f64).collect::<Vec<_>>()))),
-            Value::Color(c) if name == "LightColor" => out.push((name.into(), serde_json::json!({"r": c[0], "g": c[1], "b": c[2]}))),
+            Value::Float(f)
+                if matches!(
+                    name,
+                    "TimePhaseBegins" | "PhaseLengthInHours" | "Brightness"
+                ) =>
+            {
+                out.push((name.into(), serde_json::json!(*f as f64)))
+            }
+            Value::LinearColor(c) if name == "SkyLightColor" => out.push((
+                name.into(),
+                serde_json::json!(c.iter().map(|x| *x as f64).collect::<Vec<_>>()),
+            )),
+            Value::Color(c) if name == "LightColor" => out.push((
+                name.into(),
+                serde_json::json!({"r": c[0], "g": c[1], "b": c[2]}),
+            )),
             Value::Struct { props, .. } => props.iter().for_each(|p| walk(&p.value, &p.name, out)),
             Value::Array(a) => a.iter().for_each(|x| walk(x, name, out)),
             _ => {}
@@ -236,17 +303,32 @@ fn sun_shadow_lighting() {
     for (i, (e, (name, val))) in scan.iter().zip(&found).enumerate() {
         n += 1;
         assert_eq!(e["name"].as_str().unwrap(), name, "phase scan #{i} name");
-        check(&e["value"], val, &format!("athenaPhaseScan[{i}].{name}"), &mut errs);
+        check(
+            &e["value"],
+            val,
+            &format!("athenaPhaseScan[{i}].{name}"),
+            &mut errs,
+        );
     }
 
     // property-tag byte offsets inside the .uexp
     let off = &rep["uexpOffsets"]["TODM_A"];
-    for (k, export_prop) in [("RelativeRotation", "RelativeRotation"), ("DynamicShadowDistanceMovableLight", "DynamicShadowDistanceMovableLight"), ("CascadeDistributionExponent", "CascadeDistributionExponent")] {
+    for (k, export_prop) in [
+        ("RelativeRotation", "RelativeRotation"),
+        (
+            "DynamicShadowDistanceMovableLight",
+            "DynamicShadowDistanceMovableLight",
+        ),
+        ("CascadeDistributionExponent", "CascadeDistributionExponent"),
+    ] {
         n += 1;
-        let mine = find_prop_offset(&a, "DayNightDirectionalLightComponent", export_prop).expect("prop");
+        let mine =
+            find_prop_offset(&a, "DayNightDirectionalLightComponent", export_prop).expect("prop");
         let theirs = off[k].as_u64().unwrap();
         if mine as u64 != theirs {
-            errs.push(format!("uexpOffsets.TODM_A.{k}: node {theirs} != rust {mine}"));
+            errs.push(format!(
+                "uexpOffsets.TODM_A.{k}: node {theirs} != rust {mine}"
+            ));
         }
     }
     assert_clean(errs, n);
@@ -273,13 +355,19 @@ fn resolve_camera(s: &PakSet, name: &str) -> serde_json::Map<String, J> {
     let path = format!("/Game/Blueprints/Camera/Athena/{name}");
     let d = load(s, &path);
     let pkg = d.package().unwrap();
-    let cls = pkg.exports.iter().position(|e| e.name.ends_with("_C") && !e.name.starts_with("Default__")).unwrap();
+    let cls = pkg
+        .exports
+        .iter()
+        .position(|e| e.name.ends_with("_C") && !e.name.starts_with("Default__"))
+        .unwrap();
     let sup = pkg.exports[cls].super_index;
     let mut merged = if sup.is_import() {
         let pn = pkg.index_name(sup).unwrap();
         let pn = pn.trim_end_matches("_C").to_string();
         // parent is another Athena camera blueprint if it exists in the same directory, else a native class
-        if s.contains(&format!("FortniteGame/Content/Blueprints/Camera/Athena/{pn}.uasset")) {
+        if s.contains(&format!(
+            "FortniteGame/Content/Blueprints/Camera/Athena/{pn}.uasset"
+        )) {
             resolve_camera(s, &pn)
         } else {
             serde_json::Map::new()
@@ -303,26 +391,56 @@ fn camera_modes() {
     let mut n = 0;
 
     // pickaxe link
-    let imp = load(s, "/Game/Weapons/FORT_Melee/Blueprints/Impact/B_Melee_Impact_Pickaxe_Athena");
+    let imp = load(
+        s,
+        "/Game/Weapons/FORT_Melee/Blueprints/Impact/B_Melee_Impact_Pickaxe_Athena",
+    );
     let imp = imp.package().unwrap();
-    let imp_cdo = imp.read_default_object().unwrap().unwrap().props.to_json(&imp);
+    let imp_cdo = imp
+        .read_default_object()
+        .unwrap()
+        .unwrap()
+        .props
+        .to_json(&imp);
     let link = &rep["pickaxeCameraLink"];
     for k in ["CameraBase3PClass", "CameraBase1PClass"] {
         n += 1;
-        check(&link[k], &imp_cdo[k], &format!("pickaxeCameraLink.{k}"), &mut errs);
+        check(
+            &link[k],
+            &imp_cdo[k],
+            &format!("pickaxeCameraLink.{k}"),
+            &mut errs,
+        );
     }
-    let wid = load(s, "/Game/Athena/Items/Weapons/WID_Harvest_Pickaxe_Athena_C_T01");
+    let wid = load(
+        s,
+        "/Game/Athena/Items/Weapons/WID_Harvest_Pickaxe_Athena_C_T01",
+    );
     let wid = wid.package().unwrap();
     let wid_props = export_json(&wid, "WID_Harvest_Pickaxe_Athena_C_T01");
     n += 1;
-    check(&link["widWeaponActorClass"], &wid_props["WeaponActorClass"], "pickaxeCameraLink.widWeaponActorClass", &mut errs);
+    check(
+        &link["widWeaponActorClass"],
+        &wid_props["WeaponActorClass"],
+        "pickaxeCameraLink.widWeaponActorClass",
+        &mut errs,
+    );
 
     // camera manager
     let mgr = load(s, "/Game/Blueprints/Camera/Original/MainPlayerCamera");
     let mgr = mgr.package().unwrap();
     let mp = export_json(&mgr, "Default__MainPlayerCamera_C");
     let cm = &rep["cameraManager"];
-    for k in ["Base3PClass", "Targeting3PClass", "CinematicCameraClass", "DBNOCameraClass", "DeathCameraClass", "SkydiveGlideCameraClass", "SkydiveDiveCameraClass", "SkydiveParachuteCameraClass"] {
+    for k in [
+        "Base3PClass",
+        "Targeting3PClass",
+        "CinematicCameraClass",
+        "DBNOCameraClass",
+        "DeathCameraClass",
+        "SkydiveGlideCameraClass",
+        "SkydiveDiveCameraClass",
+        "SkydiveParachuteCameraClass",
+    ] {
         n += 1;
         check(&cm[k], &mp[k], &format!("cameraManager.{k}"), &mut errs);
     }
@@ -331,7 +449,12 @@ fn camera_modes() {
     assert_eq!(protos.len(), mine_protos.len(), "prototype count");
     for (i, (p, m)) in protos.iter().zip(mine_protos).enumerate() {
         n += 1;
-        check(&p["name"], &m["PrototypeName"], &format!("prototypes[{i}].name"), &mut errs);
+        check(
+            &p["name"],
+            &m["PrototypeName"],
+            &format!("prototypes[{i}].name"),
+            &mut errs,
+        );
         let ov = p["overrides"].as_array().unwrap();
         let mo = m["ModeOverrides"].as_array().unwrap();
         assert_eq!(ov.len(), mo.len(), "overrides count of prototype {i}");
@@ -342,7 +465,9 @@ fn camera_modes() {
             let got_a = last_component(mm["OriginalClass"].as_str().unwrap());
             let got_b = last_component(mm["ClassOverride"].as_str().unwrap());
             if (a, b) != (got_a, got_b) {
-                errs.push(format!("prototypes[{i}].overrides[{j}]: node {want} vs rust {got_a} -> {got_b}"));
+                errs.push(format!(
+                    "prototypes[{i}].overrides[{j}]: node {want} vs rust {got_a} -> {got_b}"
+                ));
             }
         }
     }
@@ -361,7 +486,10 @@ fn camera_modes() {
         for i in 0..pkg.exports.len() {
             if pkg.exports[i].name.starts_with("Default__") {
                 let o = pkg.read_export(i).unwrap();
-                if o.props.get("CameraBase3PClass").is_some() || o.props.get("CameraTargeting3PClass").is_some() || o.props.get("CameraBase1PClass").is_some() {
+                if o.props.get("CameraBase3PClass").is_some()
+                    || o.props.get("CameraTargeting3PClass").is_some()
+                    || o.props.get("CameraBase1PClass").is_some()
+                {
                     mine = Some(o.props.to_json(&pkg));
                     break;
                 }
@@ -370,7 +498,12 @@ fn camera_modes() {
         let mine = mine.unwrap_or_else(|| panic!("no camera CDO in {bp}"));
         for (k, v) in want.as_object().unwrap() {
             n += 1;
-            check(v, &mine[k], &format!("weaponCameraSelection.{bp}.{k}"), &mut errs);
+            check(
+                v,
+                &mine[k],
+                &format!("weaponCameraSelection.{bp}.{k}"),
+                &mut errs,
+            );
         }
     }
 
@@ -382,9 +515,24 @@ fn camera_modes() {
     let mv = export_json(&pawn, "CharMoveComp");
     let pw = &rep["pawn"];
     n += 3;
-    check(&pw["capsuleHalfHeightCm"], &cap["CapsuleHalfHeight"], "pawn.capsuleHalfHeightCm", &mut errs);
-    check(&pw["meshRelativeLocationCm"], &mesh["RelativeLocation"], "pawn.meshRelativeLocationCm", &mut errs);
-    check(&pw["jumpZVelocity"], &mv["JumpZVelocity"], "pawn.jumpZVelocity", &mut errs);
+    check(
+        &pw["capsuleHalfHeightCm"],
+        &cap["CapsuleHalfHeight"],
+        "pawn.capsuleHalfHeightCm",
+        &mut errs,
+    );
+    check(
+        &pw["meshRelativeLocationCm"],
+        &mesh["RelativeLocation"],
+        "pawn.meshRelativeLocationCm",
+        &mut errs,
+    );
+    check(
+        &pw["jumpZVelocity"],
+        &mv["JumpZVelocity"],
+        "pawn.jumpZVelocity",
+        &mut errs,
+    );
 
     // every camera mode with Blueprint inheritance resolved
     let key_map: &[(&str, &str)] = &[
@@ -392,8 +540,14 @@ fn camera_modes() {
         ("CameraSpaceForwardDistanceCm", "CameraSpaceForwardDistance"),
         ("CameraOriginInterpSpeed_XYZ", "CameraOriginInterpSpeed"),
         ("ViewTargetSpaceViewOffset", "ViewTargetSpaceViewOffset"),
-        ("ViewTargetSpaceViewOffset_Crouch", "ViewTargetSpaceViewOffset_Crouch"),
-        ("ViewTargetSpaceViewOffsetInterpSpeed_XYZ", "ViewTargetSpaceViewOffseInterpSpeed"),
+        (
+            "ViewTargetSpaceViewOffset_Crouch",
+            "ViewTargetSpaceViewOffset_Crouch",
+        ),
+        (
+            "ViewTargetSpaceViewOffsetInterpSpeed_XYZ",
+            "ViewTargetSpaceViewOffseInterpSpeed",
+        ),
         ("CameraSpaceViewOffset", "CameraSpaceViewOffset"),
         ("CollisionPushOutDistanceCm", "CollisionPushOutDistance"),
         ("HidePawnPenetrationPercent", "HidePawnPenetrationPercent"),
@@ -413,7 +567,13 @@ fn camera_modes() {
             }
             n += 1;
             let mine = merged.get(*pk).cloned().unwrap_or(J::Null);
-            let mine = if rk.starts_with("ViewTargetSpaceViewOffset") && !rk.contains("InterpSpeed") || *rk == "CameraSpaceViewOffset" { camera_flat_samples(&mine) } else { mine };
+            let mine = if rk.starts_with("ViewTargetSpaceViewOffset") && !rk.contains("InterpSpeed")
+                || *rk == "CameraSpaceViewOffset"
+            {
+                camera_flat_samples(&mine)
+            } else {
+                mine
+            };
             check(want, &mine, &format!("modes.{name}.{rk}"), &mut errs);
         }
         if let Some(f) = eff.get("PenetrationAvoidanceFeelers") {
@@ -422,8 +582,19 @@ fn camera_modes() {
             let want = f.as_array().unwrap();
             assert_eq!(mine.len(), want.len(), "{name} feeler count");
             for (i, (w, mm)) in want.iter().zip(mine).enumerate() {
-                for (wk, mk) in [("adjustmentRot_PitchYawRoll", "AdjustmentRot"), ("worldWeight", "WorldWeight"), ("pawnWeight", "PawnWeight"), ("extentCm", "Extent"), ("traceInterval", "TraceInterval")] {
-                    check(&w[wk], &mm[mk], &format!("modes.{name}.feelers[{i}].{wk}"), &mut errs);
+                for (wk, mk) in [
+                    ("adjustmentRot_PitchYawRoll", "AdjustmentRot"),
+                    ("worldWeight", "WorldWeight"),
+                    ("pawnWeight", "PawnWeight"),
+                    ("extentCm", "Extent"),
+                    ("traceInterval", "TraceInterval"),
+                ] {
+                    check(
+                        &w[wk],
+                        &mm[mk],
+                        &format!("modes.{name}.feelers[{i}].{wk}"),
+                        &mut errs,
+                    );
                 }
             }
         }
@@ -436,8 +607,12 @@ fn camera_modes() {
 fn collect_floats(v: &Value, name: &str, offset: u32, out: &mut Vec<(String, f32, u32)>) {
     match v {
         Value::Float(f) => out.push((name.to_string(), *f, offset)),
-        Value::Struct { props, .. } => props.iter().for_each(|p| collect_floats(&p.value, &p.name, p.offset, out)),
-        Value::Array(a) | Value::Set(a) => a.iter().for_each(|x| collect_floats(x, name, offset, out)),
+        Value::Struct { props, .. } => props
+            .iter()
+            .for_each(|p| collect_floats(&p.value, &p.name, p.offset, out)),
+        Value::Array(a) | Value::Set(a) => {
+            a.iter().for_each(|x| collect_floats(x, name, offset, out))
+        }
         Value::Map(m) => m.iter().for_each(|(k, x)| {
             collect_floats(k, name, offset, out);
             collect_floats(x, name, offset, out)
@@ -454,7 +629,13 @@ fn movement_overrides() {
     let mut cache: std::collections::HashMap<String, Vec<(String, f32, u32)>> = Default::default();
     for v in values {
         let file = v["file"].as_str().unwrap().replace('\\', "/");
-        let long = format!("/Game/{}", file.split("/Game/").nth(1).unwrap().trim_end_matches(".uasset"));
+        let long = format!(
+            "/Game/{}",
+            file.split("/Game/")
+                .nth(1)
+                .unwrap()
+                .trim_end_matches(".uasset")
+        );
         let floats = cache.entry(long.clone()).or_insert_with(|| {
             let d = load(s, &long);
             let pkg = d.package().unwrap();
@@ -467,13 +648,17 @@ fn movement_overrides() {
                 }
             }
             let hs = pkg.asset_bytes().len() as u32;
-            out.into_iter().map(|(n, f, o)| (n, f, o.wrapping_sub(hs))).collect()
+            out.into_iter()
+                .map(|(n, f, o)| (n, f, o.wrapping_sub(hs)))
+                .collect()
         });
         let name = v["name"].as_str().unwrap();
         let want = v["value"].as_f64().unwrap();
         let off = v["offset"].as_u64().unwrap() as u32;
         // Node reports the tag start (.uexp-relative); the value follows 25 bytes later
-        let hit = floats.iter().any(|(n, f, o)| n == name && *f as f64 == want && *o == off);
+        let hit = floats
+            .iter()
+            .any(|(n, f, o)| n == name && *f as f64 == want && *o == off);
         if !hit {
             let near: Vec<_> = floats.iter().filter(|(n, ..)| n == name).collect();
             errs.push(format!("{long}: {name}={want} @{off} not found by the structural reader (same-name floats: {near:?})"));
@@ -484,12 +669,16 @@ fn movement_overrides() {
 
 // ---- animation blueprint: nested structs, maps, class defaults, Kismet --------------------------
 
-const ANIM_BP: &str = "/Game/Characters/Player/Male/Male_Avg_Base/Fortnite_M_Avg_Player_AnimBlueprint";
+const ANIM_BP: &str =
+    "/Game/Characters/Player/Male/Male_Avg_Base/Fortnite_M_Avg_Player_AnimBlueprint";
 
 fn strip_guid_suffix(k: &str) -> String {
     // "Foo_12_0123456789ABCDEF0123456789ABCDEF" -> "Foo"
     let b = k.as_bytes();
-    if k.len() > 33 && b[k.len() - 33] == b'_' && k[k.len() - 32..].bytes().all(|c| c.is_ascii_hexdigit()) {
+    if k.len() > 33
+        && b[k.len() - 33] == b'_'
+        && k[k.len() - 32..].bytes().all(|c| c.is_ascii_hexdigit())
+    {
         let head = &k[..k.len() - 33];
         if let Some(i) = head.rfind('_') {
             if head[i + 1..].bytes().all(|c| c.is_ascii_digit()) {
@@ -510,7 +699,9 @@ fn animation_blueprint() {
     let mut n = 0;
 
     // --- class export: BakedStateMachines (deeply nested tagged structs + arrays)
-    let cls = (0..pkg.exports.len()).find(|&i| pkg.export_class_name(i) == "AnimBlueprintGeneratedClass").expect("anim class");
+    let cls = (0..pkg.exports.len())
+        .find(|&i| pkg.export_class_name(i) == "AnimBlueprintGeneratedClass")
+        .expect("anim class");
     let cobj = pkg.read_export(cls).unwrap();
     assert!(cobj.error.is_none());
     let baked = cobj.props.to_json(&pkg)["BakedStateMachines"].clone();
@@ -520,28 +711,63 @@ fn animation_blueprint() {
     for (mi, m) in machines.iter().enumerate() {
         let bm = &baked[mi];
         n += 1;
-        check(&m["name"], &bm["MachineName"], &format!("machines[{mi}].name"), &mut errs);
+        check(
+            &m["name"],
+            &bm["MachineName"],
+            &format!("machines[{mi}].name"),
+            &mut errs,
+        );
         let states = m["states"].as_array().unwrap();
         let bstates = bm["States"].as_array().unwrap();
         assert_eq!(states.len(), bstates.len(), "state count of {}", m["name"]);
         let btrans = bm["Transitions"].as_array().unwrap();
         for (si, st) in states.iter().enumerate() {
             n += 2;
-            check(&st["name"], &bstates[si]["StateName"], &format!("machines[{mi}].states[{si}].name"), &mut errs);
-            check(&st["conduit"], &bstates[si]["bIsAConduit"], &format!("machines[{mi}].states[{si}].conduit"), &mut errs);
+            check(
+                &st["name"],
+                &bstates[si]["StateName"],
+                &format!("machines[{mi}].states[{si}].name"),
+                &mut errs,
+            );
+            check(
+                &st["conduit"],
+                &bstates[si]["bIsAConduit"],
+                &format!("machines[{mi}].states[{si}].conduit"),
+                &mut errs,
+            );
             let want_tr = st["transitions"].as_array().unwrap();
-            let have_tr = bstates[si]["Transitions"].as_array().cloned().unwrap_or_default();
-            assert_eq!(want_tr.len(), have_tr.len(), "transition count {} / {}", m["name"], st["name"]);
+            let have_tr = bstates[si]["Transitions"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default();
+            assert_eq!(
+                want_tr.len(),
+                have_tr.len(),
+                "transition count {} / {}",
+                m["name"],
+                st["name"]
+            );
             for (ti, t) in want_tr.iter().enumerate() {
                 let bt = &btrans[have_tr[ti]["TransitionIndex"].as_u64().unwrap() as usize];
                 n += 3;
-                check(&t["to"], &bt["NextState"], &format!("machines[{mi}].states[{si}].transitions[{ti}].to"), &mut errs);
+                check(
+                    &t["to"],
+                    &bt["NextState"],
+                    &format!("machines[{mi}].states[{si}].transitions[{ti}].to"),
+                    &mut errs,
+                );
                 let dur = bt["CrossfadeDuration"].as_f64().unwrap();
                 let dur5: f64 = format!("{dur:.5}").parse().unwrap();
                 if dur5 != t["duration"].as_f64().unwrap() {
-                    errs.push(format!("machines[{mi}].states[{si}].transitions[{ti}].duration {dur5} != {}", t["duration"]));
+                    errs.push(format!(
+                        "machines[{mi}].states[{si}].transitions[{ti}].duration {dur5} != {}",
+                        t["duration"]
+                    ));
                 }
-                let bm_name = bt["BlendMode"].as_str().unwrap().replace("EAlphaBlendOption::", "");
+                let bm_name = bt["BlendMode"]
+                    .as_str()
+                    .unwrap()
+                    .replace("EAlphaBlendOption::", "");
                 if bm_name != t["blendMode"].as_str().unwrap() {
                     errs.push(format!("blendMode {bm_name} != {}", t["blendMode"]));
                 }
@@ -550,7 +776,12 @@ fn animation_blueprint() {
     }
 
     // --- CDO scalar defaults
-    let cdo = pkg.read_default_object().unwrap().unwrap().props.to_json(&pkg);
+    let cdo = pkg
+        .read_default_object()
+        .unwrap()
+        .unwrap()
+        .props
+        .to_json(&pkg);
     for (k, v) in rep["defaults"].as_object().unwrap() {
         n += 1;
         check(v, &cdo[k], &format!("defaults.{k}"), &mut errs);
@@ -558,16 +789,26 @@ fn animation_blueprint() {
 
     // --- CoreAnims_Male: TMap<enum, struct> inside the CDO
     let ca = rep["coreAnims"]["CoreAnims_Male"].as_object().unwrap();
-    let map = cdo["CoreAnims_Male"].as_array().expect("CoreAnims_Male map");
+    let map = cdo["CoreAnims_Male"]
+        .as_array()
+        .expect("CoreAnims_Male map");
     assert_eq!(map.len(), ca.len(), "CoreAnims_Male entries");
     for entry in map {
-        let key = entry["key"].as_str().unwrap().replace("EFortWeaponCoreAnimation::", "");
-        let want = ca.get(&key).unwrap_or_else(|| panic!("CoreAnims_Male key {key} missing in node report"));
+        let key = entry["key"]
+            .as_str()
+            .unwrap()
+            .replace("EFortWeaponCoreAnimation::", "");
+        let want = ca
+            .get(&key)
+            .unwrap_or_else(|| panic!("CoreAnims_Male key {key} missing in node report"));
         let val = entry["value"].as_object().unwrap();
         for (wk, wv) in want.as_object().unwrap() {
             n += 1;
             // find our field whose cleaned name equals wk
-            let mine = val.iter().find(|(k, _)| strip_guid_suffix(k) == *wk).map(|(_, v)| v);
+            let mine = val
+                .iter()
+                .find(|(k, _)| strip_guid_suffix(k) == *wk)
+                .map(|(_, v)| v);
             match mine {
                 Some(m) => check(wv, m, &format!("CoreAnims_Male.{key}.{wk}"), &mut errs),
                 None => errs.push(format!("CoreAnims_Male.{key}.{wk}: field missing")),
@@ -576,18 +817,33 @@ fn animation_blueprint() {
     }
 
     // --- Kismet: the ExecuteUbergraph function. Statement boundaries must coincide with the Node disassembler.
-    let ex = pkg.exports.iter().position(|e| e.name.starts_with("ExecuteUbergraph_")).expect("ubergraph");
+    let ex = pkg
+        .exports
+        .iter()
+        .position(|e| e.name.starts_with("ExecuteUbergraph_"))
+        .expect("ubergraph");
     let f = fn_uasset::classes::read_function(&pkg, ex).unwrap();
     let dis = fn_uasset::kismet::disassemble(&pkg, f.script);
     assert!(dis.error.is_none(), "disassembly error: {:?}", dis.error);
-    assert!(dis.reached_end && dis.end == f.script.len(), "script must end exactly at EX_EndOfScript");
+    assert!(
+        dis.reached_end && dis.end == f.script.len(),
+        "script must end exactly at EX_EndOfScript"
+    );
     let base = f.script.as_ptr() as usize - pkg.export_bytes(ex).unwrap().as_ptr() as usize;
     // Port of the Node tool's temporary-substitution pass (state-machine-evidence.cjs) over *our* statement text.
     let mine_assigns = node_style_assigns(&dis.lines);
-    let by_at: std::collections::HashMap<usize, &(usize, String, String)> = mine_assigns.iter().map(|x| (x.0 + base, x)).collect();
+    let by_at: std::collections::HashMap<usize, &(usize, String, String)> =
+        mine_assigns.iter().map(|x| (x.0 + base, x)).collect();
     let assigns = rep["eventGraphAssignments"].as_array().unwrap();
-    let var_count = mine_assigns.iter().filter(|a| a.1.starts_with("V:")).count();
-    assert_eq!(var_count, assigns.len(), "number of Blueprint-variable assignments");
+    let var_count = mine_assigns
+        .iter()
+        .filter(|a| a.1.starts_with("V:"))
+        .count();
+    assert_eq!(
+        var_count,
+        assigns.len(),
+        "number of Blueprint-variable assignments"
+    );
     for a in assigns {
         n += 2;
         let at = a["at"].as_u64().unwrap() as usize;
@@ -603,10 +859,9 @@ fn animation_blueprint() {
             }
             None => errs.push(format!("eventGraphAssignments @{at}: no assignment statement starts here in the Rust disassembly")),
         }
-    }    assert_clean(errs, n);
+    }
+    assert_clean(errs, n);
 }
-
-
 
 // ---- port of the Node tool's expression substitution --------------------------------------------
 
@@ -648,7 +903,10 @@ fn parse_call<'a>(token: &'a str, kw: &str) -> Option<(&'a str, &'a str)> {
     let rest = token.strip_prefix(kw)?.strip_prefix(' ')?;
     let open = rest.find('(')?;
     let name = &rest[..open];
-    if name.is_empty() || !name.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'_') || !rest.ends_with(')') {
+    if name.is_empty()
+        || !name.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'_')
+        || !rest.ends_with(')')
+    {
         return None;
     }
     Some((name, &rest[open + 1..rest.len() - 1]))
@@ -664,7 +922,10 @@ fn expand(token: &str, defs: &std::collections::HashMap<String, String>, depth: 
         }
     }
     if let Some((f, inner)) = parse_call(token, "math") {
-        let a: Vec<String> = split_args(inner).iter().map(|x| expand(x, defs, depth + 1)).collect();
+        let a: Vec<String> = split_args(inner)
+            .iter()
+            .map(|x| expand(x, defs, depth + 1))
+            .collect();
         let bin = |op: &str| format!("({} {op} {})", a[0], a.get(1).cloned().unwrap_or_default());
         return match f {
             "Not_PreBool" => format!("!{}", a[0]),
@@ -684,7 +945,10 @@ fn expand(token: &str, defs: &std::collections::HashMap<String, String>, depth: 
         };
     }
     if let Some((f, inner)) = parse_call(token, "call") {
-        let a: Vec<String> = split_args(inner).iter().map(|x| expand(x, defs, depth + 1)).collect();
+        let a: Vec<String> = split_args(inner)
+            .iter()
+            .map(|x| expand(x, defs, depth + 1))
+            .collect();
         return format!("{f}({})", a.join(", "));
     }
     atom(token)

@@ -58,7 +58,8 @@ pub const LOBBY_ATHENA: &str = "/Game/Sounds/Fort_Music/Menu/fortnite_lobby_musi
 /// `DefaultGameData.LoadingScreenSoundMix`.
 pub const LOADING_MIX: &str = "/Game/Sounds/FortSoundClassesAndModes/Fort_Loading_Mix";
 /// `Fort_Music_Menu_PSM.PassiveSoundMixModifiers[0]` (min volume 0, max volume 10).
-pub const MENU_SUPPRESS_MIX: &str = "/Game/Sounds/FortSoundClassesAndModes/Fort_Suppress_NormalMusic_MixMod";
+pub const MENU_SUPPRESS_MIX: &str =
+    "/Game/Sounds/FortSoundClassesAndModes/Fort_Suppress_NormalMusic_MixMod";
 /// The SoundClass of every front-end music cue.
 pub const MENU_MUSIC_CLASS: &str = "Fort_Music_Menu_PSM";
 
@@ -87,19 +88,64 @@ pub struct Track {
 
 /// Every `Music_*_FadeIn` event of the controller with its cue (the `Sound_Current_Music_A = obj ...` literal of the ubergraph entry of that event).
 pub const ENTRY_TRACKS: &[Track] = &[
-    Track { event: "Music_Login_FadeIn", cue: LOGIN, caller: "LoginScreen (state enter)" },
-    Track { event: "Music_Lobby_Athena_FadeIn", cue: LOBBY_ATHENA, caller: "AthenaLobby.StartMusic (OnActivated)" },
-    Track { event: "Music_Store_FadeIn", cue: "/Game/Sounds/Fort_Music/Menu/fortnite_store_music_loop_Cue", caller: "Save the World store" },
-    Track { event: "Music_Lobby_FadeIn", cue: "/Game/Sounds/Fort_Music/Menu/fortnite_lobby_music_loop_Cue", caller: "Save the World lobby" },
-    Track { event: "Music_WorldOverview_FadeIn", cue: "/Game/Sounds/Fort_Music/Menu/fortnite_world_music_loop_Cue", caller: "Save the World world map" },
-    Track { event: "Music_HomeBase_FadeIn", cue: "/Game/Sounds/Fort_Music/Menu/fortnite_homebase_music_loop_alt_Cue", caller: "Save the World homebase" },
-    Track { event: "Music_Hexmap_FadeIn", cue: "/Game/Sounds/Fort_Music/Menu/fortnite_hexmap_music_loop_Cue", caller: "Save the World hex map" },
-    Track { event: "Music_Heroes_FadeIn", cue: "/Game/Sounds/Fort_Music/Menu/fortnite_heroes_music_loop_Cue", caller: "Save the World heroes" },
-    Track { event: "Music_Vault_FadeIn", cue: "/Game/Sounds/Fort_Music/Menu/fortnite_vault_music_loop_Cue", caller: "Save the World vault" },
+    Track {
+        event: "Music_Login_FadeIn",
+        cue: LOGIN,
+        caller: "LoginScreen (state enter)",
+    },
+    Track {
+        event: "Music_Lobby_Athena_FadeIn",
+        cue: LOBBY_ATHENA,
+        caller: "AthenaLobby.StartMusic (OnActivated)",
+    },
+    Track {
+        event: "Music_Store_FadeIn",
+        cue: "/Game/Sounds/Fort_Music/Menu/fortnite_store_music_loop_Cue",
+        caller: "Save the World store",
+    },
+    Track {
+        event: "Music_Lobby_FadeIn",
+        cue: "/Game/Sounds/Fort_Music/Menu/fortnite_lobby_music_loop_Cue",
+        caller: "Save the World lobby",
+    },
+    Track {
+        event: "Music_WorldOverview_FadeIn",
+        cue: "/Game/Sounds/Fort_Music/Menu/fortnite_world_music_loop_Cue",
+        caller: "Save the World world map",
+    },
+    Track {
+        event: "Music_HomeBase_FadeIn",
+        cue: "/Game/Sounds/Fort_Music/Menu/fortnite_homebase_music_loop_alt_Cue",
+        caller: "Save the World homebase",
+    },
+    Track {
+        event: "Music_Hexmap_FadeIn",
+        cue: "/Game/Sounds/Fort_Music/Menu/fortnite_hexmap_music_loop_Cue",
+        caller: "Save the World hex map",
+    },
+    Track {
+        event: "Music_Heroes_FadeIn",
+        cue: "/Game/Sounds/Fort_Music/Menu/fortnite_heroes_music_loop_Cue",
+        caller: "Save the World heroes",
+    },
+    Track {
+        event: "Music_Vault_FadeIn",
+        cue: "/Game/Sounds/Fort_Music/Menu/fortnite_vault_music_loop_Cue",
+        caller: "Save the World vault",
+    },
 ];
 
 /// Cues of the Battle Royale music flow that go into the audio pack (front-end tracks + the bus / pre-game island sounds).
-pub const PACK_CUES: &[&str] = &[LOGIN, LOBBY_ATHENA, BUS_LOBBY_MUSIC, BUS_LOBBY_ENGINE, BUS_IGNITION, BUS_TRANSITION, BUS_FLYING_MUSIC, BUS_FLYING_LOOP];
+pub const PACK_CUES: &[&str] = &[
+    LOGIN,
+    LOBBY_ATHENA,
+    BUS_LOBBY_MUSIC,
+    BUS_LOBBY_ENGINE,
+    BUS_IGNITION,
+    BUS_TRANSITION,
+    BUS_FLYING_MUSIC,
+    BUS_FLYING_LOOP,
+];
 
 /// Waves of at least this many seconds are decoded incrementally by a worker (`Library::stream_min_seconds`) instead of whole: the two front-end tracks are 77 s and
 /// 115 s (a whole decode of the lobby track is ~14 s in release); the bus loops are 7 s and decode whole.
@@ -111,9 +157,17 @@ mod tests {
 
     #[test]
     fn tables_are_consistent() {
-        assert!(ENTRY_TRACKS.iter().any(|t| t.cue == LOGIN) && ENTRY_TRACKS.iter().any(|t| t.cue == LOBBY_ATHENA));
+        assert!(
+            ENTRY_TRACKS.iter().any(|t| t.cue == LOGIN)
+                && ENTRY_TRACKS.iter().any(|t| t.cue == LOBBY_ATHENA)
+        );
         for t in ENTRY_TRACKS {
-            assert!(t.cue.starts_with("/Game/Sounds/Fort_Music/Menu/") && t.event.starts_with("Music_") && t.event.ends_with("FadeIn"), "{t:?}");
+            assert!(
+                t.cue.starts_with("/Game/Sounds/Fort_Music/Menu/")
+                    && t.event.starts_with("Music_")
+                    && t.event.ends_with("FadeIn"),
+                "{t:?}"
+            );
         }
         let mut s = PACK_CUES.to_vec();
         s.sort();

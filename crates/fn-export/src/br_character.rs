@@ -25,7 +25,8 @@ use serde_json::{json, Map, Value};
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
-const DEFAULT_CID: &str = "/Game/Athena/Items/Cosmetics/Characters/CID_005_Athena_Commando_M_Default";
+const DEFAULT_CID: &str =
+    "/Game/Athena/Items/Cosmetics/Characters/CID_005_Athena_Commando_M_Default";
 const DEFAULT_CIDS: &[&str] = &[
     "CID_001_Athena_Commando_F_Default",
     "CID_002_Athena_Commando_F_Default",
@@ -46,7 +47,9 @@ pub struct Args {
 
 fn parse(args: &[String]) -> Result<Args, String> {
     let mut a = Args {
-        paks: PathBuf::from("C:/Users/Brady/Downloads/1.8/Fortnite/Fortnite/FortniteGame/Content/Paks"),
+        paks: PathBuf::from(
+            "C:/Users/Brady/Downloads/1.8/Fortnite/Fortnite/FortniteGame/Content/Paks",
+        ),
         out: PathBuf::from("assets"),
         cid: DEFAULT_CID.to_string(),
         report: None,
@@ -57,7 +60,9 @@ fn parse(args: &[String]) -> Result<Args, String> {
             "--paks" => a.paks = PathBuf::from(it.next().ok_or("--paks needs a value")?),
             "--out" => a.out = PathBuf::from(it.next().ok_or("--out needs a value")?),
             "--cid" => a.cid = it.next().ok_or("--cid needs a value")?.clone(),
-            "--report" => a.report = Some(PathBuf::from(it.next().ok_or("--report needs a value")?)),
+            "--report" => {
+                a.report = Some(PathBuf::from(it.next().ok_or("--report needs a value")?))
+            }
             other => return Err(format!("unknown argument {other}")),
         }
     }
@@ -82,12 +87,18 @@ pub fn main(args: &[String]) -> i32 {
     match run(&src, &a) {
         Ok(manifest) => {
             let path = a.out.join("exported").join("br_character.json");
-            if let Err(e) = write_file(&path, serde_json::to_string_pretty(&manifest).unwrap().as_bytes()) {
+            if let Err(e) = write_file(
+                &path,
+                serde_json::to_string_pretty(&manifest).unwrap().as_bytes(),
+            ) {
                 eprintln!("{e}");
                 return 1;
             }
             if let Some(r) = &a.report {
-                let _ = write_file(r, serde_json::to_string_pretty(&manifest).unwrap().as_bytes());
+                let _ = write_file(
+                    r,
+                    serde_json::to_string_pretty(&manifest).unwrap().as_bytes(),
+                );
             }
             println!("wrote {}", path.display());
             0
@@ -104,16 +115,24 @@ pub fn main(args: &[String]) -> i32 {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /// (export class, tagged properties as JSON) of one export; `export` None = the export named like the package (else export 0).
-fn props_of(src: &Source, object_path: &str, export: Option<&str>) -> Result<(String, Value), String> {
+fn props_of(
+    src: &Source,
+    object_path: &str,
+    export: Option<&str>,
+) -> Result<(String, Value), String> {
     let pkg_path = package_of(object_path);
     let pd = PackageData::load(&src.set, pkg_path).map_err(|e| format!("{pkg_path}: {e}"))?;
     let pkg = pd.package().map_err(|e| format!("{pkg_path}: {e}"))?;
     let idx = match export {
-        Some(n) => pkg.find_export(n).ok_or_else(|| format!("{pkg_path}: no export {n}"))?,
+        Some(n) => pkg
+            .find_export(n)
+            .ok_or_else(|| format!("{pkg_path}: no export {n}"))?,
         None => pkg.find_export(base(pkg_path)).unwrap_or(0),
     };
     let class = pkg.export_class_name(idx).to_string();
-    let o = pkg.read_export(idx).map_err(|e| format!("{pkg_path}[{idx}]: {e}"))?;
+    let o = pkg
+        .read_export(idx)
+        .map_err(|e| format!("{pkg_path}[{idx}]: {e}"))?;
     Ok((class, o.props.to_json(&pkg)))
 }
 
@@ -124,11 +143,20 @@ fn base(p: &str) -> &str {
 }
 
 fn s<'a>(v: &'a Value, key: &str) -> Option<&'a str> {
-    v.get(key).and_then(|x| x.as_str()).filter(|x| !x.is_empty())
+    v.get(key)
+        .and_then(|x| x.as_str())
+        .filter(|x| !x.is_empty())
 }
 
 fn strings(v: &Value, key: &str) -> Vec<String> {
-    v.get(key).and_then(|x| x.as_array()).map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default()
+    v.get(key)
+        .and_then(|x| x.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -171,7 +199,9 @@ fn role_of_data_class(c: &str) -> String {
 
 pub fn resolve_character(src: &Source, cid_path: &str) -> Result<Character, String> {
     let (_, cid) = props_of(src, cid_path, None)?;
-    let hid_path = s(&cid, "HeroDefinition").ok_or("CID has no HeroDefinition")?.to_string();
+    let hid_path = s(&cid, "HeroDefinition")
+        .ok_or("CID has no HeroDefinition")?
+        .to_string();
     let (_, hid) = props_of(src, &hid_path, None)?;
     let specs = strings(&hid, "Specializations");
     let mut parts = vec![];
@@ -193,7 +223,10 @@ pub fn resolve_character(src: &Source, cid_path: &str) -> Result<Character, Stri
             let mut overrides = vec![];
             if let Some(a) = p.get("MaterialOverrides").and_then(|x| x.as_array()) {
                 for o in a {
-                    if let (Some(i), Some(m)) = (o.get("MaterialOverrideIndex").and_then(|x| x.as_i64()), s(o, "OverrideMaterial")) {
+                    if let (Some(i), Some(m)) = (
+                        o.get("MaterialOverrideIndex").and_then(|x| x.as_i64()),
+                        s(o, "OverrideMaterial"),
+                    ) {
                         overrides.push((i as usize, m.to_string()));
                     }
                 }
@@ -203,17 +236,27 @@ pub fn resolve_character(src: &Source, cid_path: &str) -> Result<Character, Stri
                 name,
                 role: role_of_data_class(&data_class),
                 part_type_tag: s(&p, "CharacterPartType").map(String::from),
-                skeletal_mesh: s(&p, "SkeletalMesh").ok_or_else(|| format!("{cp}: no SkeletalMesh"))?.to_string(),
+                skeletal_mesh: s(&p, "SkeletalMesh")
+                    .ok_or_else(|| format!("{cp}: no SkeletalMesh"))?
+                    .to_string(),
                 master_meshes: strings(&p, "MasterSkeletalMeshes"),
                 overrides,
-                override_flags: p.get("MaterialOverrideFlags").and_then(|x| x.as_i64()).unwrap_or(0),
+                override_flags: p
+                    .get("MaterialOverrideFlags")
+                    .and_then(|x| x.as_i64())
+                    .unwrap_or(0),
                 data_class,
                 data,
                 body_types: s(&p, "BodyTypesPermitted").map(String::from),
             });
         }
     }
-    let display_name = cid.get("DisplayName").and_then(|d| d.get("text")).and_then(|t| t.as_str()).unwrap_or("").to_string();
+    let display_name = cid
+        .get("DisplayName")
+        .and_then(|d| d.get("text"))
+        .and_then(|t| t.as_str())
+        .unwrap_or("")
+        .to_string();
     Ok(Character {
         cid: cid_path.to_string(),
         display_name,
@@ -231,7 +274,12 @@ pub fn resolve_character(src: &Source, cid_path: &str) -> Result<Character, Stri
 /// Merged `CharacterMesh0` / `CollisionCylinder` templates of a pawn Blueprint chain (child overrides parent).
 fn pawn_chain(src: &Source, class_path: &str) -> Result<Value, String> {
     let mut cur = package_of(class_path).to_string();
-    let mut layers: Vec<(String, Map<String, Value>, Map<String, Value>, Map<String, Value>)> = vec![];
+    let mut layers: Vec<(
+        String,
+        Map<String, Value>,
+        Map<String, Value>,
+        Map<String, Value>,
+    )> = vec![];
     let mut chain = vec![];
     for _ in 0..16 {
         let pd = PackageData::load(&src.set, &cur).map_err(|e| format!("{cur}: {e}"))?;
@@ -240,11 +288,32 @@ fn pawn_chain(src: &Source, class_path: &str) -> Result<Value, String> {
         let get = |name: &str| -> Map<String, Value> {
             pkg.find_export(name)
                 .and_then(|i| pkg.read_export(i).ok())
-                .and_then(|o| if let Value::Object(m) = o.props.to_json(&pkg) { Some(m) } else { None })
+                .and_then(|o| {
+                    if let Value::Object(m) = o.props.to_json(&pkg) {
+                        Some(m)
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or_default()
         };
-        let cdo = pkg.default_object_export().and_then(|i| pkg.read_export(i).ok()).and_then(|o| if let Value::Object(m) = o.props.to_json(&pkg) { Some(m) } else { None }).unwrap_or_default();
-        layers.push((cur.clone(), get("CharacterMesh0"), get("CollisionCylinder"), cdo));
+        let cdo = pkg
+            .default_object_export()
+            .and_then(|i| pkg.read_export(i).ok())
+            .and_then(|o| {
+                if let Value::Object(m) = o.props.to_json(&pkg) {
+                    Some(m)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_default();
+        layers.push((
+            cur.clone(),
+            get("CharacterMesh0"),
+            get("CollisionCylinder"),
+            cdo,
+        ));
         match pkg.super_class() {
             Some(ObjectRef::Import { package: sp, .. }) if sp.starts_with("/Game/") => cur = sp,
             _ => break,
@@ -277,7 +346,9 @@ struct Index {
 }
 
 fn walk(dir: &Path, ix: &mut Index) {
-    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
     for e in rd.flatten() {
         let p = e.path();
         if p.is_dir() {
@@ -302,7 +373,11 @@ fn rel_path(from_dir: &Path, to: &Path) -> String {
         i += 1;
     }
     let mut v: Vec<String> = (i..f.len()).map(|_| "..".to_string()).collect();
-    v.extend(t[i..].iter().map(|c| c.as_os_str().to_string_lossy().to_string()));
+    v.extend(
+        t[i..]
+            .iter()
+            .map(|c| c.as_os_str().to_string_lossy().to_string()),
+    );
     v.join("/")
 }
 
@@ -329,7 +404,10 @@ fn resolve_material(src: &Source, long: &str) -> Result<Resolved, String> {
         let j = crate::mat::material_json(&pkg, base(&cur))?;
         chain.push(cur.clone());
         let class = j["class"].as_str().unwrap_or("").to_string();
-        let parent = j["parent"].as_str().filter(|p| !p.is_empty()).map(|p| package_of(p).trim_start_matches('/').to_string());
+        let parent = j["parent"]
+            .as_str()
+            .filter(|p| !p.is_empty())
+            .map(|p| package_of(p).trim_start_matches('/').to_string());
         layers.push(j);
         match parent {
             Some(p) if class.starts_with("MaterialInstance") => cur = p,
@@ -340,7 +418,8 @@ fn resolve_material(src: &Source, long: &str) -> Result<Resolved, String> {
             }
         }
     }
-    let (mut textures, mut scalars, mut vectors) = (BTreeMap::new(), BTreeMap::new(), BTreeMap::new());
+    let (mut textures, mut scalars, mut vectors) =
+        (BTreeMap::new(), BTreeMap::new(), BTreeMap::new());
     for j in layers.iter().rev() {
         if let Some(m) = j["textures"].as_object() {
             for (k, v) in m {
@@ -362,15 +441,25 @@ fn resolve_material(src: &Source, long: &str) -> Result<Resolved, String> {
             }
         }
     }
-    Ok(Resolved { chain, root_class, root_package, textures, scalars, vectors })
+    Ok(Resolved {
+        chain,
+        root_class,
+        root_package,
+        textures,
+        scalars,
+        vectors,
+    })
 }
 
 fn export_texture(src: &Source, long: &str, out: &Path) -> Result<PathBuf, String> {
     let pkg = package_of(long).trim_start_matches('/').to_string();
     let raw = src.load_raw(&pkg)?;
-    let tex = Texture2D::from_files(&raw.uasset, &raw.uexp, &raw.ubulk).map_err(|e| e.to_string())?;
+    let tex =
+        Texture2D::from_files(&raw.uasset, &raw.uexp, &raw.ubulk).map_err(|e| e.to_string())?;
     let mip = tex.best_mip().ok_or("no mip with data")?;
-    let img = tex.decode(mip, DecodeOptions::default()).map_err(|e| e.to_string())?;
+    let img = tex
+        .decode(mip, DecodeOptions::default())
+        .map_err(|e| e.to_string())?;
     let dest = out.join("exported").join(format!("{pkg}.png"));
     if let Some(p) = dest.parent() {
         std::fs::create_dir_all(p).map_err(|e| e.to_string())?;
@@ -385,7 +474,9 @@ fn discard_evidence(src: &Source, package: &str) -> Result<(usize, usize), Strin
     let blobs = fn_dxbc::extract::scan_blobs(&raw.uexp);
     let (mut ps, mut discarding) = (0, 0);
     for b in &blobs {
-        let Ok(text) = fn_dxbc::disassemble(&b.bytes) else { continue };
+        let Ok(text) = fn_dxbc::disassemble(&b.bytes) else {
+            continue;
+        };
         if !text.lines().any(|l| l.trim_start().starts_with("ps_")) {
             continue;
         }
@@ -402,7 +493,12 @@ fn write_mat(path: &Path, r: &Resolved) -> Result<Vec<String>, String> {
     let tex = |k: &str| r.textures.get(k).map(|t| base(t).to_string());
     let mut text = String::new();
     let mut names = vec![];
-    for (key, param) in [("Diffuse", "Diffuse"), ("Normal", "Normals"), ("SpecPower", "SpecularMasks"), ("Other[0]", "M")] {
+    for (key, param) in [
+        ("Diffuse", "Diffuse"),
+        ("Normal", "Normals"),
+        ("SpecPower", "SpecularMasks"),
+        ("Other[0]", "M"),
+    ] {
         if let Some(t) = tex(param) {
             text.push_str(&format!("{key}={t}\n"));
             names.push(t);
@@ -416,7 +512,13 @@ fn write_mat(path: &Path, r: &Resolved) -> Result<Vec<String>, String> {
 // export
 // ---------------------------------------------------------------------------------------------------------------------
 
-fn export_material_slot(src: &Source, long: &str, out: &Path, ix: &mut Index, is_override: bool) -> Result<Value, String> {
+fn export_material_slot(
+    src: &Source,
+    long: &str,
+    out: &Path,
+    ix: &mut Index,
+    is_override: bool,
+) -> Result<Value, String> {
     let name = base(long).to_string();
     let r = resolve_material(src, long)?;
     let mat_file = format!("{name}.mat").to_lowercase();
@@ -447,7 +549,12 @@ fn export_material_slot(src: &Source, long: &str, out: &Path, ix: &mut Index, is
     if ix.by_name.contains_key(&mat_file) {
         j["mat_file"] = json!("reused");
     } else {
-        let dir = out.join("exported").join(package_of(long).trim_start_matches('/')).parent().map(PathBuf::from).unwrap_or_default();
+        let dir = out
+            .join("exported")
+            .join(package_of(long).trim_start_matches('/'))
+            .parent()
+            .map(PathBuf::from)
+            .unwrap_or_default();
         let dest = dir.join(format!("{name}.mat"));
         if r.textures.is_empty() {
             j["mat_file"] = json!("none (material has no texture parameters)");
@@ -461,7 +568,11 @@ fn export_material_slot(src: &Source, long: &str, out: &Path, ix: &mut Index, is
     let mut hidden = false;
     if r.root_class == "Material" && r.textures.is_empty() {
         let (_, props) = props_of(src, &format!("/{}", r.root_package), None)?;
-        let blend = props.get("BlendMode").and_then(|b| b.as_str()).unwrap_or("").to_string();
+        let blend = props
+            .get("BlendMode")
+            .and_then(|b| b.as_str())
+            .unwrap_or("")
+            .to_string();
         let (ps, disc) = discard_evidence(src, &r.root_package)?;
         hidden = blend == "BLEND_Masked" && disc > 0;
         j["blend_mode"] = json!(blend);
@@ -474,7 +585,9 @@ fn export_material_slot(src: &Source, long: &str, out: &Path, ix: &mut Index, is
 }
 
 fn export_part(src: &Source, p: &Part, out: &Path, ix: &mut Index) -> Result<Value, String> {
-    let mesh_pkg = package_of(&p.skeletal_mesh).trim_start_matches('/').to_string();
+    let mesh_pkg = package_of(&p.skeletal_mesh)
+        .trim_start_matches('/')
+        .to_string();
     let pkg = src.package(&mesh_pkg)?;
     let m = SkeletalMesh::parse(&pkg).map_err(|e| format!("{mesh_pkg}: {e}"))?;
     let mesh_name = base(&mesh_pkg).to_string();
@@ -483,12 +596,19 @@ fn export_part(src: &Source, p: &Part, out: &Path, ix: &mut Index) -> Result<Val
     let mut slots = vec![];
     for (i, sm) in m.materials.iter().enumerate() {
         let own = sm.material.clone().unwrap_or_default();
-        let ov = p.overrides.iter().find(|(idx, _)| *idx == i).map(|(_, m)| m.clone());
+        let ov = p
+            .overrides
+            .iter()
+            .find(|(idx, _)| *idx == i)
+            .map(|(_, m)| m.clone());
         slots.push((i, sm.slot_name.clone(), own, ov));
     }
-    let final_of = |i: usize| -> String { slots[i].3.clone().unwrap_or_else(|| slots[i].2.clone()) };
+    let final_of =
+        |i: usize| -> String { slots[i].3.clone().unwrap_or_else(|| slots[i].2.clone()) };
     let lod0 = m.lods.first().ok_or("mesh has no LOD")?;
-    let sections: Vec<usize> = (0..lod0.sections.len()).map(|s| m.section_material_index(0, s)).collect();
+    let sections: Vec<usize> = (0..lod0.sections.len())
+        .map(|s| m.section_material_index(0, s))
+        .collect();
     // glTF: write only if absent
     let gltf_status = if gltf_path.exists() {
         "reused".to_string()
@@ -496,12 +616,21 @@ fn export_part(src: &Source, p: &Part, out: &Path, ix: &mut Index) -> Result<Val
         let (doc, bin) = gltf::skeletal_mesh_to_gltf(&m, &mesh_name);
         let mut v: Value = serde_json::from_str(&doc).map_err(|e| e.to_string())?;
         // material names = what the part actually uses
-        let prims = v["meshes"][0]["primitives"].as_array().cloned().unwrap_or_default();
+        let prims = v["meshes"][0]["primitives"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
         if prims.len() != sections.len() {
-            return Err(format!("{mesh_name}: {} glTF primitives vs {} LOD0 sections", prims.len(), sections.len()));
+            return Err(format!(
+                "{mesh_name}: {} glTF primitives vs {} LOD0 sections",
+                prims.len(),
+                sections.len()
+            ));
         }
         for (si, prim) in prims.iter().enumerate() {
-            let mi = prim["material"].as_u64().ok_or("primitive without material")? as usize;
+            let mi = prim["material"]
+                .as_u64()
+                .ok_or("primitive without material")? as usize;
             let slot = *sections.get(si).ok_or("section index")?;
             let fin = final_of(slot);
             if fin.is_empty() {
@@ -511,7 +640,13 @@ fn export_part(src: &Source, p: &Part, out: &Path, ix: &mut Index) -> Result<Val
         }
         let dir = gltf_path.parent().unwrap().to_path_buf();
         // bin: identical content already in the assets folder -> point the glTF at it
-        let same = ix.bins.iter().find(|(len, p)| *len == bin.len() as u64 && std::fs::read(p).map_or(false, |b| b == bin)).map(|(_, p)| p.clone());
+        let same = ix
+            .bins
+            .iter()
+            .find(|(len, p)| {
+                *len == bin.len() as u64 && std::fs::read(p).map_or(false, |b| b == bin)
+            })
+            .map(|(_, p)| p.clone());
         let bin_status = match same {
             Some(existing) => {
                 v["buffers"][0]["uri"] = json!(rel_path(&dir, &existing));
@@ -524,8 +659,14 @@ fn export_part(src: &Source, p: &Part, out: &Path, ix: &mut Index) -> Result<Val
                 "written".to_string()
             }
         };
-        write_file(&gltf_path, serde_json::to_string_pretty(&v).unwrap().as_bytes())?;
-        ix.by_name.insert(format!("{mesh_name}.gltf").to_lowercase(), gltf_path.clone());
+        write_file(
+            &gltf_path,
+            serde_json::to_string_pretty(&v).unwrap().as_bytes(),
+        )?;
+        ix.by_name.insert(
+            format!("{mesh_name}.gltf").to_lowercase(),
+            gltf_path.clone(),
+        );
         format!("written; bin {bin_status}")
     };
     // materials
@@ -537,12 +678,18 @@ fn export_part(src: &Source, p: &Part, out: &Path, ix: &mut Index) -> Result<Val
             continue;
         }
         seen.push(fin.clone());
-        mats.push(match export_material_slot(src, &fin, out, ix, ov.is_some()) {
-            Ok(j) => j,
-            Err(e) => json!({"material": base(&fin), "error": e, "slot_name": slot_name}),
-        });
+        mats.push(
+            match export_material_slot(src, &fin, out, ix, ov.is_some()) {
+                Ok(j) => j,
+                Err(e) => json!({"material": base(&fin), "error": e, "slot_name": slot_name}),
+            },
+        );
     }
-    let hidden: Vec<String> = mats.iter().filter(|m| m["hidden"] == json!(true)).filter_map(|m| m["material"].as_str().map(String::from)).collect();
+    let hidden: Vec<String> = mats
+        .iter()
+        .filter(|m| m["hidden"] == json!(true))
+        .filter_map(|m| m["material"].as_str().map(String::from))
+        .collect();
     let slot_json: Vec<Value> = slots
         .iter()
         .map(|(i, name, own, ov)| {
@@ -568,14 +715,18 @@ fn skeleton_compat(src: &Source, anim: &Skeleton, mesh_long: &str) -> Result<Val
     let pkg = src.package(package_of(mesh_long).trim_start_matches('/'))?;
     let m = SkeletalMesh::parse(&pkg).map_err(|e| e.to_string())?;
     let skel_path = m.skeleton_path.clone().ok_or("mesh has no Skeleton")?;
-    let sk = Skeleton::parse(&src.package(package_of(&skel_path).trim_start_matches('/'))?).map_err(|e| e.to_string())?;
+    let sk = Skeleton::parse(&src.package(package_of(&skel_path).trim_start_matches('/'))?)
+        .map_err(|e| e.to_string())?;
     let (mut not_in_anim, mut pose_diff, mut retarget_diff) = (vec![], vec![], vec![]);
     for b in &sk.bones {
         match anim.bone_index_ci(&b.name) {
             None => not_in_anim.push(b.name.clone()),
             Some(i) => {
                 let a = &anim.bones[i];
-                let d = (0..3).map(|k| (a.ref_pos[k] - b.ref_pos[k]).abs()).chain((0..4).map(|k| (a.ref_rot[k] - b.ref_rot[k]).abs())).fold(0f32, f32::max);
+                let d = (0..3)
+                    .map(|k| (a.ref_pos[k] - b.ref_pos[k]).abs())
+                    .chain((0..4).map(|k| (a.ref_rot[k] - b.ref_rot[k]).abs()))
+                    .fold(0f32, f32::max);
                 if d > 1e-4 {
                     pose_diff.push(json!({"bone": b.name, "max_abs": d}));
                 }
@@ -585,8 +736,24 @@ fn skeleton_compat(src: &Source, anim: &Skeleton, mesh_long: &str) -> Result<Val
             }
         }
     }
-    let mesh_bones_not_in_anim: Vec<String> = m.ref_skeleton.iter().filter(|b| anim.bone_index_ci(&b.name).is_none()).map(|b| b.name.clone()).collect();
-    let anim_bones_not_in_mesh: Vec<String> = anim.bones.iter().filter(|b| m.bone_index(&b.name).is_none() && !m.ref_skeleton.iter().any(|x| x.name.eq_ignore_ascii_case(&b.name))).map(|b| b.name.clone()).collect();
+    let mesh_bones_not_in_anim: Vec<String> = m
+        .ref_skeleton
+        .iter()
+        .filter(|b| anim.bone_index_ci(&b.name).is_none())
+        .map(|b| b.name.clone())
+        .collect();
+    let anim_bones_not_in_mesh: Vec<String> = anim
+        .bones
+        .iter()
+        .filter(|b| {
+            m.bone_index(&b.name).is_none()
+                && !m
+                    .ref_skeleton
+                    .iter()
+                    .any(|x| x.name.eq_ignore_ascii_case(&b.name))
+        })
+        .map(|b| b.name.clone())
+        .collect();
     Ok(json!({
         "mesh": mesh_long, "skeleton": skel_path, "skeleton_bones": sk.bones.len(), "mesh_bones": m.ref_skeleton.len(),
         "same_skeleton_asset_as_anim": package_of(&skel_path) == package_of(&format!("/Game/Characters/Player/Male/Male_Avg_Base/{}", anim.name)),
@@ -603,7 +770,9 @@ mod tests {
     use super::*;
 
     fn install() -> Option<Source> {
-        let p = PathBuf::from("C:/Users/Brady/Downloads/1.8/Fortnite/Fortnite/FortniteGame/Content/Paks");
+        let p = PathBuf::from(
+            "C:/Users/Brady/Downloads/1.8/Fortnite/Fortnite/FortniteGame/Content/Paks",
+        );
         if !p.exists() {
             eprintln!("1.8 install not found, skipping");
             return None;
@@ -618,7 +787,10 @@ mod tests {
         let c = resolve_character(&src, DEFAULT_CID).unwrap();
         assert_eq!(c.display_name, "Recruit");
         assert_eq!(base(&c.hid), "HID_005_Athena_Commando_M");
-        assert_eq!(c.pawn_class.as_deref(), Some("/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C"));
+        assert_eq!(
+            c.pawn_class.as_deref(),
+            Some("/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C")
+        );
         assert_eq!(c.parts.len(), 2);
         let head = c.parts.iter().find(|p| p.role == "head").unwrap();
         let body = c.parts.iter().find(|p| p.role == "body").unwrap();
@@ -637,19 +809,36 @@ mod tests {
         let p = pawn_chain(&src, "/Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C").unwrap();
         assert_eq!(p["chain"].as_array().unwrap().len(), 3);
         assert_eq!(p["collision_cylinder"]["CapsuleHalfHeight"], 75.0);
-        assert_eq!(p["character_mesh"]["RelativeLocation"], json!([0.0, 0.0, -75.0]));
-        assert!(p["character_mesh"]["AnimClass"].as_str().unwrap().ends_with("Fortnite_M_Avg_Player_AnimBlueprint_C"));
-        assert!(p["character_mesh"]["SkeletalMesh"].as_str().unwrap().ends_with("Fortnite_M_Avg_Player"));
+        assert_eq!(
+            p["character_mesh"]["RelativeLocation"],
+            json!([0.0, 0.0, -75.0])
+        );
+        assert!(p["character_mesh"]["AnimClass"]
+            .as_str()
+            .unwrap()
+            .ends_with("Fortnite_M_Avg_Player_AnimBlueprint_C"));
+        assert!(p["character_mesh"]["SkeletalMesh"]
+            .as_str()
+            .unwrap()
+            .ends_with("Fortnite_M_Avg_Player"));
     }
 
     /// `M_Athena_InvisibleGrenades` (plain masked Material, no textures): its pass shaders discard unconditionally.
     #[test]
     fn invisible_grenades_discards() {
         let Some(src) = install() else { return };
-        let (ps, disc) = discard_evidence(&src, "Game/Athena/Heroes/Meshes/Bodies/M_Athena_InvisibleGrenades").unwrap();
+        let (ps, disc) = discard_evidence(
+            &src,
+            "Game/Athena/Heroes/Meshes/Bodies/M_Athena_InvisibleGrenades",
+        )
+        .unwrap();
         assert!(ps > 0 && disc > 0, "{ps} {disc}");
         // a real character material must not look like that
-        let (ps, disc) = discard_evidence(&src, "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Materials/M_Med_Soldier_04").unwrap_or((0, 0));
+        let (ps, disc) = discard_evidence(
+            &src,
+            "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Materials/M_Med_Soldier_04",
+        )
+        .unwrap_or((0, 0));
         assert_eq!(disc, 0, "{ps}");
     }
 }
@@ -661,15 +850,28 @@ pub fn run(src: &Source, a: &Args) -> Result<Value, String> {
     let mut missing: Vec<String> = vec![];
 
     // the pawn
-    let pawn_class = ch.pawn_class.clone().ok_or("HeroDefinition has no OverridePawnClass")?;
+    let pawn_class = ch
+        .pawn_class
+        .clone()
+        .ok_or("HeroDefinition has no OverridePawnClass")?;
     let pawn = pawn_chain(src, &pawn_class)?;
-    let master_mesh = pawn["character_mesh"]["SkeletalMesh"].as_str().map(String::from);
+    let master_mesh = pawn["character_mesh"]["SkeletalMesh"]
+        .as_str()
+        .map(String::from);
     let anim_skeleton = match &master_mesh {
         Some(mm) => {
             let mpkg = src.package(package_of(mm).trim_start_matches('/'))?;
             let msh = SkeletalMesh::parse(&mpkg).map_err(|e| e.to_string())?;
-            let sp = msh.skeleton_path.clone().ok_or("master mesh has no Skeleton")?;
-            Some((Skeleton::parse(&src.package(package_of(&sp).trim_start_matches('/'))?).map_err(|e| e.to_string())?, msh, sp))
+            let sp = msh
+                .skeleton_path
+                .clone()
+                .ok_or("master mesh has no Skeleton")?;
+            Some((
+                Skeleton::parse(&src.package(package_of(&sp).trim_start_matches('/'))?)
+                    .map_err(|e| e.to_string())?,
+                msh,
+                sp,
+            ))
         }
         None => None,
     };
@@ -689,12 +891,21 @@ pub fn run(src: &Source, a: &Args) -> Result<Value, String> {
     let mut compat = vec![];
     if let Some((anim, master, skel_path)) = &anim_skeleton {
         for p in &ch.parts {
-            compat.push(skeleton_compat(src, anim, &p.skeletal_mesh).unwrap_or_else(|e| json!({"mesh": p.skeletal_mesh, "error": e})));
+            compat.push(
+                skeleton_compat(src, anim, &p.skeletal_mesh)
+                    .unwrap_or_else(|e| json!({"mesh": p.skeletal_mesh, "error": e})),
+            );
             for mm in &p.master_meshes {
-                compat.push(skeleton_compat(src, anim, mm).unwrap_or_else(|e| json!({"mesh": mm, "error": e})));
+                compat.push(
+                    skeleton_compat(src, anim, mm)
+                        .unwrap_or_else(|e| json!({"mesh": mm, "error": e})),
+                );
             }
         }
-        compat.push(skeleton_compat(src, anim, master_mesh.as_deref().unwrap()).unwrap_or_else(|e| json!({"error": e})));
+        compat.push(
+            skeleton_compat(src, anim, master_mesh.as_deref().unwrap())
+                .unwrap_or_else(|e| json!({"error": e})),
+        );
         let _ = (master, skel_path);
     }
     // pawn master mesh sockets (the pickaxe attaches to the weapon socket of this mesh/skeleton)

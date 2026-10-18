@@ -43,7 +43,12 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
         Err(e) => json!({"package": p, "error": e}),
     });
     let out = a.file.clone().unwrap_or_else(|| a.out.join("survey.json"));
-    crate::write_file(&out, serde_json::to_string_pretty(&Value::Array(rows)).unwrap().as_bytes())?;
+    crate::write_file(
+        &out,
+        serde_json::to_string_pretty(&Value::Array(rows))
+            .unwrap()
+            .as_bytes(),
+    )?;
     println!("wrote {}", out.display());
     Ok(())
 }
@@ -52,11 +57,16 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
 /// starts with `prefix` (default `Resource`) and report LOD / vertex / triangle counts or the decode error.
 pub fn meshcheck(src: &Source, a: &PropsArgs) -> Result<(), String> {
     let f = a.file.clone().ok_or("--file survey.json required")?;
-    let rows: Vec<Value> = serde_json::from_str(&std::fs::read_to_string(&f).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    let rows: Vec<Value> =
+        serde_json::from_str(&std::fs::read_to_string(&f).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?;
     let prefix = a.rest.first().cloned().unwrap_or_else(|| "Resource".into());
     let mut meshes = BTreeSet::new();
     for r in &rows {
-        if r["attr_category"].as_str().map_or(false, |c| c.starts_with(&prefix)) {
+        if r["attr_category"]
+            .as_str()
+            .map_or(false, |c| c.starts_with(&prefix))
+        {
             if let Some(m) = r["static_mesh"].as_str() {
                 meshes.insert(package_of(m).to_string());
             }
@@ -65,7 +75,9 @@ pub fn meshcheck(src: &Source, a: &PropsArgs) -> Result<(), String> {
     let meshes: Vec<String> = meshes.into_iter().collect();
     println!("{} distinct meshes", meshes.len());
     let res = parallel(&meshes, a.jobs, |m| {
-        let r = src.package(m).and_then(|p| StaticMesh::parse(&p).map_err(|e| e.to_string()));
+        let r = src
+            .package(m)
+            .and_then(|p| StaticMesh::parse(&p).map_err(|e| e.to_string()));
         match r {
             Ok(sm) => {
                 let lods: Vec<Value> = sm
@@ -84,6 +96,11 @@ pub fn meshcheck(src: &Source, a: &PropsArgs) -> Result<(), String> {
         println!("FAIL {} {}", r["mesh"], r["error"]);
     }
     let out = a.out.join("meshcheck.json");
-    crate::write_file(&out, serde_json::to_string_pretty(&Value::Array(res)).unwrap().as_bytes())?;
+    crate::write_file(
+        &out,
+        serde_json::to_string_pretty(&Value::Array(res))
+            .unwrap()
+            .as_bytes(),
+    )?;
     Ok(())
 }

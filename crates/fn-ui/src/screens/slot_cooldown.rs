@@ -27,7 +27,13 @@ use crate::text::FontId;
 
 /// `EFortItemCooldownType` (the exe's enum name table, in declaration order).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum CooldownKind { None = 0, AmmoRegeneration = 1, ItemActivation = 2, WeaponReloading = 3, Death = 4 }
+pub enum CooldownKind {
+    None = 0,
+    AmmoRegeneration = 1,
+    ItemActivation = 2,
+    WeaponReloading = 3,
+    Death = 4,
+}
 
 /// `ItemDisplayStyle` user enum values (display names of NewEnumerator2..8).
 pub const STYLE_WORLD: u8 = 1;
@@ -40,13 +46,21 @@ pub const TEXT_SHADOW: ([f32; 2], [f32; 4]) = ([1.6, 1.6], [0., 0., 0., 0.75]);
 
 /// A running cooldown of the item in one slot (what the native `OnCooldownStarted` .. `OnCooldownStopped` span carries).
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct SlotCooldown { pub kind: CooldownKind, pub remaining: f32, pub duration: f32 }
+pub struct SlotCooldown {
+    pub kind: CooldownKind,
+    pub remaining: f32,
+    pub duration: f32,
+}
 
 /// `CooldownTypesSupported` of the Athena primary quickbar slot `slot` (0..5).
 pub fn supported(slot: usize) -> &'static [CooldownKind] {
     const SLOT1: [CooldownKind; 1] = [CooldownKind::Death];
     const OTHERS: [CooldownKind; 2] = [CooldownKind::Death, CooldownKind::WeaponReloading];
-    if slot == 0 { &SLOT1 } else { &OTHERS }
+    if slot == 0 {
+        &SLOT1
+    } else {
+        &OTHERS
+    }
 }
 /// The page / visibility switch of `OnCooldownStarted` for the slot style: `Some(true)` = the rectangular layer is shown, `Some(false)` = the radial layer, `None` = nothing.
 pub fn layer_for(style: u8, kind: CooldownKind) -> Option<bool> {
@@ -57,49 +71,143 @@ pub fn layer_for(style: u8, kind: CooldownKind) -> Option<bool> {
     }
 }
 /// Is this cooldown shown on the slot at all (supported by the slot AND handled by the style's switch)?
-pub fn visible(slot: usize, style: u8, cd: &SlotCooldown) -> bool { supported(slot).contains(&cd.kind) && layer_for(style, cd.kind).is_some() && cd.remaining > 0. }
+pub fn visible(slot: usize, style: u8, cd: &SlotCooldown) -> bool {
+    supported(slot).contains(&cd.kind) && layer_for(style, cd.kind).is_some() && cd.remaining > 0.
+}
 /// `CooldownText` content: `M:SS` of the remaining time (whole seconds, rounded up).
-pub fn time_text(remaining: f32) -> String { let s = remaining.max(0.).ceil() as u32; format!("{}:{:02}", s / 60, s % 60) }
+pub fn time_text(remaining: f32) -> String {
+    let s = remaining.max(0.).ceil() as u32;
+    format!("{}:{:02}", s / 60, s % 60)
+}
 
 /// Draw the cooldown over the slot's 80 x 80 item box `item` (the slot's lift already applied by the caller).
-pub fn build(ctx: &mut UiContext, out: &mut RenderList, item: Rect, scale: f32, slot: usize, cd: &SlotCooldown) {
-    if !visible(slot, STYLE_WORLD, cd) { return; }
+pub fn build(
+    ctx: &mut UiContext,
+    out: &mut RenderList,
+    item: Rect,
+    scale: f32,
+    slot: usize,
+    cd: &SlotCooldown,
+) {
+    if !visible(slot, STYLE_WORLD, cd) {
+        return;
+    }
     out.fill(item, RECT_COLOR);
     let px = atlas_px(TEXT_SIZE, scale);
     let txt = time_text(cd.remaining);
     let tw = text_width(ctx, FontId::Bold, &txt, px);
     let base = centred_baseline(ctx, FontId::Bold, px, item.y, item.h);
-    put_text(ctx, out, FontId::Bold, px, item.x + (item.w - tw) * 0.5, base, &txt, [1., 1., 1., 1.], Some(([TEXT_SHADOW.0[0] * scale, TEXT_SHADOW.0[1] * scale], TEXT_SHADOW.1)), Snap::Pen);
+    put_text(
+        ctx,
+        out,
+        FontId::Bold,
+        px,
+        item.x + (item.w - tw) * 0.5,
+        base,
+        &txt,
+        [1., 1., 1., 1.],
+        Some((
+            [TEXT_SHADOW.0[0] * scale, TEXT_SHADOW.0[1] * scale],
+            TEXT_SHADOW.1,
+        )),
+        Snap::Pen,
+    );
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::draw::Cmd;
-    fn cd(kind: CooldownKind, remaining: f32) -> SlotCooldown { SlotCooldown { kind, remaining, duration: 3. } }
-    #[test] fn only_the_supported_types_of_the_athena_slots_show() {
+    fn cd(kind: CooldownKind, remaining: f32) -> SlotCooldown {
+        SlotCooldown {
+            kind,
+            remaining,
+            duration: 3.,
+        }
+    }
+    #[test]
+    fn only_the_supported_types_of_the_athena_slots_show() {
         assert_eq!(supported(0), [CooldownKind::Death]);
-        for s in 1..6 { assert_eq!(supported(s), [CooldownKind::Death, CooldownKind::WeaponReloading]); }
-        assert!(visible(2, STYLE_WORLD, &cd(CooldownKind::WeaponReloading, 1.)), "a reloading firearm slot");
-        assert!(!visible(0, STYLE_WORLD, &cd(CooldownKind::WeaponReloading, 1.)), "slot 1 supports Death only");
-        assert!(!visible(4, STYLE_WORLD, &cd(CooldownKind::ItemActivation, 20.)), "the consumable (PurpleStuff) cooldown is not a supported Athena slot type");
-        assert!(!visible(2, STYLE_WORLD, &cd(CooldownKind::WeaponReloading, 0.)));
+        for s in 1..6 {
+            assert_eq!(
+                supported(s),
+                [CooldownKind::Death, CooldownKind::WeaponReloading]
+            );
+        }
+        assert!(
+            visible(2, STYLE_WORLD, &cd(CooldownKind::WeaponReloading, 1.)),
+            "a reloading firearm slot"
+        );
+        assert!(
+            !visible(0, STYLE_WORLD, &cd(CooldownKind::WeaponReloading, 1.)),
+            "slot 1 supports Death only"
+        );
+        assert!(
+            !visible(4, STYLE_WORLD, &cd(CooldownKind::ItemActivation, 20.)),
+            "the consumable (PurpleStuff) cooldown is not a supported Athena slot type"
+        );
+        assert!(!visible(
+            2,
+            STYLE_WORLD,
+            &cd(CooldownKind::WeaponReloading, 0.)
+        ));
     }
-    #[test] fn the_style_switch_is_the_bytecode_chain() {
-        assert_eq!(layer_for(STYLE_WORLD, CooldownKind::WeaponReloading), Some(true)); assert_eq!(layer_for(STYLE_WORLD, CooldownKind::Death), Some(true));
-        assert_eq!(layer_for(STYLE_WORLD, CooldownKind::ItemActivation), None); assert_eq!(layer_for(STYLE_WORLD, CooldownKind::None), None); assert_eq!(layer_for(STYLE_WORLD, CooldownKind::AmmoRegeneration), None);
-        assert_eq!(layer_for(STYLE_ABILITY, CooldownKind::ItemActivation), Some(false)); assert_eq!(layer_for(STYLE_ABILITY, CooldownKind::WeaponReloading), None);
+    #[test]
+    fn the_style_switch_is_the_bytecode_chain() {
+        assert_eq!(
+            layer_for(STYLE_WORLD, CooldownKind::WeaponReloading),
+            Some(true)
+        );
+        assert_eq!(layer_for(STYLE_WORLD, CooldownKind::Death), Some(true));
+        assert_eq!(layer_for(STYLE_WORLD, CooldownKind::ItemActivation), None);
+        assert_eq!(layer_for(STYLE_WORLD, CooldownKind::None), None);
+        assert_eq!(layer_for(STYLE_WORLD, CooldownKind::AmmoRegeneration), None);
+        assert_eq!(
+            layer_for(STYLE_ABILITY, CooldownKind::ItemActivation),
+            Some(false)
+        );
+        assert_eq!(
+            layer_for(STYLE_ABILITY, CooldownKind::WeaponReloading),
+            None
+        );
     }
-    #[test] fn countdown_text_is_minutes_colon_two_digit_seconds() {
-        assert_eq!(time_text(0.), "0:00"); assert_eq!(time_text(2.1), "0:03"); assert_eq!(time_text(59.2), "1:00"); assert_eq!(time_text(65.), "1:05"); assert_eq!(time_text(-1.), "0:00");
+    #[test]
+    fn countdown_text_is_minutes_colon_two_digit_seconds() {
+        assert_eq!(time_text(0.), "0:00");
+        assert_eq!(time_text(2.1), "0:03");
+        assert_eq!(time_text(59.2), "1:00");
+        assert_eq!(time_text(65.), "1:05");
+        assert_eq!(time_text(-1.), "0:00");
     }
-    #[test] fn build_draws_the_half_black_rectangle_over_the_item_box_and_the_text() {
+    #[test]
+    fn build_draws_the_half_black_rectangle_over_the_item_box_and_the_text() {
         use crate::screens::testutil::ctx;
         let Some(mut c) = ctx() else { return };
         let item = Rect::new(100., 200., 80., 80.);
-        let mut out = RenderList::new(); build(&mut c, &mut out, item, 1., 2, &cd(CooldownKind::WeaponReloading, 2.2));
-        let Some(Cmd::Quad(q)) = out.cmds.first() else { panic!("rect first") }; assert_eq!(q.bounds(), item); assert_eq!(q.tint, RECT_COLOR);
+        let mut out = RenderList::new();
+        build(
+            &mut c,
+            &mut out,
+            item,
+            1.,
+            2,
+            &cd(CooldownKind::WeaponReloading, 2.2),
+        );
+        let Some(Cmd::Quad(q)) = out.cmds.first() else {
+            panic!("rect first")
+        };
+        assert_eq!(q.bounds(), item);
+        assert_eq!(q.tint, RECT_COLOR);
         assert!(out.quad_count() > 1, "text glyph quads follow");
-        let mut none = RenderList::new(); build(&mut c, &mut none, item, 1., 4, &cd(CooldownKind::ItemActivation, 20.)); assert!(none.is_empty());
+        let mut none = RenderList::new();
+        build(
+            &mut c,
+            &mut none,
+            item,
+            1.,
+            4,
+            &cd(CooldownKind::ItemActivation, 20.),
+        );
+        assert!(none.is_empty());
     }
 }

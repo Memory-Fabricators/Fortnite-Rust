@@ -1,4 +1,4 @@
-﻿//! Audio codecs found in (or plausible for) UE 4.16 cooked SoundWaves.
+//! Audio codecs found in (or plausible for) UE 4.16 cooked SoundWaves.
 //!
 //! * `OGG`   - standard Ogg/Vorbis stream (every non-streaming wave of Fortnite 1.8): [`ogg`]
 //! * `OPUS`  - UE's own framed Opus container ("UE4OPUS"), used by streaming waves (ambience, music): [`opus`]
@@ -30,7 +30,10 @@ pub(crate) fn guarded<T>(codec: &'static str, f: impl FnOnce() -> Result<T>) -> 
         Ok(r) => r,
         Err(_) => {
             PANICS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            Err(AudioError::Decode { codec, detail: "decoder panicked".into() })
+            Err(AudioError::Decode {
+                codec,
+                detail: "decoder panicked".into(),
+            })
         }
     }
 }
@@ -43,11 +46,18 @@ pub fn decode_asset(a: &SoundWaveAsset) -> Result<DecodedWave> {
             other => return Err(AudioError::Unsupported(other.to_string())),
         }
     } else {
-        let f = a.primary().ok_or_else(|| AudioError::Decode { codec: "soundwave", detail: "no payload (cooked format container is empty)".into() })?;
+        let f = a.primary().ok_or_else(|| AudioError::Decode {
+            codec: "soundwave",
+            detail: "no payload (cooked format container is empty)".into(),
+        })?;
         match f.name.as_str() {
             "OGG" => ogg::decode_ogg(&f.payload)?,
             "OPUS" => opus::decode_ue_opus(&f.payload)?,
-            "PCM" => pcm::decode_pcm16(&f.payload, a.info.sample_rate.unwrap_or(44100), a.info.channels.unwrap_or(1))?,
+            "PCM" => pcm::decode_pcm16(
+                &f.payload,
+                a.info.sample_rate.unwrap_or(44100),
+                a.info.channels.unwrap_or(1),
+            )?,
             "ADPCM" => adpcm::decode_wav_adpcm(&f.payload)?,
             other => return Err(AudioError::Unsupported(other.to_string())),
         }
@@ -58,4 +68,3 @@ pub fn decode_asset(a: &SoundWaveAsset) -> Result<DecodedWave> {
     }
     Ok(wave)
 }
-

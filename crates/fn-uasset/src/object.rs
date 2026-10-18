@@ -61,7 +61,10 @@ impl<'a> Package<'a> {
     /// Read export `i`'s tagged properties. Errors only for a bad index or an out-of-range export;
     /// property-level problems land in `ExportObject::error` / `Value::Unparsed`.
     pub fn read_export(&self, i: usize) -> Result<ExportObject<'a>> {
-        let ex = self.exports.get(i).ok_or_else(|| Error::not_found(format!("export {i}")))?;
+        let ex = self
+            .exports
+            .get(i)
+            .ok_or_else(|| Error::not_found(format!("export {i}")))?;
         let bytes = self.export_bytes(i)?;
         let mut r = Reader::new(bytes);
         let mut props = PropertyList::new();
@@ -69,7 +72,10 @@ impl<'a> Package<'a> {
         let mut had_guid_flag = false;
         let mut object_guid = None;
         let mut error = error;
-        if error.is_none() && ex.object_flags & crate::package::RF_CLASS_DEFAULT_OBJECT == 0 && r.remaining() >= 4 {
+        if error.is_none()
+            && ex.object_flags & crate::package::RF_CLASS_DEFAULT_OBJECT == 0
+            && r.remaining() >= 4
+        {
             let flag = r.i32().unwrap_or(0);
             had_guid_flag = true;
             if flag != 0 {
@@ -79,13 +85,28 @@ impl<'a> Package<'a> {
                 }
             }
         }
-        let trailing = if error.is_none() { &bytes[r.pos()..] } else { &bytes[0..0] };
-        Ok(ExportObject { index: i, name: ex.name.clone(), class: self.export_class_name(i), props, had_guid_flag, object_guid, trailing, error })
+        let trailing = if error.is_none() {
+            &bytes[r.pos()..]
+        } else {
+            &bytes[0..0]
+        };
+        Ok(ExportObject {
+            index: i,
+            name: ex.name.clone(),
+            class: self.export_class_name(i),
+            props,
+            had_guid_flag,
+            object_guid,
+            trailing,
+            error,
+        })
     }
 
     /// Read every export.
     pub fn read_all_exports(&self) -> Vec<Result<ExportObject<'a>>> {
-        (0..self.exports.len()).map(|i| self.read_export(i)).collect()
+        (0..self.exports.len())
+            .map(|i| self.read_export(i))
+            .collect()
     }
 
     /// Class default object (`Default__Foo_C`) of a Blueprint class package, if present.
@@ -98,4 +119,3 @@ impl<'a> Package<'a> {
         self.find_export(name).map(|i| self.read_export(i))
     }
 }
-

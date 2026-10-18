@@ -27,7 +27,10 @@ fn write_gltf(dir: &std::path::Path) {
     let idx0_off = 36 + 36 + 24;
     // LOD1: 4 vertices
     let p1 = bin.len();
-    f(&[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0], &mut bin);
+    f(
+        &[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0],
+        &mut bin,
+    );
     f(&[0.0, 0.0, 1.0].repeat(4), &mut bin);
     f(&[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0], &mut bin);
     let i1 = bin.len();
@@ -118,7 +121,12 @@ fn fixture() -> PathBuf {
         .to_string(),
     )
     .unwrap();
-    std::fs::write(root.join("catalog.json"), serde_json::json!({"schema": 1, "kinds": [{"id": "Test_Tree", "dir": "Test_Tree"}]}).to_string()).unwrap();
+    std::fs::write(
+        root.join("catalog.json"),
+        serde_json::json!({"schema": 1, "kinds": [{"id": "Test_Tree", "dir": "Test_Tree"}]})
+            .to_string(),
+    )
+    .unwrap();
     std::fs::write(
         root.join("layout/sample.json"),
         serde_json::json!({"map": "M", "center_abs": [1000.0, 2000.0, 50.0], "radius_cm": 300.0, "instances": [
@@ -139,7 +147,10 @@ fn catalog_kind_fields() {
     let root = fixture();
     let cat = PropCatalog::load(&root).unwrap();
     let k = cat.get("Test_Tree").unwrap();
-    assert_eq!((k.health, k.resource.kind, k.placed_in_map), (600.0, ResourceKind::Wood, 7));
+    assert_eq!(
+        (k.health, k.resource.kind, k.placed_in_map),
+        (600.0, ResourceKind::Wood, 7)
+    );
     assert_eq!(k.resource.rates, Some((40.0, 0.3)));
     assert_eq!(k.resource.athena_rates, Some((48.0, 0.3)));
     assert_eq!(k.resource.amount_row.as_deref(), Some("ResourceWoodHigh"));
@@ -176,7 +187,10 @@ fn material_collision_and_texture() {
     let cat = PropCatalog::load(&root).unwrap();
     let k = cat.get("Test_Tree").unwrap();
     let m = k.load_material(0).unwrap();
-    assert_eq!((m.alpha_mode, m.two_sided, m.alpha_cutoff), (AlphaMode::Masked, true, 0.4));
+    assert_eq!(
+        (m.alpha_mode, m.two_sided, m.alpha_cutoff),
+        (AlphaMode::Masked, true, 0.4)
+    );
     assert_eq!(m.vectors["Tint"], [1.0, 0.5, 0.25, 1.0]);
     assert_eq!(m.tint_guess, Some([0.5, 1.0, 0.25]));
     assert!(m.uses_world_position_offset && m.wind_params["LeafAnimationAmount"] == 0.05);
@@ -188,10 +202,14 @@ fn material_collision_and_texture() {
     assert!(k.load_material(5).is_err());
     let c = &k.collision;
     assert_eq!(c.shapes.len(), 4);
-    assert!(matches!(c.shapes[0], Shape::Box { half_extent, .. } if half_extent == [20.0, 20.0, 100.0]));
+    assert!(
+        matches!(c.shapes[0], Shape::Box { half_extent, .. } if half_extent == [20.0, 20.0, 100.0])
+    );
     assert!(matches!(c.shapes[1], Shape::Sphere { radius, .. } if radius == 150.0));
     assert!(matches!(c.shapes[2], Shape::Capsule { half_length, .. } if half_length == 70.0));
-    assert!(matches!(&c.shapes[3], Shape::Convex { vertices, transform_translation, .. } if vertices.len() == 4 && *transform_translation == [1.0, 2.0, 3.0]));
+    assert!(
+        matches!(&c.shapes[3], Shape::Convex { vertices, transform_translation, .. } if vertices.len() == 4 && *transform_translation == [1.0, 2.0, 3.0])
+    );
     assert!(c.blocks_weapon_traces());
     assert_eq!(c.bounds_max, [20.0, 20.0, 450.0]);
 }
@@ -204,12 +222,18 @@ fn layouts_and_axis_conversion() {
     assert_eq!(s.center_cm, [1000.0, 2000.0, 50.0]);
     let i = &s.instances[0];
     let gp = i.game_position();
-    assert!((gp[0] - 1.0).abs() < 1e-6 && (gp[1] - 0.1).abs() < 1e-6 && gp[2].abs() < 1e-6, "{gp:?}");
+    assert!(
+        (gp[0] - 1.0).abs() < 1e-6 && (gp[1] - 0.1).abs() < 1e-6 && gp[2].abs() < 1e-6,
+        "{gp:?}"
+    );
     // UE yaw +90 turns UE +X into UE +Y (= game +Z); the game's rotation about +Y must do the same
     let y = i.game_yaw();
     let (c, sn) = (y.cos(), y.sin());
     let rotated = [c * 1.0 + sn * 0.0, -sn * 1.0 + c * 0.0]; // (x, z) -> (x cos + z sin, -x sin + z cos) applied to game +X
-    assert!(rotated[0].abs() < 1e-6 && (rotated[1] - 1.0).abs() < 1e-6, "{rotated:?}");
+    assert!(
+        rotated[0].abs() < 1e-6 && (rotated[1] - 1.0).abs() < 1e-6,
+        "{rotated:?}"
+    );
     let all = cat.load_full_layout().unwrap();
     assert_eq!(all.instances.len(), 2);
     assert_eq!(all.instances[0].kind, "Test_Tree");

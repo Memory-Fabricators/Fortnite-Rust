@@ -75,11 +75,16 @@ impl<'a> PackageData<'a> {
     /// (`FortniteGame/Content/Foo/Bar.uasset`).
     pub fn load(set: &'a fn_pak::PakSet, path: &str) -> Result<PackageData<'a>> {
         let (long, asset_path) = if path.starts_with("/Game/") || path.starts_with("/Engine/") {
-            let ap = fn_pak::game_path_to_pak(path, "uasset").ok_or_else(|| Error::not_found(path.to_string()))?;
+            let ap = fn_pak::game_path_to_pak(path, "uasset")
+                .ok_or_else(|| Error::not_found(path.to_string()))?;
             (path.split('.').next().unwrap_or(path).to_string(), ap)
         } else {
             let lower = path.to_lowercase();
-            let ap = if lower.ends_with(".uasset") || lower.ends_with(".umap") { path.to_string() } else { format!("{path}.uasset") };
+            let ap = if lower.ends_with(".uasset") || lower.ends_with(".umap") {
+                path.to_string()
+            } else {
+                format!("{path}.uasset")
+            };
             (fn_pak::pak_path_to_game(&ap).unwrap_or_default(), ap)
         };
         let mut asset_path = asset_path;
@@ -91,13 +96,22 @@ impl<'a> PackageData<'a> {
                 }
             }
         }
-        let asset = set.read(&asset_path).map_err(|e| Error::not_found(format!("{asset_path}: {e}")))?;
-        let stem = asset_path.rsplit_once('.').map(|x| x.0).unwrap_or(&asset_path);
+        let asset = set
+            .read(&asset_path)
+            .map_err(|e| Error::not_found(format!("{asset_path}: {e}")))?;
+        let stem = asset_path
+            .rsplit_once('.')
+            .map(|x| x.0)
+            .unwrap_or(&asset_path);
         let uexp = match set.read(&format!("{stem}.uexp")) {
             Ok(b) => b,
             Err(_) => Cow::Borrowed(&[][..]),
         };
-        Ok(PackageData { name: long, asset, uexp })
+        Ok(PackageData {
+            name: long,
+            asset,
+            uexp,
+        })
     }
 
     /// Parse the header (borrowing from this object).
@@ -105,6 +119,3 @@ impl<'a> PackageData<'a> {
         Ok(Package::parse(&self.asset, &self.uexp)?.with_name(self.name.clone()))
     }
 }
-
-
-

@@ -33,7 +33,8 @@ impl AnimSegment {
         if self.play_rate == 0.0 {
             0.0
         } else {
-            (self.anim_end_time - self.anim_start_time) / self.play_rate * self.looping_count.max(1) as f32
+            (self.anim_end_time - self.anim_start_time) / self.play_rate
+                * self.looping_count.max(1) as f32
         }
     }
 }
@@ -88,8 +89,16 @@ fn segments(pkg: &Package, track: &PropList) -> Vec<AnimSegment> {
             let Some(f) = it.as_fields() else { continue };
             let obj = f.object("AnimReference").unwrap_or(0);
             out.push(AnimSegment {
-                animation: if obj == 0 { None } else { Some(pkg.index_name(obj)) },
-                animation_path: if obj < 0 { Some(pkg.import_path(obj)) } else { None },
+                animation: if obj == 0 {
+                    None
+                } else {
+                    Some(pkg.index_name(obj))
+                },
+                animation_path: if obj < 0 {
+                    Some(pkg.import_path(obj))
+                } else {
+                    None
+                },
                 start_pos: f.float("StartPos").unwrap_or(0.0) as f32,
                 anim_start_time: f.float("AnimStartTime").unwrap_or(0.0) as f32,
                 anim_end_time: f.float("AnimEndTime").unwrap_or(0.0) as f32,
@@ -102,10 +111,18 @@ fn segments(pkg: &Package, track: &PropList) -> Vec<AnimSegment> {
 }
 
 fn blend(f: Option<&PropList>) -> AlphaBlend {
-    let Some(f) = f else { return AlphaBlend { time: 0.2, option: 0 } };
+    let Some(f) = f else {
+        return AlphaBlend {
+            time: 0.2,
+            option: 0,
+        };
+    };
     AlphaBlend {
         time: f.float("BlendTime").map(|x| x as f32).unwrap_or(0.2),
-        option: match f.text("BlendOption").map(|s| s.rsplit("::").next().unwrap_or(s)) {
+        option: match f
+            .text("BlendOption")
+            .map(|s| s.rsplit("::").next().unwrap_or(s))
+        {
             Some("Linear") => 0,
             Some("Cubic") => 1,
             Some("HermiteCubic") => 2,
@@ -126,10 +143,15 @@ fn blend(f: Option<&PropList>) -> AlphaBlend {
 }
 
 fn export_props(pkg: &Package, class: &str) -> Result<(usize, PropList)> {
-    let idx = pkg.find_export(class).ok_or_else(|| Error::Format(format!("package has no {class} export")))?;
+    let idx = pkg
+        .find_export(class)
+        .ok_or_else(|| Error::Format(format!("package has no {class} export")))?;
     let (start, end) = pkg.export_range(idx);
     let mut r = Reader::at(&pkg.data[..end], start);
-    let ctx = Ctx { names: &pkg.names, file_version: pkg.summary.file_version };
+    let ctx = Ctx {
+        names: &pkg.names,
+        file_version: pkg.summary.file_version,
+    };
     Ok((idx, read_props(&mut r, &ctx)?))
 }
 
@@ -140,7 +162,13 @@ impl AnimMontage {
         if let Some(items) = props.array("SlotAnimTracks") {
             for it in items {
                 let Some(f) = it.as_fields() else { continue };
-                slots.push(SlotTrack { slot_name: f.text("SlotName").unwrap_or("").to_string(), segments: f.fields("AnimTrack").map(|t| segments(pkg, t)).unwrap_or_default() });
+                slots.push(SlotTrack {
+                    slot_name: f.text("SlotName").unwrap_or("").to_string(),
+                    segments: f
+                        .fields("AnimTrack")
+                        .map(|t| segments(pkg, t))
+                        .unwrap_or_default(),
+                });
             }
         }
         let mut sections = Vec::new();
@@ -150,7 +178,10 @@ impl AnimMontage {
                 sections.push(Section {
                     name: f.text("SectionName").unwrap_or("").to_string(),
                     next_section: f.text("NextSectionName").unwrap_or("").to_string(),
-                    start_time: f.float("StartTime").or_else(|| f.float("LinkValue")).unwrap_or(0.0) as f32,
+                    start_time: f
+                        .float("StartTime")
+                        .or_else(|| f.float("LinkValue"))
+                        .unwrap_or(0.0) as f32,
                 });
             }
         }
@@ -160,25 +191,45 @@ impl AnimMontage {
             rate_scale: props.float("RateScale").map(|x| x as f32).unwrap_or(1.0),
             blend_in: blend(props.fields("BlendIn")),
             blend_out: blend(props.fields("BlendOut")),
-            blend_out_trigger_time: props.float("BlendOutTriggerTime").map(|x| x as f32).unwrap_or(-1.0),
-            sync_group: props.text("SyncGroup").map(|s| s.to_string()).filter(|s| s != "None"),
+            blend_out_trigger_time: props
+                .float("BlendOutTriggerTime")
+                .map(|x| x as f32)
+                .unwrap_or(-1.0),
+            sync_group: props
+                .text("SyncGroup")
+                .map(|s| s.to_string())
+                .filter(|s| s != "None"),
             slots,
             sections,
             notifies: parse_notifies(pkg, &props),
-            skeleton: props.object("Skeleton").filter(|&i| i != 0).map(|i| pkg.index_name(i)),
+            skeleton: props
+                .object("Skeleton")
+                .filter(|&i| i != 0)
+                .map(|i| pkg.index_name(i)),
         })
     }
 
     /// Total length of all segments of the longest slot track.
     pub fn track_length(&self) -> f32 {
-        self.slots.iter().map(|s| s.segments.iter().map(|g| g.start_pos + g.track_length()).fold(0.0, f32::max)).fold(0.0, f32::max)
+        self.slots
+            .iter()
+            .map(|s| {
+                s.segments
+                    .iter()
+                    .map(|g| g.start_pos + g.track_length())
+                    .fold(0.0, f32::max)
+            })
+            .fold(0.0, f32::max)
     }
 }
 
 impl AnimComposite {
     pub fn parse(pkg: &Package) -> Result<AnimComposite> {
         let (idx, props) = export_props(pkg, "AnimComposite")?;
-        let segs = props.fields("AnimationTrack").map(|t| segments(pkg, t)).unwrap_or_default();
+        let segs = props
+            .fields("AnimationTrack")
+            .map(|t| segments(pkg, t))
+            .unwrap_or_default();
         Ok(AnimComposite {
             name: pkg.exports[idx].object_name.clone(),
             length: props.float("SequenceLength").unwrap_or(0.0) as f32,

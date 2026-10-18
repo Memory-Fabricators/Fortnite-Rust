@@ -42,7 +42,10 @@ impl BlendSpaceKind {
         matches!(self, Self::BlendSpace1D | Self::AimOffsetBlendSpace1D)
     }
     pub fn is_aim_offset(self) -> bool {
-        matches!(self, Self::AimOffsetBlendSpace | Self::AimOffsetBlendSpace1D)
+        matches!(
+            self,
+            Self::AimOffsetBlendSpace | Self::AimOffsetBlendSpace1D
+        )
     }
 }
 
@@ -64,7 +67,16 @@ pub struct BlendAxis {
 
 impl Default for BlendAxis {
     fn default() -> Self {
-        BlendAxis { name: String::new(), min: 0.0, max: 100.0, grid_divisions: 4, snap_to_grid: false, wrap_input: false, interp_time: 0.0, interp_type: "BSIT_Average".into() }
+        BlendAxis {
+            name: String::new(),
+            min: 0.0,
+            max: 100.0,
+            grid_divisions: 4,
+            snap_to_grid: false,
+            wrap_input: false,
+            interp_time: 0.0,
+            interp_type: "BSIT_Average".into(),
+        }
     }
 }
 
@@ -120,7 +132,11 @@ fn strip(s: &str) -> String {
 
 /// All props with `name`, as `(array_index, value)`.
 fn indexed<'a>(list: &'a PropList, name: &str) -> Vec<(usize, &'a PropValue)> {
-    list.0.iter().filter(|p| p.name == name).map(|p: &Prop| (p.array_index.max(0) as usize, &p.value)).collect()
+    list.0
+        .iter()
+        .filter(|p| p.name == name)
+        .map(|p: &Prop| (p.array_index.max(0) as usize, &p.value))
+        .collect()
 }
 
 impl BlendSpace {
@@ -132,7 +148,10 @@ impl BlendSpace {
         let kind = BlendSpaceKind::from_class(&pkg.export_class(idx)).unwrap();
         let (start, end) = pkg.export_range(idx);
         let mut r = Reader::at(&pkg.data[..end], start);
-        let ctx = Ctx { names: &pkg.names, file_version: pkg.summary.file_version };
+        let ctx = Ctx {
+            names: &pkg.names,
+            file_version: pkg.summary.file_version,
+        };
         let props = read_props(&mut r, &ctx)?;
 
         let num_axes = if kind.is_1d() { 1 } else { 2 };
@@ -180,8 +199,16 @@ impl BlendSpace {
                 let Some(f) = it.as_fields() else { continue };
                 let obj = f.object("Animation").unwrap_or(0);
                 samples.push(BlendSample {
-                    animation: if obj == 0 { None } else { Some(pkg.index_name(obj)) },
-                    animation_path: if obj < 0 { Some(pkg.import_path(obj)) } else { None },
+                    animation: if obj == 0 {
+                        None
+                    } else {
+                        Some(pkg.index_name(obj))
+                    },
+                    animation_path: if obj < 0 {
+                        Some(pkg.import_path(obj))
+                    } else {
+                        None
+                    },
                     position: match f.get("SampleValue") {
                         Some(PropValue::Vec3(v)) => *v,
                         _ => [0.0; 3],
@@ -195,7 +222,10 @@ impl BlendSpace {
         if let Some(PropValue::Array(items)) = props.get("GridSamples") {
             for it in items {
                 let Some(f) = it.as_fields() else { continue };
-                let mut e = GridElement { indices: [-1; 3], weights: [0.0; 3] };
+                let mut e = GridElement {
+                    indices: [-1; 3],
+                    weights: [0.0; 3],
+                };
                 for (i, v) in indexed(f, "Indices") {
                     if let (true, PropValue::Int(x)) = (i < 3, v) {
                         e.indices[i] = *x as i32;
@@ -214,8 +244,15 @@ impl BlendSpace {
             for it in items {
                 if let Some(f) = it.as_fields() {
                     per_bone_blend.push(PerBoneBlend {
-                        bone: f.fields("BoneReference").and_then(|b| b.text("BoneName")).unwrap_or("").to_string(),
-                        interpolation_speed_per_sec: f.float("InterpolationSpeedPerSec").unwrap_or(6.0) as f32,
+                        bone: f
+                            .fields("BoneReference")
+                            .and_then(|b| b.text("BoneName"))
+                            .unwrap_or("")
+                            .to_string(),
+                        interpolation_speed_per_sec: f
+                            .float("InterpolationSpeedPerSec")
+                            .unwrap_or(6.0)
+                            as f32,
                     });
                 }
             }
@@ -223,13 +260,24 @@ impl BlendSpace {
         Ok(BlendSpace {
             name: pkg.exports[idx].object_name.clone(),
             kind,
-            skeleton: props.object("Skeleton").filter(|&i| i != 0).map(|i| pkg.index_name(i)),
+            skeleton: props
+                .object("Skeleton")
+                .filter(|&i| i != 0)
+                .map(|i| pkg.index_name(i)),
             axes,
             samples,
             grid,
-            target_weight_interpolation_speed_per_sec: props.float("TargetWeightInterpolationSpeedPerSec").unwrap_or(0.0) as f32,
-            sample_index_with_markers: props.int("SampleIndexWithMarkers").map(|x| x as i32).unwrap_or(-1),
-            axis_to_scale_animation: props.text("AxisToScaleAnimation").map(strip).unwrap_or_else(|| "BSA_None".into()),
+            target_weight_interpolation_speed_per_sec: props
+                .float("TargetWeightInterpolationSpeedPerSec")
+                .unwrap_or(0.0) as f32,
+            sample_index_with_markers: props
+                .int("SampleIndexWithMarkers")
+                .map(|x| x as i32)
+                .unwrap_or(-1),
+            axis_to_scale_animation: props
+                .text("AxisToScaleAnimation")
+                .map(strip)
+                .unwrap_or_else(|| "BSA_None".into()),
             rotation_blend_in_mesh_space: props.bool("bRotationBlendInMeshSpace").unwrap_or(false),
             notify_trigger_mode: props.text("NotifyTriggerMode").map(strip),
             per_bone_blend,
@@ -265,7 +313,11 @@ impl BlendSpace {
     }
 
     fn element(&self, x: usize, y: usize) -> Option<&GridElement> {
-        let ny = if self.kind.is_1d() { 1 } else { self.axes[1].grid_divisions as usize + 1 };
+        let ny = if self.kind.is_1d() {
+            1
+        } else {
+            self.axes[1].grid_divisions as usize + 1
+        };
         self.grid.get(x * ny + y)
     }
 
@@ -274,12 +326,18 @@ impl BlendSpace {
     pub fn sample_weights(&self, x: f32, y: f32) -> Vec<(usize, f32)> {
         let gx = self.grid_coord(0, x);
         let (x0, fx) = (gx.floor() as usize, gx - gx.floor());
-        let (y0, fy) = if self.kind.is_1d() { (0usize, 0.0f32) } else {
+        let (y0, fy) = if self.kind.is_1d() {
+            (0usize, 0.0f32)
+        } else {
             let gy = self.grid_coord(1, y);
             (gy.floor() as usize, gy - gy.floor())
         };
         let nx = self.axes[0].grid_divisions as usize;
-        let ny = if self.kind.is_1d() { 0 } else { self.axes[1].grid_divisions as usize };
+        let ny = if self.kind.is_1d() {
+            0
+        } else {
+            self.axes[1].grid_divisions as usize
+        };
         let mut acc = vec![0.0f32; self.samples.len()];
         let mut add = |xi: usize, yi: usize, w: f32| {
             if w <= 0.0 {
@@ -303,7 +361,11 @@ impl BlendSpace {
         if total <= 0.0 {
             return Vec::new();
         }
-        acc.iter().enumerate().filter(|(_, &w)| w > 1e-6).map(|(i, &w)| (i, w / total)).collect()
+        acc.iter()
+            .enumerate()
+            .filter(|(_, &w)| w > 1e-6)
+            .map(|(i, &w)| (i, w / total))
+            .collect()
     }
 
     /// Like [`sample_weights`](Self::sample_weights) but summed per animation name (several samples may reference
@@ -323,14 +385,25 @@ impl BlendSpace {
 
     /// Validate internal consistency (grid size, indices in range).
     pub fn validate(&self) -> Result<()> {
-        let expect = if self.kind.is_1d() { self.axes[0].grid_divisions as usize + 1 } else { (self.axes[0].grid_divisions as usize + 1) * (self.axes[1].grid_divisions as usize + 1) };
+        let expect = if self.kind.is_1d() {
+            self.axes[0].grid_divisions as usize + 1
+        } else {
+            (self.axes[0].grid_divisions as usize + 1) * (self.axes[1].grid_divisions as usize + 1)
+        };
         if self.grid.len() != expect {
-            return err(format!("{}: grid has {} elements, expected {expect}", self.name, self.grid.len()));
+            return err(format!(
+                "{}: grid has {} elements, expected {expect}",
+                self.name,
+                self.grid.len()
+            ));
         }
         for e in &self.grid {
             for k in 0..3 {
                 if e.indices[k] >= self.samples.len() as i32 {
-                    return err(format!("{}: grid index {} out of range", self.name, e.indices[k]));
+                    return err(format!(
+                        "{}: grid index {} out of range",
+                        self.name, e.indices[k]
+                    ));
                 }
             }
         }
@@ -344,14 +417,31 @@ mod tests {
 
     fn two_by_two() -> BlendSpace {
         // 3 samples; 2x2 grid points (GridNum 1 on both axes); each grid element picks one sample fully
-        let axis = BlendAxis { name: "a".into(), min: 0.0, max: 10.0, grid_divisions: 1, ..Default::default() };
-        let el = |i: i32| GridElement { indices: [i, -1, -1], weights: [1.0, 0.0, 0.0] };
+        let axis = BlendAxis {
+            name: "a".into(),
+            min: 0.0,
+            max: 10.0,
+            grid_divisions: 1,
+            ..Default::default()
+        };
+        let el = |i: i32| GridElement {
+            indices: [i, -1, -1],
+            weights: [1.0, 0.0, 0.0],
+        };
         BlendSpace {
             name: "t".into(),
             kind: BlendSpaceKind::BlendSpace,
             skeleton: None,
             axes: vec![axis.clone(), axis],
-            samples: (0..4).map(|i| BlendSample { animation: Some(format!("A{i}")), animation_path: None, position: [0.0; 3], rate_scale: 1.0, is_valid: true }).collect(),
+            samples: (0..4)
+                .map(|i| BlendSample {
+                    animation: Some(format!("A{i}")),
+                    animation_path: None,
+                    position: [0.0; 3],
+                    rate_scale: 1.0,
+                    is_valid: true,
+                })
+                .collect(),
             grid: vec![el(0), el(1), el(2), el(3)],
             target_weight_interpolation_speed_per_sec: 0.0,
             sample_index_with_markers: -1,
@@ -383,14 +473,30 @@ mod tests {
 
     #[test]
     fn one_dimensional_weights() {
-        let axis = BlendAxis { min: -25.0, max: 25.0, grid_divisions: 2, ..Default::default() };
-        let el = |i: i32| GridElement { indices: [i, -1, -1], weights: [1.0, 0.0, 0.0] };
+        let axis = BlendAxis {
+            min: -25.0,
+            max: 25.0,
+            grid_divisions: 2,
+            ..Default::default()
+        };
+        let el = |i: i32| GridElement {
+            indices: [i, -1, -1],
+            weights: [1.0, 0.0, 0.0],
+        };
         let b = BlendSpace {
             name: "t".into(),
             kind: BlendSpaceKind::BlendSpace1D,
             skeleton: None,
             axes: vec![axis],
-            samples: (0..3).map(|i| BlendSample { animation: Some(format!("L{i}")), animation_path: None, position: [0.0; 3], rate_scale: 1.0, is_valid: true }).collect(),
+            samples: (0..3)
+                .map(|i| BlendSample {
+                    animation: Some(format!("L{i}")),
+                    animation_path: None,
+                    position: [0.0; 3],
+                    rate_scale: 1.0,
+                    is_valid: true,
+                })
+                .collect(),
             grid: vec![el(0), el(1), el(2)],
             target_weight_interpolation_speed_per_sec: 0.0,
             sample_index_with_markers: 0,
@@ -406,13 +512,19 @@ mod tests {
         assert_eq!(w.len(), 2);
         assert_eq!(w[0].0, 1);
         assert!((w[0].1 - 0.5).abs() < 1e-6);
-        assert_eq!(b.animation_weights(25.0, 0.0), vec![("L2".to_string(), 1.0)]);
+        assert_eq!(
+            b.animation_weights(25.0, 0.0),
+            vec![("L2".to_string(), 1.0)]
+        );
     }
 
     #[test]
     fn triangle_elements_accumulate() {
         let mut b = two_by_two();
-        b.grid[0] = GridElement { indices: [0, 1, 2], weights: [0.5, 0.25, 0.25] };
+        b.grid[0] = GridElement {
+            indices: [0, 1, 2],
+            weights: [0.5, 0.25, 0.25],
+        };
         let w = b.sample_weights(0.0, 0.0);
         assert_eq!(w.len(), 3);
         assert!((w.iter().map(|x| x.1).sum::<f32>() - 1.0).abs() < 1e-6);

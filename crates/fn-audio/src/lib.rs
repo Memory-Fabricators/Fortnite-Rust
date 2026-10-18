@@ -1,4 +1,4 @@
-﻿//! Pure-Rust UE 4.16 / Fortnite 1.8 audio.
+//! Pure-Rust UE 4.16 / Fortnite 1.8 audio.
 //!
 //! * [`soundwave`] parses the cooked `USoundWave` native tail (format container or streamed chunks).
 //! * [`codec`] decodes `OGG` (Vorbis) and `OPUS` ("UE4OPUS") - the only formats in the 1.8 install - plus
@@ -22,8 +22,8 @@ pub mod events;
 pub mod install;
 pub mod library;
 pub mod mixer;
-pub mod playadj; // AMBIENCE HOOK: per-play live adjustments (fade from / to, position, attenuation override, low-pass)
 pub mod music; // MUSIC HOOK: recovered music tables (front-end tracks, loading mix, bus sounds)
+pub mod playadj; // AMBIENCE HOOK: per-play live adjustments (fade from / to, position, attenuation override, low-pass)
 pub mod soundclass;
 pub mod soundwave;
 pub mod stream;
@@ -35,8 +35,3 @@ pub mod weapon_events;
 pub use error::{AudioError, Result};
 pub use install::Install;
 pub use wave::{read_wav, wav_bytes, write_wav, DecodedWave, WaveStats};
-
-
-
-
-

@@ -22,7 +22,10 @@ use fn_ueio::{Error, Result};
 ///
 /// `opts.legacy_uev_half_uv` reproduces UEViewer's half-float zero bug in the UVs (see [`Options`]).
 pub fn static_mesh_to_skym(mesh: &StaticMesh, lod: usize, opts: &Options) -> Result<Vec<u8>> {
-    let l = mesh.lods.get(lod).ok_or_else(|| Error::Invalid(format!("mesh has no LOD {lod}")))?;
+    let l = mesh
+        .lods
+        .get(lod)
+        .ok_or_else(|| Error::Invalid(format!("mesh has no LOD {lod}")))?;
     if l.positions.is_empty() || l.indices.is_empty() {
         return Err(Error::Invalid(format!("LOD {lod} has no geometry")));
     }

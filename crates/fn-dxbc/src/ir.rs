@@ -1,4 +1,4 @@
-﻿//! Typed IR of a decoded SM4/SM5 program: operands, instructions, declarations.
+//! Typed IR of a decoded SM4/SM5 program: operands, instructions, declarations.
 
 use crate::opcode::Opcode;
 
@@ -48,11 +48,18 @@ impl OperandType {
     pub const CYCLE_COUNTER: u8 = 40;
     pub const OUTPUT_STENCIL_REF: u8 = 41;
     pub const INNER_COVERAGE: u8 = 42;
-    pub fn is(self, k: u8) -> bool { self.0 == k }
+    pub fn is(self, k: u8) -> bool {
+        self.0 == k
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Modifier { None, Neg, Abs, AbsNeg }
+pub enum Modifier {
+    None,
+    Neg,
+    Abs,
+    AbsNeg,
+}
 
 /// Component selection of a 4-component operand.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -91,16 +98,48 @@ pub struct Operand {
 }
 impl Operand {
     pub fn reg(ty: u8, n: u32, sel: Sel) -> Operand {
-        Operand { ty: OperandType(ty), ncomp: 2, sel, modifier: Modifier::None, min_precision: 0, nonuniform: false, index: vec![Index { imm: n as u64, has_imm: true, rel: None }], imm: vec![] }
+        Operand {
+            ty: OperandType(ty),
+            ncomp: 2,
+            sel,
+            modifier: Modifier::None,
+            min_precision: 0,
+            nonuniform: false,
+            index: vec![Index {
+                imm: n as u64,
+                has_imm: true,
+                rel: None,
+            }],
+            imm: vec![],
+        }
     }
-    pub fn is(&self, k: u8) -> bool { self.ty.0 == k }
-    pub fn is_imm(&self) -> bool { self.ty.0 == OperandType::IMMEDIATE32 }
+    pub fn is(&self, k: u8) -> bool {
+        self.ty.0 == k
+    }
+    pub fn is_imm(&self) -> bool {
+        self.ty.0 == OperandType::IMMEDIATE32
+    }
     /// first index as a plain number (register number); `None` if absent or relative
-    pub fn reg_index(&self) -> Option<u32> { self.index.first().filter(|i| i.rel.is_none()).map(|i| i.imm as u32) }
-    pub fn mask(&self) -> u8 { match self.sel { Sel::Mask(m) => m, Sel::Swizzle(_) | Sel::Select1(_) => 0xf, Sel::None => 0xf } }
+    pub fn reg_index(&self) -> Option<u32> {
+        self.index
+            .first()
+            .filter(|i| i.rel.is_none())
+            .map(|i| i.imm as u32)
+    }
+    pub fn mask(&self) -> u8 {
+        match self.sel {
+            Sel::Mask(m) => m,
+            Sel::Swizzle(_) | Sel::Select1(_) => 0xf,
+            Sel::None => 0xf,
+        }
+    }
     /// source component `c` (0..4) -> register component
     pub fn src_comp(&self, c: usize) -> usize {
-        match self.sel { Sel::Swizzle(s) => s[c] as usize, Sel::Select1(s) => s as usize, Sel::Mask(_) | Sel::None => c }
+        match self.sel {
+            Sel::Swizzle(s) => s[c] as usize,
+            Sel::Select1(s) => s as usize,
+            Sel::Mask(_) | Sel::None => c,
+        }
     }
 }
 
@@ -130,33 +169,102 @@ pub struct Instruction {
     pub offset: usize,
 }
 impl Instruction {
-    pub fn saturate(&self) -> bool { self.token & (1 << 13) != 0 }
+    pub fn saturate(&self) -> bool {
+        self.token & (1 << 13) != 0
+    }
     /// `true` for `_nz`, `false` for `_z` (if/breakc/continuec/retc/callc/discard)
-    pub fn test_nz(&self) -> bool { self.token & (1 << 18) != 0 }
-    pub fn flags(&self) -> u32 { (self.token >> 11) & 0x1fff }
-    pub fn dst(&self) -> &[Operand] { let (d, _) = self.op.arity(); &self.operands[..d.min(self.operands.len())] }
-    pub fn src(&self) -> &[Operand] { let (d, _) = self.op.arity(); &self.operands[d.min(self.operands.len())..] }
+    pub fn test_nz(&self) -> bool {
+        self.token & (1 << 18) != 0
+    }
+    pub fn flags(&self) -> u32 {
+        (self.token >> 11) & 0x1fff
+    }
+    pub fn dst(&self) -> &[Operand] {
+        let (d, _) = self.op.arity();
+        &self.operands[..d.min(self.operands.len())]
+    }
+    pub fn src(&self) -> &[Operand] {
+        let (d, _) = self.op.arity();
+        &self.operands[d.min(self.operands.len())..]
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum ProgramType { Pixel, Vertex, Geometry, Hull, Domain, Compute, Other(u16) }
+pub enum ProgramType {
+    Pixel,
+    Vertex,
+    Geometry,
+    Hull,
+    Domain,
+    Compute,
+    Other(u16),
+}
 impl ProgramType {
-    pub fn from_u16(n: u16) -> ProgramType { match n { 0 => ProgramType::Pixel, 1 => ProgramType::Vertex, 2 => ProgramType::Geometry, 3 => ProgramType::Hull, 4 => ProgramType::Domain, 5 => ProgramType::Compute, n => ProgramType::Other(n) } }
-    pub fn prefix(self) -> &'static str { match self { ProgramType::Pixel => "ps", ProgramType::Vertex => "vs", ProgramType::Geometry => "gs", ProgramType::Hull => "hs", ProgramType::Domain => "ds", ProgramType::Compute => "cs", ProgramType::Other(_) => "xs" } }
+    pub fn from_u16(n: u16) -> ProgramType {
+        match n {
+            0 => ProgramType::Pixel,
+            1 => ProgramType::Vertex,
+            2 => ProgramType::Geometry,
+            3 => ProgramType::Hull,
+            4 => ProgramType::Domain,
+            5 => ProgramType::Compute,
+            n => ProgramType::Other(n),
+        }
+    }
+    pub fn prefix(self) -> &'static str {
+        match self {
+            ProgramType::Pixel => "ps",
+            ProgramType::Vertex => "vs",
+            ProgramType::Geometry => "gs",
+            ProgramType::Hull => "hs",
+            ProgramType::Domain => "ds",
+            ProgramType::Compute => "cs",
+            ProgramType::Other(_) => "xs",
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct CbufferDecl { pub slot: u32, pub size: u32, pub dynamic: bool }
+pub struct CbufferDecl {
+    pub slot: u32,
+    pub size: u32,
+    pub dynamic: bool,
+}
 #[derive(Clone, Debug, PartialEq)]
-pub struct ResourceDecl { pub slot: u32, pub dim: u8, pub ret: [u8; 4], pub samples: u32, pub kind: ResKind }
+pub struct ResourceDecl {
+    pub slot: u32,
+    pub dim: u8,
+    pub ret: [u8; 4],
+    pub samples: u32,
+    pub kind: ResKind,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ResKind { Typed, Raw, Structured(u32) }
+pub enum ResKind {
+    Typed,
+    Raw,
+    Structured(u32),
+}
 #[derive(Clone, Debug, PartialEq)]
-pub struct SamplerDecl { pub slot: u32, pub mode: u8 }
+pub struct SamplerDecl {
+    pub slot: u32,
+    pub mode: u8,
+}
 #[derive(Clone, Debug, PartialEq)]
-pub struct UavDecl { pub slot: u32, pub dim: u8, pub ret: [u8; 4], pub kind: ResKind, pub flags: u32 }
+pub struct UavDecl {
+    pub slot: u32,
+    pub dim: u8,
+    pub ret: [u8; 4],
+    pub kind: ResKind,
+    pub flags: u32,
+}
 #[derive(Clone, Debug, PartialEq)]
-pub struct TgsmDecl { pub slot: u32, /** stride in bytes (0 = raw) */ pub stride: u32, /** raw: size in bytes; structured: element count */ pub count: u32 }
+pub struct TgsmDecl {
+    pub slot: u32,
+    /** stride in bytes (0 = raw) */
+    pub stride: u32,
+    /** raw: size in bytes; structured: element count */
+    pub count: u32,
+}
 #[derive(Clone, Debug, PartialEq)]
 pub struct IoDecl {
     pub file: u8,
@@ -196,14 +304,24 @@ pub struct Shader {
     pub decls: Decls,
 }
 impl Shader {
-    pub fn version_string(&self) -> String { format!("{}_{}_{}", self.program_type.prefix(), self.major, self.minor) }
+    pub fn version_string(&self) -> String {
+        format!(
+            "{}_{}_{}",
+            self.program_type.prefix(),
+            self.major,
+            self.minor
+        )
+    }
     /// executable instructions (everything that is not a declaration / custom data)
     pub fn body(&self) -> impl Iterator<Item = &Instruction> {
-        self.instructions.iter().filter(|i| !i.op.is_decl() && i.op != Opcode::CustomData)
+        self.instructions
+            .iter()
+            .filter(|i| !i.op.is_decl() && i.op != Opcode::CustomData)
     }
-    pub fn cbuffer(&self, slot: u32) -> Option<&CbufferDecl> { self.decls.cbuffers.iter().find(|c| c.slot == slot) }
-    pub fn resource(&self, slot: u32) -> Option<&ResourceDecl> { self.decls.resources.iter().find(|c| c.slot == slot) }
+    pub fn cbuffer(&self, slot: u32) -> Option<&CbufferDecl> {
+        self.decls.cbuffers.iter().find(|c| c.slot == slot)
+    }
+    pub fn resource(&self, slot: u32) -> Option<&ResourceDecl> {
+        self.decls.resources.iter().find(|c| c.slot == slot)
+    }
 }
-
-
-

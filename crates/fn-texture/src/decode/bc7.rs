@@ -12,7 +12,10 @@ struct Bits {
 
 impl Bits {
     fn new(b: &[u8]) -> Bits {
-        Bits { v: u128::from_le_bytes(b[..16].try_into().unwrap()), pos: 0 }
+        Bits {
+            v: u128::from_le_bytes(b[..16].try_into().unwrap()),
+            pos: 0,
+        }
     }
     fn read(&mut self, n: u32) -> u32 {
         if n == 0 {
@@ -40,14 +43,102 @@ struct Mode {
 }
 
 const MODES: [Mode; 8] = [
-    Mode { ns: 3, pb: 4, rb: 0, isb: 0, cb: 4, ab: 0, epb: true, spb: false, ib: 3, ib2: 0 },
-    Mode { ns: 2, pb: 6, rb: 0, isb: 0, cb: 6, ab: 0, epb: false, spb: true, ib: 3, ib2: 0 },
-    Mode { ns: 3, pb: 6, rb: 0, isb: 0, cb: 5, ab: 0, epb: false, spb: false, ib: 2, ib2: 0 },
-    Mode { ns: 2, pb: 6, rb: 0, isb: 0, cb: 7, ab: 0, epb: true, spb: false, ib: 2, ib2: 0 },
-    Mode { ns: 1, pb: 0, rb: 2, isb: 1, cb: 5, ab: 6, epb: false, spb: false, ib: 2, ib2: 3 },
-    Mode { ns: 1, pb: 0, rb: 2, isb: 0, cb: 7, ab: 8, epb: false, spb: false, ib: 2, ib2: 2 },
-    Mode { ns: 1, pb: 0, rb: 0, isb: 0, cb: 7, ab: 7, epb: true, spb: false, ib: 4, ib2: 0 },
-    Mode { ns: 2, pb: 6, rb: 0, isb: 0, cb: 5, ab: 5, epb: true, spb: false, ib: 2, ib2: 0 },
+    Mode {
+        ns: 3,
+        pb: 4,
+        rb: 0,
+        isb: 0,
+        cb: 4,
+        ab: 0,
+        epb: true,
+        spb: false,
+        ib: 3,
+        ib2: 0,
+    },
+    Mode {
+        ns: 2,
+        pb: 6,
+        rb: 0,
+        isb: 0,
+        cb: 6,
+        ab: 0,
+        epb: false,
+        spb: true,
+        ib: 3,
+        ib2: 0,
+    },
+    Mode {
+        ns: 3,
+        pb: 6,
+        rb: 0,
+        isb: 0,
+        cb: 5,
+        ab: 0,
+        epb: false,
+        spb: false,
+        ib: 2,
+        ib2: 0,
+    },
+    Mode {
+        ns: 2,
+        pb: 6,
+        rb: 0,
+        isb: 0,
+        cb: 7,
+        ab: 0,
+        epb: true,
+        spb: false,
+        ib: 2,
+        ib2: 0,
+    },
+    Mode {
+        ns: 1,
+        pb: 0,
+        rb: 2,
+        isb: 1,
+        cb: 5,
+        ab: 6,
+        epb: false,
+        spb: false,
+        ib: 2,
+        ib2: 3,
+    },
+    Mode {
+        ns: 1,
+        pb: 0,
+        rb: 2,
+        isb: 0,
+        cb: 7,
+        ab: 8,
+        epb: false,
+        spb: false,
+        ib: 2,
+        ib2: 2,
+    },
+    Mode {
+        ns: 1,
+        pb: 0,
+        rb: 0,
+        isb: 0,
+        cb: 7,
+        ab: 7,
+        epb: true,
+        spb: false,
+        ib: 4,
+        ib2: 0,
+    },
+    Mode {
+        ns: 2,
+        pb: 6,
+        rb: 0,
+        isb: 0,
+        cb: 5,
+        ab: 5,
+        epb: true,
+        spb: false,
+        ib: 2,
+        ib2: 0,
+    },
 ];
 
 fn weight(bits: u32, idx: u32) -> u32 {
@@ -132,7 +223,11 @@ pub fn decode_block(b: &[u8], out: &mut [[u8; 4]; 16]) {
         for c in 0..3 {
             e[c] = (e[c] << (8 - cprec)) | (e[c] >> (2 * cprec - 8));
         }
-        e[3] = if aprec > 0 { (e[3] << (8 - aprec)) | (e[3] >> (2 * aprec - 8)) } else { 255 };
+        e[3] = if aprec > 0 {
+            (e[3] << (8 - aprec)) | (e[3] >> (2 * aprec - 8))
+        } else {
+            255
+        };
     }
 
     let subset_of = |i: usize| -> usize {
@@ -146,13 +241,21 @@ pub fn decode_block(b: &[u8], out: &mut [[u8; 4]; 16]) {
     let mut idx2 = [0u32; 16];
     for i in 0..16 {
         let s = subset_of(i);
-        let n = if i == anchor(m.ns, partition, s) { m.ib - 1 } else { m.ib };
+        let n = if i == anchor(m.ns, partition, s) {
+            m.ib - 1
+        } else {
+            m.ib
+        };
         idx1[i] = bits.read(n);
     }
     if m.ib2 > 0 {
         for i in 0..16 {
             let s = subset_of(i);
-            let n = if i == anchor(m.ns, partition, s) { m.ib2 - 1 } else { m.ib2 };
+            let n = if i == anchor(m.ns, partition, s) {
+                m.ib2 - 1
+            } else {
+                m.ib2
+            };
             idx2[i] = bits.read(n);
         }
     }
@@ -168,7 +271,12 @@ pub fn decode_block(b: &[u8], out: &mut [[u8; 4]; 16]) {
         } else {
             (idx2[i], m.ib2, idx1[i], m.ib)
         };
-        let mut px = [lerp(e0[0], e1[0], ci, cbits), lerp(e0[1], e1[1], ci, cbits), lerp(e0[2], e1[2], ci, cbits), lerp(e0[3], e1[3], ai, abits)];
+        let mut px = [
+            lerp(e0[0], e1[0], ci, cbits),
+            lerp(e0[1], e1[1], ci, cbits),
+            lerp(e0[2], e1[2], ci, cbits),
+            lerp(e0[3], e1[3], ai, abits),
+        ];
         match rotation {
             1 => px.swap(0, 3),
             2 => px.swap(1, 3),

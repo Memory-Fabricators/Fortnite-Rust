@@ -25,37 +25,103 @@ pub fn footer_layout(back: Rect, page: Rect, scale: f32) -> (Rect, Rect, Rect) {
 /// Draw the footer; handles Apply / Reset To Default. Call from the settings screen after its own widgets.
 pub fn draw(ui: &mut Ui, cx: &mut Ctx, back: Rect, page: Rect) {
     let (apply, reset, status) = footer_layout(back, page, ui.vp.scale);
-    if !ui.is_inert() { let dt = ui.dt; ui.session.tick_status(dt); }
+    if !ui.is_inert() {
+        let dt = ui.dt;
+        ui.session.tick_status(dt);
+    }
     let dirty = ui.session.is_dirty();
     let busy = ui.session.busy();
     let sel = *cx.settings_tab;
     let reset_prompt = cx.pages.get(sel).and_then(|p| p.reset_prompt());
     if reset.w > ui.u(60.) {
-        if ui.button("reset", reset, "Reset To Default", BtnKind::Default, BtnSize::M, reset_prompt.is_some()).clicked {
+        if ui
+            .button(
+                "reset",
+                reset,
+                "Reset To Default",
+                BtnKind::Default,
+                BtnSize::M,
+                reset_prompt.is_some(),
+            )
+            .clicked
+        {
             match reset_prompt {
                 Some(Some(text)) => cx.push(Box::new(dialogs::reset_dialog(&text))),
-                Some(None) => { if let Some(p) = cx.pages.get_mut(sel) { p.reset_to_default(ui.session); } }
+                Some(None) => {
+                    if let Some(p) = cx.pages.get_mut(sel) {
+                        p.reset_to_default(ui.session);
+                    }
+                }
                 None => {}
             }
         }
     }
     if apply.w > ui.u(40.) {
-        let kind = if dirty { BtnKind::Emphasis } else { BtnKind::Default };
-        if ui.button("apply", apply, "Apply", kind, BtnSize::M, dirty && !busy).clicked { ui.session.apply_button(); }
+        let kind = if dirty {
+            BtnKind::Emphasis
+        } else {
+            BtnKind::Default
+        };
+        if ui
+            .button("apply", apply, "Apply", kind, BtnSize::M, dirty && !busy)
+            .clicked
+        {
+            ui.session.apply_button();
+        }
     }
     // status line: pending-change count, or the result of the last apply
     let (text, color) = match ui.session.status() {
-        Some(s) => (s.text, match s.kind { bridge::StatusKind::Ok => TEAL_BRIGHT, bridge::StatusKind::Info => TEXT_DIM, bridge::StatusKind::Warn => [1., 0.82, 0.3, 1.], bridge::StatusKind::Error => [1., 0.45, 0.4, 1.] }),
-        None => if dirty { let n = ui.session.changed_ids().len().max(1); (format!("{n} change{} not applied", if n == 1 { "" } else { "s" }), [1., 0.82, 0.3, 1.]) } else { (String::new(), TEXT_DIM) },
+        Some(s) => (
+            s.text,
+            match s.kind {
+                bridge::StatusKind::Ok => TEAL_BRIGHT,
+                bridge::StatusKind::Info => TEXT_DIM,
+                bridge::StatusKind::Warn => [1., 0.82, 0.3, 1.],
+                bridge::StatusKind::Error => [1., 0.45, 0.4, 1.],
+            },
+        ),
+        None => {
+            if dirty {
+                let n = ui.session.changed_ids().len().max(1);
+                (
+                    format!("{n} change{} not applied", if n == 1 { "" } else { "s" }),
+                    [1., 0.82, 0.3, 1.],
+                )
+            } else {
+                (String::new(), TEXT_DIM)
+            }
+        }
     };
     // an unapplied-change count always wins over a stale "applied" message
-    let (text, color) = if dirty && !busy && !matches!(ui.session.status().map(|s| s.kind), Some(bridge::StatusKind::Error) | Some(bridge::StatusKind::Warn)) { let n = ui.session.changed_ids().len().max(1); (format!("{n} change{} not applied", if n == 1 { "" } else { "s" }), [1., 0.82, 0.3, 1.]) } else { (text, color) };
-    if status.w > ui.u(60.) && !text.is_empty() { ui.text(status, &text, TextStyle::new(FontId::Regular, 15., color), HAlign::Left); }
+    let (text, color) = if dirty
+        && !busy
+        && !matches!(
+            ui.session.status().map(|s| s.kind),
+            Some(bridge::StatusKind::Error) | Some(bridge::StatusKind::Warn)
+        ) {
+        let n = ui.session.changed_ids().len().max(1);
+        (
+            format!("{n} change{} not applied", if n == 1 { "" } else { "s" }),
+            [1., 0.82, 0.3, 1.],
+        )
+    } else {
+        (text, color)
+    };
+    if status.w > ui.u(60.) && !text.is_empty() {
+        ui.text(
+            status,
+            &text,
+            TextStyle::new(FontId::Regular, 15., color),
+            HAlign::Left,
+        );
+    }
 }
 
 /// Leaving the screen (Back / X / Esc). Returns true when it is fine to pop; with unapplied edits it pushes the prompt instead.
 pub fn may_leave(ui: &mut Ui, cx: &mut Ctx) -> bool {
-    if !ui.session.is_dirty() { return true; }
+    if !ui.session.is_dirty() {
+        return true;
+    }
     cx.push(Box::new(dialogs::unsaved_dialog()));
     false
 }

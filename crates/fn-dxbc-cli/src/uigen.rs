@@ -10,27 +10,62 @@ use fn_dxbc::Shader;
 use fn_pak::PakSet;
 use std::fmt::Write;
 
-pub struct UiEntry { pub name: String, pub package: String, pub shader_id: usize }
+pub struct UiEntry {
+    pub name: String,
+    pub package: String,
+    pub shader_id: usize,
+}
 
 fn f(x: f32) -> String {
-    if x.is_nan() || x.is_infinite() { return format!("f32::from_bits({:#010x})", x.to_bits()); }
+    if x.is_nan() || x.is_infinite() {
+        return format!("f32::from_bits({:#010x})", x.to_bits());
+    }
     let s = format!("{x:?}");
     format!("{s}_f32")
 }
-fn v4(v: [f32; 4]) -> String { format!("[{}]", v.iter().map(|x| f(*x)).collect::<Vec<_>>().join(", ")) }
+fn v4(v: [f32; 4]) -> String {
+    format!(
+        "[{}]",
+        v.iter().map(|x| f(*x)).collect::<Vec<_>>().join(", ")
+    )
+}
 
 fn expr_rs(e: &Expr) -> Result<String, String> {
     Ok(match e {
         Expr::VectorParameter { name, default } => format!("p({name:?}, {})", v4(*default)),
         Expr::ScalarParameter { name, default } => format!("p({name:?}, {})", v4([*default; 4])),
         Expr::Constant { value, .. } => v4(*value),
-        Expr::ComponentSwizzle { e, idx, .. } => format!("vswz({}, [{}, {}, {}, {}])", expr_rs(e)?, idx[0], idx[1], idx[2], idx[3]),
-        Expr::AppendVector { a, b, num_a } => format!("vapp({}, {}, {num_a})", expr_rs(a)?, expr_rs(b)?),
+        Expr::ComponentSwizzle { e, idx, .. } => format!(
+            "vswz({}, [{}, {}, {}, {}])",
+            expr_rs(e)?,
+            idx[0],
+            idx[1],
+            idx[2],
+            idx[3]
+        ),
+        Expr::AppendVector { a, b, num_a } => {
+            format!("vapp({}, {}, {num_a})", expr_rs(a)?, expr_rs(b)?)
+        }
         Expr::FoldedMath { a, b, op, .. } => {
-            let f = match op { 0 => "vadd", 1 => "vsub", 2 => "vmul", 3 => "vdiv", 4 => "vdot", o => return Err(format!("FoldedMath op {o}")) };
+            let f = match op {
+                0 => "vadd",
+                1 => "vsub",
+                2 => "vmul",
+                3 => "vdiv",
+                4 => "vdot",
+                o => return Err(format!("FoldedMath op {o}")),
+            };
             format!("{f}({}, {})", expr_rs(a)?, expr_rs(b)?)
         }
-        Expr::TrigMath { x, op, .. } => format!("{}({})", match op { 0 => "vsin", 1 => "vcos", o => return Err(format!("TrigMath op {o}")) }, expr_rs(x)?),
+        Expr::TrigMath { x, op, .. } => format!(
+            "{}({})",
+            match op {
+                0 => "vsin",
+                1 => "vcos",
+                o => return Err(format!("TrigMath op {o}")),
+            },
+            expr_rs(x)?
+        ),
         other => return Err(format!("expression {other:?} has no constant-buffer value")),
     })
 }
@@ -51,10 +86,23 @@ pub fn cb_function(name: &str, set: &UniformSet) -> Result<String, String> {
     let nv = set.vectors.len();
     let regs = nv + set.scalars.len().div_ceil(4);
     let mut s = String::new();
-    let _ = writeln!(s, "pub fn {name}_cb(p: &dyn Fn(&str, [f32; 4]) -> [f32; 4]) -> [[f32; 4]; {regs}] {{");
+    let _ = writeln!(
+        s,
+        "pub fn {name}_cb(p: &dyn Fn(&str, [f32; 4]) -> [f32; 4]) -> [[f32; 4]; {regs}] {{"
+    );
     let _ = writeln!(s, "    let mut cb = [[0.0_f32; 4]; {regs}];");
-    for (i, e) in set.vectors.iter().enumerate() { let _ = writeln!(s, "    cb[{i}] = {};", expr_rs(e)?); }
-    for (i, e) in set.scalars.iter().enumerate() { let _ = writeln!(s, "    cb[{}][{}] = {}[0];", nv + (i >> 2), i & 3, expr_rs(e)?); }
+    for (i, e) in set.vectors.iter().enumerate() {
+        let _ = writeln!(s, "    cb[{i}] = {};", expr_rs(e)?);
+    }
+    for (i, e) in set.scalars.iter().enumerate() {
+        let _ = writeln!(
+            s,
+            "    cb[{}][{}] = {}[0];",
+            nv + (i >> 2),
+            i & 3,
+            expr_rs(e)?
+        );
+    }
     let _ = writeln!(s, "    cb\n}}");
     Ok(s)
 }
@@ -68,12 +116,22 @@ pub fn generate(set: &PakSet, entries: &[UiEntry]) -> Result<String, String> {
     out.push_str(HELPERS);
     for e in entries {
         let uexp = package_bytes(set, &e.package)?;
-        let uasset = set.read_game(&e.package, "uasset").map_err(|x| x.to_string())?.into_owned();
+        let uasset = set
+            .read_game(&e.package, "uasset")
+            .map_err(|x| x.to_string())?
+            .into_owned();
         let names = package_names(&uasset, &uexp)?;
         let us = parse_set(&uexp, &names)?;
-        let blob = scan_blobs(&uexp).into_iter().find(|b| b.id == e.shader_id).ok_or_else(|| format!("{}: no shader stream at {}", e.package, e.shader_id))?;
+        let blob = scan_blobs(&uexp)
+            .into_iter()
+            .find(|b| b.id == e.shader_id)
+            .ok_or_else(|| format!("{}: no shader stream at {}", e.package, e.shader_id))?;
         let sh = Shader::parse(&blob.bytes).map_err(|x| x.to_string())?;
-        let _ = writeln!(out, "\n// ==== {} ({} shader_{}) ====", e.name, e.package, e.shader_id);
+        let _ = writeln!(
+            out,
+            "\n// ==== {} ({} shader_{}) ====",
+            e.name, e.package, e.shader_id
+        );
         out.push_str(&cb_function(&e.name, &us)?);
         out.push_str(&translate_rust(&sh, &format!("{}_ps", e.name)).map_err(|x| x.0)?);
     }

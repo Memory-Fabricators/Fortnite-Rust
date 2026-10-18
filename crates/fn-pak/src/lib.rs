@@ -29,7 +29,9 @@ use memmap2::Mmap;
 /// Number of entry reads done by every [`PakFile::read`] of the process (a load counter: a screen that preloaded everything leaves it unchanged afterwards).
 static READ_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 /// Process-wide count of pak entry reads so far.
-pub fn read_count() -> u64 { READ_COUNT.load(std::sync::atomic::Ordering::Relaxed) }
+pub fn read_count() -> u64 {
+    READ_COUNT.load(std::sync::atomic::Ordering::Relaxed)
+}
 
 pub const PAK_MAGIC: u32 = 0x5A6F_12E1;
 
@@ -255,12 +257,23 @@ impl<'a> Cur<'a> {
         if n < 0 {
             let cnt = (-(n as i64)) as usize;
             let raw = self.take(cnt * 2)?;
-            let u: Vec<u16> = raw.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect();
-            let end = if u.last() == Some(&0) { u.len() - 1 } else { u.len() };
+            let u: Vec<u16> = raw
+                .chunks_exact(2)
+                .map(|c| u16::from_le_bytes([c[0], c[1]]))
+                .collect();
+            let end = if u.last() == Some(&0) {
+                u.len() - 1
+            } else {
+                u.len()
+            };
             Ok(String::from_utf16_lossy(&u[..end]))
         } else {
             let raw = self.take(n as usize)?;
-            let end = if raw.last() == Some(&0) { raw.len() - 1 } else { raw.len() };
+            let end = if raw.last() == Some(&0) {
+                raw.len() - 1
+            } else {
+                raw.len()
+            };
             Ok(String::from_utf8_lossy(&raw[..end]).into_owned())
         }
     }
@@ -269,8 +282,8 @@ impl<'a> Cur<'a> {
 /// Serialised size of the FPakEntry header that precedes entry data inside the pak.
 fn entry_header_len(version: u32, method: u32, nblocks: usize) -> u64 {
     let mut n = 8 + 8 + 8; // offset(not in-data: see note) -- computed below
-    // In-data header layout: Offset(8) Size(8) UncompressedSize(8) [Timestamp(8) if v1] Method(4) Hash(20)
-    // [BlockCount(4) + 16*n if v>=3 && method!=0] [Flags(1) + BlockSize(4) if v>=3]
+                           // In-data header layout: Offset(8) Size(8) UncompressedSize(8) [Timestamp(8) if v1] Method(4) Hash(20)
+                           // [BlockCount(4) + 16*n if v>=3 && method!=0] [Flags(1) + BlockSize(4) if v>=3]
     n += if version < 2 { 8 } else { 0 };
     n += 4 + 20;
     if version >= 3 && method != 0 {
@@ -343,14 +356,23 @@ pub struct PakFile {
 
 impl fmt::Debug for PakFile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PakFile({} v{} {} entries)", self.name, self.info.version, self.entries.len())
+        write!(
+            f,
+            "PakFile({} v{} {} entries)",
+            self.name,
+            self.info.version,
+            self.entries.len()
+        )
     }
 }
 
 impl PakFile {
     pub fn open(path: impl AsRef<Path>) -> Result<PakFile> {
         let path = path.as_ref().to_path_buf();
-        let name = path.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+        let name = path
+            .file_name()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_default();
         let file = File::open(&path)?;
         // SAFETY: the pak is opened read-only and never modified by this process.
         let map = unsafe { Mmap::map(&file)? };
@@ -358,9 +380,14 @@ impl PakFile {
         if info.encrypted_index {
             return Err(PakError::EncryptedIndex(name));
         }
-        let end = info.index_offset.checked_add(info.index_size).unwrap_or(u64::MAX);
+        let end = info
+            .index_offset
+            .checked_add(info.index_size)
+            .unwrap_or(u64::MAX);
         if end > map.len() as u64 {
-            return Err(PakError::Truncated(format!("{name}: index beyond end of file")));
+            return Err(PakError::Truncated(format!(
+                "{name}: index beyond end of file"
+            )));
         }
         let idx = &map[info.index_offset as usize..end as usize];
         let mut c = Cur { b: idx, p: 0 };
@@ -373,7 +400,14 @@ impl PakFile {
         for _ in 0..count {
             entries.push(read_entry(&mut c, info.version, &mount)?);
         }
-        Ok(PakFile { name, path, info, mount, entries, map })
+        Ok(PakFile {
+            name,
+            path,
+            info,
+            mount,
+            entries,
+            map,
+        })
     }
 
     /// Raw bytes of the whole file (memory mapped).
@@ -392,12 +426,19 @@ impl PakFile {
             let start = e.offset + entry_header_len(self.info.version, 0, 0);
             let end = start + e.size;
             if end > m.len() as u64 {
-                return Err(PakError::Truncated(format!("{}: entry data past EOF", e.path)));
+                return Err(PakError::Truncated(format!(
+                    "{}: entry data past EOF",
+                    e.path
+                )));
             }
             return Ok(Cow::Borrowed(&m[start as usize..end as usize]));
         }
         let name = if self.info.version >= 8 {
-            self.info.compression_names.get(e.method as usize - 1).cloned().unwrap_or_default()
+            self.info
+                .compression_names
+                .get(e.method as usize - 1)
+                .cloned()
+                .unwrap_or_default()
         } else if e.method == 1 {
             "Zlib".to_string()
         } else {
@@ -407,20 +448,32 @@ impl PakFile {
             return Err(PakError::UnsupportedCompression(name));
         }
         let mut out = Vec::with_capacity(e.size as usize);
-        let bs = if e.block_size == 0 { e.size.max(1) } else { e.block_size as u64 };
+        let bs = if e.block_size == 0 {
+            e.size.max(1)
+        } else {
+            e.block_size as u64
+        };
         let mut remaining = e.size;
         for &(s, en) in &e.blocks {
             if en > m.len() as u64 || s > en {
                 return Err(PakError::Truncated(format!("{}: bad block range", e.path)));
             }
             let want = remaining.min(bs) as usize;
-            let chunk = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(&m[s as usize..en as usize], want.max(1) + 16)
-                .map_err(|er| PakError::Decompress(format!("{}: {:?}", e.path, er.status)))?;
+            let chunk = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(
+                &m[s as usize..en as usize],
+                want.max(1) + 16,
+            )
+            .map_err(|er| PakError::Decompress(format!("{}: {:?}", e.path, er.status)))?;
             remaining = remaining.saturating_sub(chunk.len() as u64);
             out.extend_from_slice(&chunk);
         }
         if out.len() as u64 != e.size {
-            return Err(PakError::Decompress(format!("{}: size {} != {}", e.path, out.len(), e.size)));
+            return Err(PakError::Decompress(format!(
+                "{}: size {} != {}",
+                e.path,
+                out.len(),
+                e.size
+            )));
         }
         Ok(Cow::Owned(out))
     }
@@ -468,7 +521,14 @@ fn read_footer(m: &[u8], name: &str) -> Result<PakInfo> {
             }
         }
     }
-    Ok(PakInfo { version, index_offset, index_size, index_hash, encrypted_index, compression_names })
+    Ok(PakInfo {
+        version,
+        index_offset,
+        index_size,
+        index_hash,
+        encrypted_index,
+        compression_names,
+    })
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -488,7 +548,13 @@ pub fn pak_load_order(file_name: &str) -> (u8, u64, u64, String) {
         let after = &rest[digits.len()..];
         let s: u64 = after
             .strip_prefix("_s")
-            .map(|r| r.chars().take_while(|c| c.is_ascii_digit()).collect::<String>().parse().unwrap_or(0))
+            .map(|r| {
+                r.chars()
+                    .take_while(|c| c.is_ascii_digit())
+                    .collect::<String>()
+                    .parse()
+                    .unwrap_or(0)
+            })
             .unwrap_or(0);
         return (if patch { 2 } else { 0 }, n, s, lower);
     }
@@ -518,8 +584,12 @@ impl PakSet {
     /// Open an install. `dir` may be a directory containing `.pak` files, a `Content/Paks` directory's
     /// parent (`FortniteGame`), or any ancestor (searched up to 6 levels deep for a `Paks` directory).
     pub fn open_install(dir: impl AsRef<Path>) -> Result<PakSet> {
-        let paks_dir = find_paks_dir(dir.as_ref())
-            .ok_or_else(|| PakError::Other(format!("no .pak files found under {}", dir.as_ref().display())))?;
+        let paks_dir = find_paks_dir(dir.as_ref()).ok_or_else(|| {
+            PakError::Other(format!(
+                "no .pak files found under {}",
+                dir.as_ref().display()
+            ))
+        })?;
         Self::open_dir(paks_dir)
     }
 
@@ -528,7 +598,11 @@ impl PakSet {
         let mut files: Vec<PathBuf> = std::fs::read_dir(dir.as_ref())?
             .filter_map(|e| e.ok())
             .map(|e| e.path())
-            .filter(|p| p.extension().map(|x| x.eq_ignore_ascii_case("pak")).unwrap_or(false))
+            .filter(|p| {
+                p.extension()
+                    .map(|x| x.eq_ignore_ascii_case("pak"))
+                    .unwrap_or(false)
+            })
             .collect();
         Self::open_files_inner(&mut files)
     }
@@ -539,30 +613,65 @@ impl PakSet {
     }
 
     fn open_files_inner(files: &mut Vec<PathBuf>) -> Result<PakSet> {
-        files.sort_by_key(|p| pak_load_order(&p.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()));
+        files.sort_by_key(|p| {
+            pak_load_order(
+                &p.file_name()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_default(),
+            )
+        });
         // parse paks in parallel (index parsing dominates)
         let results: Vec<Result<PakFile>> = std::thread::scope(|s| {
-            let handles: Vec<_> = files.iter().map(|p| s.spawn(move || PakFile::open(p))).collect();
-            handles.into_iter().map(|h| h.join().unwrap_or_else(|_| Err(PakError::Other("pak open thread panicked".into())))).collect()
+            let handles: Vec<_> = files
+                .iter()
+                .map(|p| s.spawn(move || PakFile::open(p)))
+                .collect();
+            handles
+                .into_iter()
+                .map(|h| {
+                    h.join()
+                        .unwrap_or_else(|_| Err(PakError::Other("pak open thread panicked".into())))
+                })
+                .collect()
         });
         let mut paks = Vec::new();
         let mut skipped = Vec::new();
         for (p, r) in files.iter().zip(results) {
             match r {
                 Ok(pf) => paks.push(pf),
-                Err(e) => skipped.push((p.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default(), e.to_string())),
+                Err(e) => skipped.push((
+                    p.file_name()
+                        .map(|s| s.to_string_lossy().into_owned())
+                        .unwrap_or_default(),
+                    e.to_string(),
+                )),
             }
         }
         if paks.is_empty() {
-            return Err(PakError::Other(format!("no readable paks ({} skipped: {:?})", skipped.len(), skipped)));
+            return Err(PakError::Other(format!(
+                "no readable paks ({} skipped: {:?})",
+                skipped.len(),
+                skipped
+            )));
         }
-        let mut lookup: HashMap<String, EntryRef> = HashMap::with_capacity(paks.iter().map(|p| p.entries.len()).sum());
+        let mut lookup: HashMap<String, EntryRef> =
+            HashMap::with_capacity(paks.iter().map(|p| p.entries.len()).sum());
         for (pi, pf) in paks.iter().enumerate() {
             for (ei, e) in pf.entries.iter().enumerate() {
-                lookup.insert(e.key(), EntryRef { pak: pi as u32, index: ei as u32 });
+                lookup.insert(
+                    e.key(),
+                    EntryRef {
+                        pak: pi as u32,
+                        index: ei as u32,
+                    },
+                );
             }
         }
-        Ok(PakSet { paks, lookup, skipped })
+        Ok(PakSet {
+            paks,
+            lookup,
+            skipped,
+        })
     }
 
     /// Paks in load order (last wins).
@@ -597,7 +706,9 @@ impl PakSet {
 
     /// Read the winning entry's bytes (zero-copy for stored entries).
     pub fn read(&self, path: &str) -> Result<Cow<'_, [u8]>> {
-        let (pf, e) = self.find(path).ok_or_else(|| PakError::NotFound(path.to_string()))?;
+        let (pf, e) = self
+            .find(path)
+            .ok_or_else(|| PakError::NotFound(path.to_string()))?;
         pf.read(e)
     }
 
@@ -611,7 +722,10 @@ impl PakSet {
     /// `/` matches the file name only. Sorted by path.
     pub fn glob(&self, pattern: &str) -> Vec<(&PakFile, &PakEntry)> {
         let pat = pattern.replace('\\', "/");
-        let pat = pat.trim_start_matches("../").trim_start_matches('/').to_string();
+        let pat = pat
+            .trim_start_matches("../")
+            .trim_start_matches('/')
+            .to_string();
         let name_only = !pat.contains('/');
         let mut out: Vec<(&PakFile, &PakEntry)> = self
             .lookup
@@ -642,13 +756,22 @@ impl PakSet {
 
     /// Iterate every entry of every pak in load order (including shadowed ones).
     pub fn all_entries(&self) -> impl Iterator<Item = (&PakFile, &PakEntry)> {
-        self.paks.iter().flat_map(|p| p.entries.iter().map(move |e| (p, e)))
+        self.paks
+            .iter()
+            .flat_map(|p| p.entries.iter().map(move |e| (p, e)))
     }
 }
 
 fn dir_has_pak(d: &Path) -> bool {
     std::fs::read_dir(d)
-        .map(|rd| rd.filter_map(|e| e.ok()).any(|e| e.path().extension().map(|x| x.eq_ignore_ascii_case("pak")).unwrap_or(false)))
+        .map(|rd| {
+            rd.filter_map(|e| e.ok()).any(|e| {
+                e.path()
+                    .extension()
+                    .map(|x| x.eq_ignore_ascii_case("pak"))
+                    .unwrap_or(false)
+            })
+        })
         .unwrap_or(false)
 }
 
@@ -657,7 +780,11 @@ pub fn find_paks_dir(root: &Path) -> Option<PathBuf> {
     if dir_has_pak(root) {
         return Some(root.to_path_buf());
     }
-    for rel in ["Content/Paks", "FortniteGame/Content/Paks", "Fortnite/FortniteGame/Content/Paks"] {
+    for rel in [
+        "Content/Paks",
+        "FortniteGame/Content/Paks",
+        "Fortnite/FortniteGame/Content/Paks",
+    ] {
         let c = root.join(rel);
         if dir_has_pak(&c) {
             return Some(c);
@@ -670,7 +797,11 @@ pub fn find_paks_dir(root: &Path) -> Option<PathBuf> {
         for e in std::fs::read_dir(d).ok()?.filter_map(|e| e.ok()) {
             let p = e.path();
             if p.is_dir() {
-                if p.file_name().map(|n| n.eq_ignore_ascii_case("Paks")).unwrap_or(false) && dir_has_pak(&p) {
+                if p.file_name()
+                    .map(|n| n.eq_ignore_ascii_case("Paks"))
+                    .unwrap_or(false)
+                    && dir_has_pak(&p)
+                {
                     return Some(p);
                 }
                 if let Some(r) = walk(&p, depth - 1) {
@@ -700,16 +831,37 @@ mod tests {
 
     #[test]
     fn paths() {
-        assert_eq!(normalize_path("../../../FortniteGame\\Content/X.uasset"), "fortnitegame/content/x.uasset");
-        assert_eq!(game_path_to_pak("/Game/Athena/Foo.Foo_C", "uasset").unwrap(), "FortniteGame/Content/Athena/Foo.uasset");
-        assert_eq!(pak_path_to_game("../../../FortniteGame/Content/Athena/Foo.uasset").unwrap(), "/Game/Athena/Foo");
+        assert_eq!(
+            normalize_path("../../../FortniteGame\\Content/X.uasset"),
+            "fortnitegame/content/x.uasset"
+        );
+        assert_eq!(
+            game_path_to_pak("/Game/Athena/Foo.Foo_C", "uasset").unwrap(),
+            "FortniteGame/Content/Athena/Foo.uasset"
+        );
+        assert_eq!(
+            pak_path_to_game("../../../FortniteGame/Content/Athena/Foo.uasset").unwrap(),
+            "/Game/Athena/Foo"
+        );
     }
 
     #[test]
     fn order() {
-        let mut v = vec!["pakchunk1-WindowsClient.pak", "pakchunk0_s2-WindowsClient.pak", "pakchunk0-WindowsClient.pak", "pakchunk0_s1-WindowsClient.pak"];
+        let mut v = vec![
+            "pakchunk1-WindowsClient.pak",
+            "pakchunk0_s2-WindowsClient.pak",
+            "pakchunk0-WindowsClient.pak",
+            "pakchunk0_s1-WindowsClient.pak",
+        ];
         v.sort_by_key(|n| pak_load_order(n));
-        assert_eq!(v, ["pakchunk0-WindowsClient.pak", "pakchunk0_s1-WindowsClient.pak", "pakchunk0_s2-WindowsClient.pak", "pakchunk1-WindowsClient.pak"]);
+        assert_eq!(
+            v,
+            [
+                "pakchunk0-WindowsClient.pak",
+                "pakchunk0_s1-WindowsClient.pak",
+                "pakchunk0_s2-WindowsClient.pak",
+                "pakchunk1-WindowsClient.pak"
+            ]
+        );
     }
 }
-

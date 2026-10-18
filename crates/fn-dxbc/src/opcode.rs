@@ -237,6 +237,48 @@ opcodes! {
 impl Opcode {
     pub fn is_decl(self) -> bool {
         use Opcode::*;
-        matches!(self, DclResource | DclConstantBuffer | DclSampler | DclIndexRange | DclGsOutputPrimitiveTopology | DclGsInputPrimitive | DclMaxOutputVertexCount | DclInput | DclInputSgv | DclInputSiv | DclInputPs | DclInputPsSgv | DclInputPsSiv | DclOutput | DclOutputSgv | DclOutputSiv | DclTemps | DclIndexableTemp | DclGlobalFlags | DclStream | DclFunctionBody | DclFunctionTable | DclInterface | DclInputControlPointCount | DclOutputControlPointCount | DclTessDomain | DclTessPartitioning | DclTessOutputPrimitive | DclHsMaxTessFactor | DclHsForkPhaseInstanceCount | DclHsJoinPhaseInstanceCount | DclThreadGroup | DclUavTyped | DclUavRaw | DclUavStructured | DclTgsmRaw | DclTgsmStructured | DclResourceRaw | DclResourceStructured | DclGsInstanceCount)
+        matches!(
+            self,
+            DclResource
+                | DclConstantBuffer
+                | DclSampler
+                | DclIndexRange
+                | DclGsOutputPrimitiveTopology
+                | DclGsInputPrimitive
+                | DclMaxOutputVertexCount
+                | DclInput
+                | DclInputSgv
+                | DclInputSiv
+                | DclInputPs
+                | DclInputPsSgv
+                | DclInputPsSiv
+                | DclOutput
+                | DclOutputSgv
+                | DclOutputSiv
+                | DclTemps
+                | DclIndexableTemp
+                | DclGlobalFlags
+                | DclStream
+                | DclFunctionBody
+                | DclFunctionTable
+                | DclInterface
+                | DclInputControlPointCount
+                | DclOutputControlPointCount
+                | DclTessDomain
+                | DclTessPartitioning
+                | DclTessOutputPrimitive
+                | DclHsMaxTessFactor
+                | DclHsForkPhaseInstanceCount
+                | DclHsJoinPhaseInstanceCount
+                | DclThreadGroup
+                | DclUavTyped
+                | DclUavRaw
+                | DclUavStructured
+                | DclTgsmRaw
+                | DclTgsmStructured
+                | DclResourceRaw
+                | DclResourceStructured
+                | DclGsInstanceCount
+        )
     }
 }

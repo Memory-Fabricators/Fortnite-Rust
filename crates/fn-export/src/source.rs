@@ -25,7 +25,8 @@ pub fn long_name(pkg: &str) -> String {
 impl Source {
     /// `dir` may be the `Paks` directory or any directory above it.
     pub fn open(dir: &Path) -> Result<Source, String> {
-        let set = PakSet::open_install(dir).map_err(|e| format!("cannot open paks at {}: {e}", dir.display()))?;
+        let set = PakSet::open_install(dir)
+            .map_err(|e| format!("cannot open paks at {}: {e}", dir.display()))?;
         Ok(Source { set })
     }
 
@@ -35,10 +36,26 @@ impl Source {
 
     pub fn load_raw(&self, long: &str) -> Result<Raw, String> {
         let long = long_name(long);
-        let uasset = self.set.read_game(&long, "uasset").map_err(|e| format!("{long}.uasset: {e}"))?.into_owned();
-        let uexp = self.set.read_game(&long, "uexp").map(|c| c.into_owned()).unwrap_or_default();
-        let ubulk = self.set.read_game(&long, "ubulk").map(|c| c.into_owned()).unwrap_or_default();
-        Ok(Raw { uasset, uexp, ubulk })
+        let uasset = self
+            .set
+            .read_game(&long, "uasset")
+            .map_err(|e| format!("{long}.uasset: {e}"))?
+            .into_owned();
+        let uexp = self
+            .set
+            .read_game(&long, "uexp")
+            .map(|c| c.into_owned())
+            .unwrap_or_default();
+        let ubulk = self
+            .set
+            .read_game(&long, "ubulk")
+            .map(|c| c.into_owned())
+            .unwrap_or_default();
+        Ok(Raw {
+            uasset,
+            uexp,
+            ubulk,
+        })
     }
 
     pub fn package(&self, long: &str) -> Result<Package, String> {

@@ -22,7 +22,11 @@ pub enum TextLit {
     Localized(Box<Expr>, Box<Expr>, Box<Expr>),
     Invariant(Box<Expr>),
     Literal(Box<Expr>),
-    StringTable { table: Ref, id: Box<Expr>, key: Box<Expr> },
+    StringTable {
+        table: Ref,
+        id: Box<Expr>,
+        key: Box<Expr>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -33,36 +37,119 @@ pub enum Expr {
     LocalOutVariable(Ref),
     Return(Box<Expr>),
     Jump(u32),
-    JumpIfNot { target: u32, cond: Box<Expr> },
-    Assert { line: u16, debug: bool, cond: Box<Expr> },
+    JumpIfNot {
+        target: u32,
+        cond: Box<Expr>,
+    },
+    Assert {
+        line: u16,
+        debug: bool,
+        cond: Box<Expr>,
+    },
     Nothing,
-    Let { prop: Ref, var: Box<Expr>, value: Box<Expr> },
-    LetBool { var: Box<Expr>, value: Box<Expr> },
-    LetObj { var: Box<Expr>, value: Box<Expr> },
-    LetWeakObjPtr { var: Box<Expr>, value: Box<Expr> },
-    LetDelegate { var: Box<Expr>, value: Box<Expr> },
-    LetMulticastDelegate { var: Box<Expr>, value: Box<Expr> },
-    LetValueOnPersistentFrame { prop: Ref, value: Box<Expr> },
-    ClassContext { object: Box<Expr>, skip: u32, prop: Ref, context: Box<Expr> },
-    Context { object: Box<Expr>, skip: u32, prop: Ref, context: Box<Expr> },
-    ContextFailSilent { object: Box<Expr>, skip: u32, prop: Ref, context: Box<Expr> },
+    Let {
+        prop: Ref,
+        var: Box<Expr>,
+        value: Box<Expr>,
+    },
+    LetBool {
+        var: Box<Expr>,
+        value: Box<Expr>,
+    },
+    LetObj {
+        var: Box<Expr>,
+        value: Box<Expr>,
+    },
+    LetWeakObjPtr {
+        var: Box<Expr>,
+        value: Box<Expr>,
+    },
+    LetDelegate {
+        var: Box<Expr>,
+        value: Box<Expr>,
+    },
+    LetMulticastDelegate {
+        var: Box<Expr>,
+        value: Box<Expr>,
+    },
+    LetValueOnPersistentFrame {
+        prop: Ref,
+        value: Box<Expr>,
+    },
+    ClassContext {
+        object: Box<Expr>,
+        skip: u32,
+        prop: Ref,
+        context: Box<Expr>,
+    },
+    Context {
+        object: Box<Expr>,
+        skip: u32,
+        prop: Ref,
+        context: Box<Expr>,
+    },
+    ContextFailSilent {
+        object: Box<Expr>,
+        skip: u32,
+        prop: Ref,
+        context: Box<Expr>,
+    },
     InterfaceContext(Box<Expr>),
-    MetaCast { class: Ref, expr: Box<Expr> },
-    DynamicCast { class: Ref, expr: Box<Expr> },
-    ObjToInterfaceCast { class: Ref, expr: Box<Expr> },
-    CrossInterfaceCast { class: Ref, expr: Box<Expr> },
-    InterfaceToObjCast { class: Ref, expr: Box<Expr> },
-    PrimitiveCast { kind: u8, expr: Box<Expr> },
+    MetaCast {
+        class: Ref,
+        expr: Box<Expr>,
+    },
+    DynamicCast {
+        class: Ref,
+        expr: Box<Expr>,
+    },
+    ObjToInterfaceCast {
+        class: Ref,
+        expr: Box<Expr>,
+    },
+    CrossInterfaceCast {
+        class: Ref,
+        expr: Box<Expr>,
+    },
+    InterfaceToObjCast {
+        class: Ref,
+        expr: Box<Expr>,
+    },
+    PrimitiveCast {
+        kind: u8,
+        expr: Box<Expr>,
+    },
     EndParmValue,
     EndFunctionParms,
     SelfRef,
-    Skip { skip: u32, expr: Box<Expr> },
-    VirtualFunction { name: String, args: Vec<Expr> },
-    FinalFunction { func: Ref, args: Vec<Expr> },
-    LocalVirtualFunction { name: String, args: Vec<Expr> },
-    LocalFinalFunction { func: Ref, args: Vec<Expr> },
-    CallMath { func: Ref, args: Vec<Expr> },
-    CallMulticastDelegate { func: Ref, args: Vec<Expr> },
+    Skip {
+        skip: u32,
+        expr: Box<Expr>,
+    },
+    VirtualFunction {
+        name: String,
+        args: Vec<Expr>,
+    },
+    FinalFunction {
+        func: Ref,
+        args: Vec<Expr>,
+    },
+    LocalVirtualFunction {
+        name: String,
+        args: Vec<Expr>,
+    },
+    LocalFinalFunction {
+        func: Ref,
+        args: Vec<Expr>,
+    },
+    CallMath {
+        func: Ref,
+        args: Vec<Expr>,
+    },
+    CallMulticastDelegate {
+        func: Ref,
+        args: Vec<Expr>,
+    },
     IntConst(i32),
     FloatConst(f32),
     StringConst(String),
@@ -85,14 +172,40 @@ pub enum Expr {
     UInt64Const(u64),
     PropertyConst(Ref),
     SoftObjectConst(Box<Expr>),
-    StructConst { struct_ref: Ref, serialized_size: i32, fields: Vec<Expr> },
-    SetArray { array: Box<Expr>, elements: Vec<Expr> },
-    ArrayConst { inner: Ref, count: i32, elements: Vec<Expr> },
-    SetSet { set: Box<Expr>, count: i32, elements: Vec<Expr> },
-    SetMap { map: Box<Expr>, count: i32, elements: Vec<Expr> },
-    StructMemberContext { prop: Ref, expr: Box<Expr> },
+    StructConst {
+        struct_ref: Ref,
+        serialized_size: i32,
+        fields: Vec<Expr>,
+    },
+    SetArray {
+        array: Box<Expr>,
+        elements: Vec<Expr>,
+    },
+    ArrayConst {
+        inner: Ref,
+        count: i32,
+        elements: Vec<Expr>,
+    },
+    SetSet {
+        set: Box<Expr>,
+        count: i32,
+        elements: Vec<Expr>,
+    },
+    SetMap {
+        map: Box<Expr>,
+        count: i32,
+        elements: Vec<Expr>,
+    },
+    StructMemberContext {
+        prop: Ref,
+        expr: Box<Expr>,
+    },
     InstanceDelegate(String),
-    BindDelegate { name: String, delegate: Box<Expr>, object: Box<Expr> },
+    BindDelegate {
+        name: String,
+        delegate: Box<Expr>,
+        object: Box<Expr>,
+    },
     AddMulticastDelegate(Box<Expr>, Box<Expr>),
     RemoveMulticastDelegate(Box<Expr>, Box<Expr>),
     ClearMulticastDelegate(Box<Expr>),
@@ -104,10 +217,20 @@ pub enum Expr {
     WireTracepoint,
     Tracepoint,
     SkipOffsetConst(u32),
-    Switch { index: Box<Expr>, cases: Vec<(Expr, Expr)>, default: Box<Expr> },
+    Switch {
+        index: Box<Expr>,
+        cases: Vec<(Expr, Expr)>,
+        default: Box<Expr>,
+    },
     /// `EX_ArrayGetByRef` (0x6b): array expression, index expression.
-    ArrayGetByRef { array: Box<Expr>, index: Box<Expr> },
-    InstrumentationEvent { kind: u8, name: Option<String> },
+    ArrayGetByRef {
+        array: Box<Expr>,
+        index: Box<Expr>,
+    },
+    InstrumentationEvent {
+        kind: u8,
+        name: Option<String>,
+    },
     EndOfScript,
 }
 
@@ -185,7 +308,10 @@ impl<'p, 'a> P<'p, 'a> {
     fn ptr(&mut self) -> R<Ref> {
         let i = self.i32()?;
         let idx = PackageIndex(i);
-        Ok(Ref { index: idx, name: ref_name(self.pkg, i) })
+        Ok(Ref {
+            index: idx,
+            name: ref_name(self.pkg, i),
+        })
     }
     fn fname(&mut self) -> R<String> {
         let i = self.i32()?;
@@ -249,12 +375,19 @@ impl<'p, 'a> P<'p, 'a> {
             0x06 => Expr::Jump(self.u32()?),
             0x07 => {
                 let target = self.u32()?;
-                Expr::JumpIfNot { target, cond: self.bx()? }
+                Expr::JumpIfNot {
+                    target,
+                    cond: self.bx()?,
+                }
             }
             0x09 => {
                 let line = self.u16()?;
                 let debug = self.u8()? != 0;
-                Expr::Assert { line, debug, cond: self.bx()? }
+                Expr::Assert {
+                    line,
+                    debug,
+                    cond: self.bx()?,
+                }
             }
             0x0B => Expr::Nothing,
             0x0F => {
@@ -268,22 +401,36 @@ impl<'p, 'a> P<'p, 'a> {
                 let skip = self.u32()?;
                 let prop = self.ptr()?;
                 let context = self.bx()?;
-                Expr::ClassContext { object, skip, prop, context }
+                Expr::ClassContext {
+                    object,
+                    skip,
+                    prop,
+                    context,
+                }
             }
             0x13 => {
                 let class = self.ptr()?;
-                Expr::MetaCast { class, expr: self.bx()? }
+                Expr::MetaCast {
+                    class,
+                    expr: self.bx()?,
+                }
             }
             0x14 => {
                 let var = self.bx()?;
-                Expr::LetBool { var, value: self.bx()? }
+                Expr::LetBool {
+                    var,
+                    value: self.bx()?,
+                }
             }
             0x15 => Expr::EndParmValue,
             0x16 => Expr::EndFunctionParms,
             0x17 => Expr::SelfRef,
             0x18 => {
                 let skip = self.u32()?;
-                Expr::Skip { skip, expr: self.bx()? }
+                Expr::Skip {
+                    skip,
+                    expr: self.bx()?,
+                }
             }
             0x19 | 0x1A => {
                 let object = self.bx()?;
@@ -291,18 +438,34 @@ impl<'p, 'a> P<'p, 'a> {
                 let prop = self.ptr()?;
                 let context = self.bx()?;
                 if op == 0x19 {
-                    Expr::Context { object, skip, prop, context }
+                    Expr::Context {
+                        object,
+                        skip,
+                        prop,
+                        context,
+                    }
                 } else {
-                    Expr::ContextFailSilent { object, skip, prop, context }
+                    Expr::ContextFailSilent {
+                        object,
+                        skip,
+                        prop,
+                        context,
+                    }
                 }
             }
             0x1B => {
                 let name = self.fname()?;
-                Expr::VirtualFunction { name, args: self.list(0x16)? }
+                Expr::VirtualFunction {
+                    name,
+                    args: self.list(0x16)?,
+                }
             }
             0x1C => {
                 let func = self.ptr()?;
-                Expr::FinalFunction { func, args: self.list(0x16)? }
+                Expr::FinalFunction {
+                    func,
+                    args: self.list(0x16)?,
+                }
             }
             0x1D => Expr::IntConst(self.i32()?),
             0x1E => Expr::FloatConst(self.f32()?),
@@ -325,7 +488,11 @@ impl<'p, 'a> P<'p, 'a> {
                     3 => TextLit::Literal(self.bx()?),
                     4 => {
                         let table = self.ptr()?;
-                        TextLit::StringTable { table, id: self.bx()?, key: self.bx()? }
+                        TextLit::StringTable {
+                            table,
+                            id: self.bx()?,
+                            key: self.bx()?,
+                        }
                     }
                     k => return Err(format!("unknown text literal kind {k} at {at}")),
                 })
@@ -342,17 +509,27 @@ impl<'p, 'a> P<'p, 'a> {
             0x2D => Expr::NoInterface,
             0x2E => {
                 let class = self.ptr()?;
-                Expr::DynamicCast { class, expr: self.bx()? }
+                Expr::DynamicCast {
+                    class,
+                    expr: self.bx()?,
+                }
             }
             0x2F => {
                 let struct_ref = self.ptr()?;
                 let serialized_size = self.i32()?;
-                Expr::StructConst { struct_ref, serialized_size, fields: self.list(0x30)? }
+                Expr::StructConst {
+                    struct_ref,
+                    serialized_size,
+                    fields: self.list(0x30)?,
+                }
             }
             0x31 => {
                 // 4.16: the array variable is an expression (not a property pointer), then the elements
                 let array = self.bx()?;
-                Expr::SetArray { array, elements: self.list(0x32)? }
+                Expr::SetArray {
+                    array,
+                    elements: self.list(0x32)?,
+                }
             }
             0x33 => Expr::PropertyConst(self.ptr()?),
             0x34 => Expr::UnicodeStringConst(self.wstr()?),
@@ -360,37 +537,63 @@ impl<'p, 'a> P<'p, 'a> {
             0x36 => Expr::UInt64Const(self.i64()? as u64),
             0x38 => {
                 let kind = self.u8()?;
-                Expr::PrimitiveCast { kind, expr: self.bx()? }
+                Expr::PrimitiveCast {
+                    kind,
+                    expr: self.bx()?,
+                }
             }
             0x39 => {
                 let set = self.bx()?;
                 let count = self.i32()?;
-                Expr::SetSet { set, count, elements: self.list(0x3A)? }
+                Expr::SetSet {
+                    set,
+                    count,
+                    elements: self.list(0x3A)?,
+                }
             }
             0x3B => {
                 let map = self.bx()?;
                 let count = self.i32()?;
-                Expr::SetMap { map, count, elements: self.list(0x3C)? }
+                Expr::SetMap {
+                    map,
+                    count,
+                    elements: self.list(0x3C)?,
+                }
             }
             0x42 => {
                 let prop = self.ptr()?;
-                Expr::StructMemberContext { prop, expr: self.bx()? }
+                Expr::StructMemberContext {
+                    prop,
+                    expr: self.bx()?,
+                }
             }
             0x43 => {
                 let var = self.bx()?;
-                Expr::LetMulticastDelegate { var, value: self.bx()? }
+                Expr::LetMulticastDelegate {
+                    var,
+                    value: self.bx()?,
+                }
             }
             0x44 => {
                 let var = self.bx()?;
-                Expr::LetDelegate { var, value: self.bx()? }
+                Expr::LetDelegate {
+                    var,
+                    value: self.bx()?,
+                }
             }
             0x45 => {
                 let name = self.fname()?;
-                Expr::LocalVirtualFunction { name, args: self.list(0x16)? }
+                Expr::LocalVirtualFunction {
+                    name,
+                    args: self.list(0x16)?,
+                }
             }
             0x46 => {
                 let func = self.ptr()?;
-                Expr::LocalFinalFunction { func, args: self.list(0x16)? }
+                Expr::LocalFinalFunction {
+                    func,
+                    args: self.list(0x16)?,
+                }
             }
             0x48 => Expr::LocalOutVariable(self.ptr()?),
             0x4B => Expr::InstanceDelegate(self.fname()?),
@@ -402,16 +605,25 @@ impl<'p, 'a> P<'p, 'a> {
             0x51 => Expr::InterfaceContext(self.bx()?),
             0x52 => {
                 let class = self.ptr()?;
-                Expr::ObjToInterfaceCast { class, expr: self.bx()? }
+                Expr::ObjToInterfaceCast {
+                    class,
+                    expr: self.bx()?,
+                }
             }
             0x53 => Expr::EndOfScript,
             0x54 => {
                 let class = self.ptr()?;
-                Expr::CrossInterfaceCast { class, expr: self.bx()? }
+                Expr::CrossInterfaceCast {
+                    class,
+                    expr: self.bx()?,
+                }
             }
             0x55 => {
                 let class = self.ptr()?;
-                Expr::InterfaceToObjCast { class, expr: self.bx()? }
+                Expr::InterfaceToObjCast {
+                    class,
+                    expr: self.bx()?,
+                }
             }
             0x5A => Expr::WireTracepoint,
             0x5B => Expr::SkipOffsetConst(self.u32()?),
@@ -423,16 +635,26 @@ impl<'p, 'a> P<'p, 'a> {
             0x5E => Expr::Tracepoint,
             0x5F => {
                 let var = self.bx()?;
-                Expr::LetObj { var, value: self.bx()? }
+                Expr::LetObj {
+                    var,
+                    value: self.bx()?,
+                }
             }
             0x60 => {
                 let var = self.bx()?;
-                Expr::LetWeakObjPtr { var, value: self.bx()? }
+                Expr::LetWeakObjPtr {
+                    var,
+                    value: self.bx()?,
+                }
             }
             0x61 => {
                 let name = self.fname()?;
                 let delegate = self.bx()?;
-                Expr::BindDelegate { name, delegate, object: self.bx()? }
+                Expr::BindDelegate {
+                    name,
+                    delegate,
+                    object: self.bx()?,
+                }
             }
             0x62 => {
                 let a = self.bx()?;
@@ -440,21 +662,34 @@ impl<'p, 'a> P<'p, 'a> {
             }
             0x63 => {
                 let func = self.ptr()?;
-                Expr::CallMulticastDelegate { func, args: self.list(0x16)? }
+                Expr::CallMulticastDelegate {
+                    func,
+                    args: self.list(0x16)?,
+                }
             }
             0x64 => {
                 let prop = self.ptr()?;
-                Expr::LetValueOnPersistentFrame { prop, value: self.bx()? }
+                Expr::LetValueOnPersistentFrame {
+                    prop,
+                    value: self.bx()?,
+                }
             }
             0x65 => {
                 let inner = self.ptr()?;
                 let count = self.i32()?;
-                Expr::ArrayConst { inner, count, elements: self.list(0x66)? }
+                Expr::ArrayConst {
+                    inner,
+                    count,
+                    elements: self.list(0x66)?,
+                }
             }
             0x67 => Expr::SoftObjectConst(self.bx()?),
             0x68 => {
                 let func = self.ptr()?;
-                Expr::CallMath { func, args: self.list(0x16)? }
+                Expr::CallMath {
+                    func,
+                    args: self.list(0x16)?,
+                }
             }
             0x69 => {
                 let n = self.u16()?;
@@ -468,11 +703,18 @@ impl<'p, 'a> P<'p, 'a> {
                     cases.push((k, r));
                 }
                 let default = self.bx()?;
-                Expr::Switch { index, cases, default }
+                Expr::Switch {
+                    index,
+                    cases,
+                    default,
+                }
             }
             0x6B => {
                 let array = self.bx()?;
-                Expr::ArrayGetByRef { array, index: self.bx()? }
+                Expr::ArrayGetByRef {
+                    array,
+                    index: self.bx()?,
+                }
             }
             0x6A => {
                 let kind = self.u8()?;
@@ -486,9 +728,15 @@ impl<'p, 'a> P<'p, 'a> {
 
 fn ref_name(pkg: &Package, i: i32) -> String {
     if i < 0 {
-        pkg.imports.get((-(i as i64) - 1) as usize).map(|x| x.name.clone()).unwrap_or_else(|| format!("I{i}"))
+        pkg.imports
+            .get((-(i as i64) - 1) as usize)
+            .map(|x| x.name.clone())
+            .unwrap_or_else(|| format!("I{i}"))
     } else if i > 0 {
-        pkg.exports.get(i as usize - 1).map(|x| x.name.clone()).unwrap_or_else(|| format!("E{i}"))
+        pkg.exports
+            .get(i as usize - 1)
+            .map(|x| x.name.clone())
+            .unwrap_or_else(|| format!("E{i}"))
     } else {
         "null".to_string()
     }
@@ -497,7 +745,11 @@ fn ref_name(pkg: &Package, i: i32) -> String {
 /// Decode statements until `EX_EndOfScript` or the end of `script`. Never panics; on a decode error the
 /// statements before it are returned with `error` set.
 pub fn disassemble(pkg: &Package, script: &[u8]) -> Disassembly {
-    let mut p = P { pkg, b: script, p: 0 };
+    let mut p = P {
+        pkg,
+        b: script,
+        p: 0,
+    };
     let mut statements = Vec::new();
     let mut lines = Vec::new();
     let mut error = None;
@@ -508,7 +760,10 @@ pub fn disassemble(pkg: &Package, script: &[u8]) -> Disassembly {
             Ok(e) => {
                 let end = e == Expr::EndOfScript;
                 lines.push((at, e.render()));
-                statements.push(Statement { offset: at, expr: e });
+                statements.push(Statement {
+                    offset: at,
+                    expr: e,
+                });
                 if end {
                     reached_end = true;
                     break;
@@ -520,7 +775,13 @@ pub fn disassemble(pkg: &Package, script: &[u8]) -> Disassembly {
             }
         }
     }
-    Disassembly { statements, lines, end: p.p, error, reached_end }
+    Disassembly {
+        statements,
+        lines,
+        end: p.p,
+        error,
+        reached_end,
+    }
 }
 
 /// Like [`disassemble`] but returns an error unless the whole script decodes and ends with `EX_EndOfScript`
@@ -531,10 +792,15 @@ pub fn parse(pkg: &Package, script: &[u8]) -> crate::error::Result<Vec<Statement
         return Err(crate::error::Error::malformed(format!("kismet: {e}")));
     }
     if !d.reached_end {
-        return Err(crate::error::Error::malformed("kismet: script has no EX_EndOfScript"));
+        return Err(crate::error::Error::malformed(
+            "kismet: script has no EX_EndOfScript",
+        ));
     }
     if d.end != script.len() {
-        return Err(crate::error::Error::malformed(format!("kismet: {} byte(s) after EX_EndOfScript", script.len() - d.end)));
+        return Err(crate::error::Error::malformed(format!(
+            "kismet: {} byte(s) after EX_EndOfScript",
+            script.len() - d.end
+        )));
     }
     Ok(d.statements)
 }
@@ -549,7 +815,11 @@ pub fn js_number(x: f64) -> String {
         return "NaN".into();
     }
     if x.is_infinite() {
-        return if x > 0.0 { "Infinity".into() } else { "-Infinity".into() };
+        return if x > 0.0 {
+            "Infinity".into()
+        } else {
+            "-Infinity".into()
+        };
     }
     if x == 0.0 {
         return "0".into();
@@ -597,22 +867,66 @@ impl Expr {
             JumpIfNot { target, cond } => format!("jumpIfNot({}) -> {target}", cond.render()),
             Assert { cond, .. } => format!("assert({})", cond.render()),
             Nothing => "nop".into(),
-            Let { prop, var, value } => format!("let[{}] {} = {}", prop.name, var.render(), value.render()),
+            Let { prop, var, value } => {
+                format!("let[{}] {} = {}", prop.name, var.render(), value.render())
+            }
             LetBool { var, value } => format!("letbool {} = {}", var.render(), value.render()),
             LetObj { var, value } => format!("letobj {} = {}", var.render(), value.render()),
-            LetWeakObjPtr { var, value } => format!("letweak {} = {}", var.render(), value.render()),
+            LetWeakObjPtr { var, value } => {
+                format!("letweak {} = {}", var.render(), value.render())
+            }
             LetDelegate { var, value } => format!("letdel {} = {}", var.render(), value.render()),
-            LetMulticastDelegate { var, value } => format!("letmcdel {} = {}", var.render(), value.render()),
-            LetValueOnPersistentFrame { prop, value } => format!("letpf[{}] = {}", prop.name, value.render()),
-            ClassContext { object, prop, context, .. } => format!("classctx({},{},{})", object.render(), prop.name, context.render()),
-            Context { object, prop, context, .. } => format!("ctx({} . {} : {})", object.render(), prop.name, context.render()),
-            ContextFailSilent { object, prop, context, .. } => format!("ctxsilent({} . {} : {})", object.render(), prop.name, context.render()),
+            LetMulticastDelegate { var, value } => {
+                format!("letmcdel {} = {}", var.render(), value.render())
+            }
+            LetValueOnPersistentFrame { prop, value } => {
+                format!("letpf[{}] = {}", prop.name, value.render())
+            }
+            ClassContext {
+                object,
+                prop,
+                context,
+                ..
+            } => format!(
+                "classctx({},{},{})",
+                object.render(),
+                prop.name,
+                context.render()
+            ),
+            Context {
+                object,
+                prop,
+                context,
+                ..
+            } => format!(
+                "ctx({} . {} : {})",
+                object.render(),
+                prop.name,
+                context.render()
+            ),
+            ContextFailSilent {
+                object,
+                prop,
+                context,
+                ..
+            } => format!(
+                "ctxsilent({} . {} : {})",
+                object.render(),
+                prop.name,
+                context.render()
+            ),
             InterfaceContext(e) => format!("ifacectx({})", e.render()),
             MetaCast { class, expr } => format!("metacast({},{})", class.name, expr.render()),
             DynamicCast { class, expr } => format!("dyncast({},{})", class.name, expr.render()),
-            ObjToInterfaceCast { class, expr } => format!("obj2iface({},{})", class.name, expr.render()),
-            CrossInterfaceCast { class, expr } => format!("xiface({},{})", class.name, expr.render()),
-            InterfaceToObjCast { class, expr } => format!("iface2obj({},{})", class.name, expr.render()),
+            ObjToInterfaceCast { class, expr } => {
+                format!("obj2iface({},{})", class.name, expr.render())
+            }
+            CrossInterfaceCast { class, expr } => {
+                format!("xiface({},{})", class.name, expr.render())
+            }
+            InterfaceToObjCast { class, expr } => {
+                format!("iface2obj({},{})", class.name, expr.render())
+            }
             PrimitiveCast { kind, expr } => format!("cast{kind}({})", expr.render()),
             EndParmValue => "endparmvalue".into(),
             EndFunctionParms => "endparms".into(),
@@ -629,8 +943,20 @@ impl Expr {
             StringConst(s) | UnicodeStringConst(s) => jstr(s),
             ObjectConst(r) => format!("obj {}", r.name),
             NameConst(n) => format!("name {n}"),
-            RotationConst(v) => format!("rot[{}]", v.iter().map(|x| js_number(*x as f64)).collect::<Vec<_>>().join(",")),
-            VectorConst(v) => format!("vec[{}]", v.iter().map(|x| js_fixed(*x, 4)).collect::<Vec<_>>().join(",")),
+            RotationConst(v) => format!(
+                "rot[{}]",
+                v.iter()
+                    .map(|x| js_number(*x as f64))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            ),
+            VectorConst(v) => format!(
+                "vec[{}]",
+                v.iter()
+                    .map(|x| js_fixed(*x, 4))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            ),
             ByteConst(b) => format!("byte {b}"),
             IntZero => "0".into(),
             IntOne => "1".into(),
@@ -638,27 +964,50 @@ impl Expr {
             False => "false".into(),
             TextConst(t) => match t {
                 TextLit::Empty => "text(empty)".into(),
-                TextLit::Localized(a, b, c) => format!("text({}{}{})", a.render(), b.render(), c.render()),
+                TextLit::Localized(a, b, c) => {
+                    format!("text({}{}{})", a.render(), b.render(), c.render())
+                }
                 TextLit::Invariant(e) => format!("text(inv {})", e.render()),
                 TextLit::Literal(e) => format!("text(lit {})", e.render()),
-                TextLit::StringTable { table, id, key } => format!("text(strtbl {} {} {})", table.name, id.render(), key.render()),
+                TextLit::StringTable { table, id, key } => format!(
+                    "text(strtbl {} {} {})",
+                    table.name,
+                    id.render(),
+                    key.render()
+                ),
             },
             NoObject => "noobj".into(),
-            TransformConst(v) => format!("xform[{}]", v.iter().map(|x| js_fixed(*x, 3)).collect::<Vec<_>>().join(",")),
+            TransformConst(v) => format!(
+                "xform[{}]",
+                v.iter()
+                    .map(|x| js_fixed(*x, 3))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            ),
             IntConstByte(b) => format!("int8 {b}"),
             NoInterface => "nointerface".into(),
             Int64Const(v) => format!("i64 {v}"),
             UInt64Const(v) => format!("u64 {v}"),
             PropertyConst(r) => format!("propconst {}", r.name),
             SoftObjectConst(e) => format!("softobj({})", e.render()),
-            StructConst { struct_ref, fields, .. } => format!("struct {}{{{}}}", struct_ref.name, args(fields)),
-            SetArray { array, elements } => format!("setarray[{}]({})", array.render(), args(elements)),
+            StructConst {
+                struct_ref, fields, ..
+            } => format!("struct {}{{{}}}", struct_ref.name, args(fields)),
+            SetArray { array, elements } => {
+                format!("setarray[{}]({})", array.render(), args(elements))
+            }
             ArrayConst { elements, .. } => format!("arrayconst({})", args(elements)),
             SetSet { set, elements, .. } => format!("setset[{}]({})", set.render(), args(elements)),
             SetMap { map, elements, .. } => format!("setmap[{}]({})", map.render(), args(elements)),
-            StructMemberContext { prop, expr } => format!("smember[{}]({})", prop.name, expr.render()),
+            StructMemberContext { prop, expr } => {
+                format!("smember[{}]({})", prop.name, expr.render())
+            }
             InstanceDelegate(n) => format!("instdel {n}"),
-            BindDelegate { name, delegate, object } => format!("binddel {name} {} {}", delegate.render(), object.render()),
+            BindDelegate {
+                name,
+                delegate,
+                object,
+            } => format!("binddel {name} {} {}", delegate.render(), object.render()),
             AddMulticastDelegate(a, b) => format!("addmcdel {} {}", a.render(), b.render()),
             RemoveMulticastDelegate(a, b) => format!("rmmcdel {} {}", a.render(), b.render()),
             ClearMulticastDelegate(e) => format!("clrmcdel {}", e.render()),
@@ -670,12 +1019,29 @@ impl Expr {
             WireTracepoint => "wiretp".into(),
             Tracepoint => "tracepoint".into(),
             SkipOffsetConst(v) => format!("skipoffset {v}"),
-            Switch { index, cases, default } => {
-                let cs: Vec<String> = cases.iter().map(|(k, r)| format!("{}:{}", k.render(), r.render())).collect();
-                format!("switch({}){{{} default:{}}}", index.render(), cs.join(";"), default.render())
+            Switch {
+                index,
+                cases,
+                default,
+            } => {
+                let cs: Vec<String> = cases
+                    .iter()
+                    .map(|(k, r)| format!("{}:{}", k.render(), r.render()))
+                    .collect();
+                format!(
+                    "switch({}){{{} default:{}}}",
+                    index.render(),
+                    cs.join(";"),
+                    default.render()
+                )
             }
-            ArrayGetByRef { array, index } => format!("arrayget({},{})", array.render(), index.render()),
-            InstrumentationEvent { kind, name } => format!("instrument{kind}{}", name.as_ref().map(|n| format!(" {n}")).unwrap_or_default()),
+            ArrayGetByRef { array, index } => {
+                format!("arrayget({},{})", array.render(), index.render())
+            }
+            InstrumentationEvent { kind, name } => format!(
+                "instrument{kind}{}",
+                name.as_ref().map(|n| format!(" {n}")).unwrap_or_default()
+            ),
             EndOfScript => "END".into(),
         }
     }
@@ -684,19 +1050,57 @@ impl Expr {
     pub fn children(&self) -> Vec<&Expr> {
         use Expr::*;
         match self {
-            Return(e) | InterfaceContext(e) | SoftObjectConst(e) | PopExecutionFlowIfNot(e) | ComputedJump(e) | ClearMulticastDelegate(e) => vec![e],
+            Return(e)
+            | InterfaceContext(e)
+            | SoftObjectConst(e)
+            | PopExecutionFlowIfNot(e)
+            | ComputedJump(e)
+            | ClearMulticastDelegate(e) => vec![e],
             JumpIfNot { cond, .. } | Assert { cond, .. } => vec![cond],
-            Let { var, value, .. } | LetBool { var, value } | LetObj { var, value } | LetWeakObjPtr { var, value } | LetDelegate { var, value } | LetMulticastDelegate { var, value } => vec![var, value],
+            Let { var, value, .. }
+            | LetBool { var, value }
+            | LetObj { var, value }
+            | LetWeakObjPtr { var, value }
+            | LetDelegate { var, value }
+            | LetMulticastDelegate { var, value } => vec![var, value],
             LetValueOnPersistentFrame { value, .. } => vec![value],
-            ClassContext { object, context, .. } | Context { object, context, .. } | ContextFailSilent { object, context, .. } => vec![object, context],
-            MetaCast { expr, .. } | DynamicCast { expr, .. } | ObjToInterfaceCast { expr, .. } | CrossInterfaceCast { expr, .. } | InterfaceToObjCast { expr, .. } | PrimitiveCast { expr, .. } | Skip { expr, .. } | StructMemberContext { expr, .. } => vec![expr],
-            VirtualFunction { args, .. } | FinalFunction { args, .. } | LocalVirtualFunction { args, .. } | LocalFinalFunction { args, .. } | CallMath { args, .. } | CallMulticastDelegate { args, .. } => args.iter().collect(),
+            ClassContext {
+                object, context, ..
+            }
+            | Context {
+                object, context, ..
+            }
+            | ContextFailSilent {
+                object, context, ..
+            } => vec![object, context],
+            MetaCast { expr, .. }
+            | DynamicCast { expr, .. }
+            | ObjToInterfaceCast { expr, .. }
+            | CrossInterfaceCast { expr, .. }
+            | InterfaceToObjCast { expr, .. }
+            | PrimitiveCast { expr, .. }
+            | Skip { expr, .. }
+            | StructMemberContext { expr, .. } => vec![expr],
+            VirtualFunction { args, .. }
+            | FinalFunction { args, .. }
+            | LocalVirtualFunction { args, .. }
+            | LocalFinalFunction { args, .. }
+            | CallMath { args, .. }
+            | CallMulticastDelegate { args, .. } => args.iter().collect(),
             StructConst { fields, .. } => fields.iter().collect(),
             ArrayConst { elements, .. } => elements.iter().collect(),
-            SetArray { array, elements } => std::iter::once(&**array).chain(elements.iter()).collect(),
-            SetSet { set, elements, .. } => std::iter::once(&**set).chain(elements.iter()).collect(),
-            SetMap { map, elements, .. } => std::iter::once(&**map).chain(elements.iter()).collect(),
-            BindDelegate { delegate, object, .. } => vec![delegate, object],
+            SetArray { array, elements } => {
+                std::iter::once(&**array).chain(elements.iter()).collect()
+            }
+            SetSet { set, elements, .. } => {
+                std::iter::once(&**set).chain(elements.iter()).collect()
+            }
+            SetMap { map, elements, .. } => {
+                std::iter::once(&**map).chain(elements.iter()).collect()
+            }
+            BindDelegate {
+                delegate, object, ..
+            } => vec![delegate, object],
             ArrayGetByRef { array, index } => vec![array, index],
             AddMulticastDelegate(a, b) | RemoveMulticastDelegate(a, b) => vec![a, b],
             TextConst(t) => match t {
@@ -705,7 +1109,11 @@ impl Expr {
                 TextLit::Invariant(e) | TextLit::Literal(e) => vec![e],
                 TextLit::StringTable { id, key, .. } => vec![id, key],
             },
-            Switch { index, cases, default } => {
+            Switch {
+                index,
+                cases,
+                default,
+            } => {
                 let mut v: Vec<&Expr> = vec![index];
                 for (k, r) in cases {
                     v.push(k);
@@ -735,5 +1143,3 @@ mod tests {
         assert_eq!(js_fixed(0.01, 5), "0.01");
     }
 }
-
-

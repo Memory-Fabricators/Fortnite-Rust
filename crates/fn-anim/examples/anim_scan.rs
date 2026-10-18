@@ -44,10 +44,22 @@ fn main() {
         match AnimSequence::parse(&pkg) {
             Ok(s) => {
                 ok += 1;
-                let k = format!("{} trans={} rot={} scale={}", s.key_format.name(), s.translation_format.name(), s.rotation_format.name(), s.scale_format.name());
+                let k = format!(
+                    "{} trans={} rot={} scale={}",
+                    s.key_format.name(),
+                    s.translation_format.name(),
+                    s.rotation_format.name(),
+                    s.scale_format.name()
+                );
                 *hist.entry(k).or_default() += 1;
                 for n in &s.notifies {
-                    *notify_names.entry(n.notify_class.clone().unwrap_or_else(|| n.notify_name.clone())).or_default() += 1;
+                    *notify_names
+                        .entry(
+                            n.notify_class
+                                .clone()
+                                .unwrap_or_else(|| n.notify_name.clone()),
+                        )
+                        .or_default() += 1;
                 }
                 if !s.curves.is_empty() {
                     curves += 1;
@@ -63,7 +75,14 @@ fn main() {
                     *track_hist.entry(f("pos", t.pos_format)).or_default() += 1;
                     *track_hist.entry(f("rot", t.rot_format)).or_default() += 1;
                     if let Some((f, m)) = t.scale_format {
-                        let e = scale_stats.entry(format!("{} additive={} {}", f.name(), s.is_additive(), m & 7)).or_insert((f32::MAX, f32::MIN, 0));
+                        let e = scale_stats
+                            .entry(format!(
+                                "{} additive={} {}",
+                                f.name(),
+                                s.is_additive(),
+                                m & 7
+                            ))
+                            .or_insert((f32::MAX, f32::MIN, 0));
                         for k in &t.scale {
                             for c in k {
                                 e.0 = e.0.min(*c);
@@ -75,11 +94,33 @@ fn main() {
                     if t.scale_format.is_some() {
                         *track_hist.entry(f("scale", t.scale_format)).or_default() += 1;
                     }
-                    let kk = |c: &str, n: usize, times: &[u32]| format!("{c} keys={} {}", if n <= 1 { n.to_string() } else if n == s.num_frames { "NumFrames".to_string() } else { "other".to_string() }, if times.is_empty() { "no-times" } else { "times" });
-                    *key_hist.entry(kk("pos", t.pos.len(), &t.pos_times)).or_default() += 1;
-                    *key_hist.entry(kk("rot", t.rot.len(), &t.rot_times)).or_default() += 1;
+                    let kk = |c: &str, n: usize, times: &[u32]| {
+                        format!(
+                            "{c} keys={} {}",
+                            if n <= 1 {
+                                n.to_string()
+                            } else if n == s.num_frames {
+                                "NumFrames".to_string()
+                            } else {
+                                "other".to_string()
+                            },
+                            if times.is_empty() {
+                                "no-times"
+                            } else {
+                                "times"
+                            }
+                        )
+                    };
+                    *key_hist
+                        .entry(kk("pos", t.pos.len(), &t.pos_times))
+                        .or_default() += 1;
+                    *key_hist
+                        .entry(kk("rot", t.rot.len(), &t.rot_times))
+                        .or_default() += 1;
                     if !t.scale.is_empty() {
-                        *key_hist.entry(kk("scale", t.scale.len(), &t.scale_times)).or_default() += 1;
+                        *key_hist
+                            .entry(kk("scale", t.scale.len(), &t.scale_times))
+                            .or_default() += 1;
                     }
                 }
                 if s.from_raw {

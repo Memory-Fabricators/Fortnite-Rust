@@ -142,7 +142,11 @@ impl Skeleton {
     /// Decode the first `Skeleton` export of the package.
     pub fn parse(pkg: &Package) -> Result<Skeleton> {
         let idx = find_class(pkg, "Skeleton")?;
-        let ExportBody { props, mut reader, end } = export_body(pkg, idx)?;
+        let ExportBody {
+            props,
+            mut reader,
+            end,
+        } = export_body(pkg, idx)?;
         let names = &pkg.names;
         let mut bones = read_ref_skeleton(&mut reader, names)?;
 
@@ -178,11 +182,20 @@ impl Skeleton {
                 for _ in 0..l {
                     linked_bones.push(fname(&mut reader, names)?);
                 }
-                curves.push(CurveMeta { name, material, morph_target, linked_bones });
+                curves.push(CurveMeta {
+                    name,
+                    material,
+                    morph_target,
+                    linked_bones,
+                });
             }
         }
         if reader.tell() != end {
-            return invalid(format!("Skeleton export not fully consumed: stopped at +{} of {}", reader.tell() - pkg.export_range(idx).0, end - pkg.export_range(idx).0));
+            return invalid(format!(
+                "Skeleton export not fully consumed: stopped at +{} of {}",
+                reader.tell() - pkg.export_range(idx).0,
+                end - pkg.export_range(idx).0
+            ));
         }
 
         // BoneTree (translation retargeting)
@@ -192,7 +205,9 @@ impl Skeleton {
                 if let Some(f) = v.as_fields() {
                     if let Some(pv) = f.get("TranslationRetargetingMode") {
                         b.retarget = match pv {
-                            PropValue::Enum(s) | PropValue::Name(s) | PropValue::Str(s) => TranslationRetarget::from_text(s).unwrap_or_default(),
+                            PropValue::Enum(s) | PropValue::Name(s) | PropValue::Str(s) => {
+                                TranslationRetarget::from_text(s).unwrap_or_default()
+                            }
                             PropValue::Byte(x) => TranslationRetarget::from_index(*x),
                             PropValue::Int(x) => TranslationRetarget::from_index(*x as u8),
                             _ => TranslationRetarget::Animation,
@@ -225,10 +240,16 @@ impl Skeleton {
                     .filter_map(|v| {
                         let f = v.as_fields()?;
                         let slots = match f.get("SlotNames") {
-                            Some(PropValue::Array(s)) => s.iter().filter_map(|x| x.as_str().map(str::to_string)).collect(),
+                            Some(PropValue::Array(s)) => s
+                                .iter()
+                                .filter_map(|x| x.as_str().map(str::to_string))
+                                .collect(),
                             _ => Vec::new(),
                         };
-                        Some(SlotGroup { name: f.text("GroupName").unwrap_or("").to_string(), slots })
+                        Some(SlotGroup {
+                            name: f.text("GroupName").unwrap_or("").to_string(),
+                            slots,
+                        })
                     })
                     .collect()
             })
@@ -253,7 +274,9 @@ impl Skeleton {
 
     /// Bone index by name, ASCII case-insensitive (UE bone names are case-insensitive).
     pub fn bone_index_ci(&self, name: &str) -> Option<usize> {
-        self.bones.iter().position(|b| b.name.eq_ignore_ascii_case(name))
+        self.bones
+            .iter()
+            .position(|b| b.name.eq_ignore_ascii_case(name))
     }
 }
 
@@ -264,7 +287,14 @@ pub(crate) fn read_ref_skeleton(r: &mut Reader, names: &[String]) -> Result<Vec<
     for _ in 0..n {
         let name = fname(r, names)?;
         let parent = r.i32()?;
-        bones.push(Bone { name, parent, ref_pos: [0.0; 3], ref_rot: [0.0, 0.0, 0.0, 1.0], ref_scale: [1.0; 3], retarget: TranslationRetarget::Animation });
+        bones.push(Bone {
+            name,
+            parent,
+            ref_pos: [0.0; 3],
+            ref_rot: [0.0, 0.0, 0.0, 1.0],
+            ref_scale: [1.0; 3],
+            retarget: TranslationRetarget::Animation,
+        });
     }
     let m = array_count(r, 40)?;
     if m != n {
@@ -295,7 +325,9 @@ pub(crate) fn read_sockets(pkg: &Package, refs: Option<&Vec<PropValue>>) -> Vec<
         if *i <= 0 || *i as usize > pkg.exports.len() {
             continue;
         }
-        let Ok(body) = export_body(pkg, *i as usize - 1) else { continue };
+        let Ok(body) = export_body(pkg, *i as usize - 1) else {
+            continue;
+        };
         let p = &body.props;
         let vec3 = |name: &str, def: [f32; 3]| match p.get(name) {
             Some(PropValue::Vec3(v)) => *v,

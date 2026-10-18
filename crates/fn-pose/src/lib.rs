@@ -34,13 +34,15 @@ pub mod loadout_material;
 pub mod loadout_stats;
 pub mod part;
 pub mod part_anim; // PART ANIM HOOK
+#[cfg(feature = "scenario")]
+pub mod scenario;
 pub mod skel;
 #[cfg(test)]
 mod tests;
-#[cfg(feature = "scenario")]
-pub mod scenario;
 
-pub use character::{CharacterPose, CharacterRig, PoseResult, SocketDef, GPU_MATRIX_BYTES, PICK_SOCKET_YAW};
+pub use character::{
+    CharacterPose, CharacterRig, PoseResult, SocketDef, GPU_MATRIX_BYTES, PICK_SOCKET_YAW,
+};
 pub use clip::{AdditiveKind, ClipSourceDir, ClipStore, FnClip, SampleMode};
 pub use eval::{EvalOptions, PoseEvaluator};
 pub use part::{Part, SkinPrim};

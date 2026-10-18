@@ -4,13 +4,17 @@
 
 mod common;
 use common::*;
-use fn_mesh::{Skeleton, SkeletalMesh, StaticMesh, TranslationRetarget};
+use fn_mesh::{SkeletalMesh, Skeleton, StaticMesh, TranslationRetarget};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 /// (skeleton package, mesh package that uses it, old export of the mesh)
 const PAIRS: &[(&str, &str, &str)] = &[
-    ("Characters/Player/Male/Male_Avg_Base/Fortnite_M_Avg_Player_Skeleton", "Characters/Player/Male/Male_Avg_Base/Fortnite_M_Avg_Player", "Fortnite_M_Avg_Player"),
+    (
+        "Characters/Player/Male/Male_Avg_Base/Fortnite_M_Avg_Player_Skeleton",
+        "Characters/Player/Male/Male_Avg_Base/Fortnite_M_Avg_Player",
+        "Fortnite_M_Avg_Player",
+    ),
     (
         "Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Meshes/SK_M_Med_Soldier_04_Skeleton",
         "Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Meshes/SK_M_Med_Soldier_04",
@@ -36,11 +40,19 @@ fn skeletons_decode_and_agree_with_their_meshes() {
         // unique names, root has no parent, parents refer to existing bones
         let mut names: HashMap<&str, usize> = HashMap::new();
         for (i, b) in skel.bones.iter().enumerate() {
-            assert!(names.insert(&b.name, i).is_none(), "duplicate bone {}", b.name);
+            assert!(
+                names.insert(&b.name, i).is_none(),
+                "duplicate bone {}",
+                b.name
+            );
             assert!(b.parent < skel.bones.len() as i32);
         }
         assert_eq!(skel.bones[0].parent, -1);
-        let topo = skel.bones.iter().enumerate().all(|(i, b)| b.parent < i as i32);
+        let topo = skel
+            .bones
+            .iter()
+            .enumerate()
+            .all(|(i, b)| b.parent < i as i32);
         // every mesh bone is in the skeleton, with the same parent and reference pose
         let mut missing = 0;
         let mut bad_parent = 0;
@@ -51,17 +63,31 @@ fn skeletons_decode_and_agree_with_their_meshes() {
                 continue;
             };
             let sb = &skel.bones[si];
-            let sp = if sb.parent < 0 { None } else { Some(skel.bones[sb.parent as usize].name.as_str()) };
-            let mp = if b.parent < 0 { None } else { Some(mesh.ref_skeleton[b.parent as usize].name.as_str()) };
+            let sp = if sb.parent < 0 {
+                None
+            } else {
+                Some(skel.bones[sb.parent as usize].name.as_str())
+            };
+            let mp = if b.parent < 0 {
+                None
+            } else {
+                Some(mesh.ref_skeleton[b.parent as usize].name.as_str())
+            };
             if sp != mp {
                 bad_parent += 1;
             }
             for c in 0..3 {
-                pose_err = pose_err.max((sb.ref_pos[c] - b.ref_pos[c]).abs()).max((sb.ref_scale[c] - b.ref_scale[c]).abs());
+                pose_err = pose_err
+                    .max((sb.ref_pos[c] - b.ref_pos[c]).abs())
+                    .max((sb.ref_scale[c] - b.ref_scale[c]).abs());
             }
             // quaternions q and -q are the same rotation
-            let dq: f32 = (0..4).map(|c| (sb.ref_rot[c] - b.ref_rot[c]).abs()).fold(0.0, f32::max);
-            let dqn: f32 = (0..4).map(|c| (sb.ref_rot[c] + b.ref_rot[c]).abs()).fold(0.0, f32::max);
+            let dq: f32 = (0..4)
+                .map(|c| (sb.ref_rot[c] - b.ref_rot[c]).abs())
+                .fold(0.0, f32::max);
+            let dqn: f32 = (0..4)
+                .map(|c| (sb.ref_rot[c] + b.ref_rot[c]).abs())
+                .fold(0.0, f32::max);
             pose_err = pose_err.max(dq.min(dqn));
         }
         // names/parents of the old gltf export of the mesh must exist in the skeleton too
@@ -72,7 +98,13 @@ fn skeletons_decode_and_agree_with_their_meshes() {
         for n in nodes {
             if let Some(ch) = n["children"].as_array() {
                 for c in ch {
-                    old_parent.insert(nodes[c.as_u64().unwrap() as usize]["name"].as_str().unwrap().to_string(), n["name"].as_str().unwrap().to_string());
+                    old_parent.insert(
+                        nodes[c.as_u64().unwrap() as usize]["name"]
+                            .as_str()
+                            .unwrap()
+                            .to_string(),
+                        n["name"].as_str().unwrap().to_string(),
+                    );
                 }
             }
         }
@@ -84,7 +116,10 @@ fn skeletons_decode_and_agree_with_their_meshes() {
                 None => old_missing += 1,
                 Some(&si) => {
                     let sb = &skel.bones[si];
-                    if sb.parent >= 0 && old_parent.get(nm).map(String::as_str) != Some(skel.bones[sb.parent as usize].name.as_str()) {
+                    if sb.parent >= 0
+                        && old_parent.get(nm).map(String::as_str)
+                            != Some(skel.bones[sb.parent as usize].name.as_str())
+                    {
                         old_bad_parent += 1;
                     }
                 }
@@ -114,11 +149,20 @@ fn skeletons_decode_and_agree_with_their_meshes() {
         );
         assert_eq!(missing, 0);
         assert_eq!(bad_parent, 0);
-        assert!(pose_err < 1e-3, "{}: mesh/skeleton reference pose differ by {pose_err}", skel.name);
+        assert!(
+            pose_err < 1e-3,
+            "{}: mesh/skeleton reference pose differ by {pose_err}",
+            skel.name
+        );
         assert_eq!(old_missing, 0);
         assert_eq!(old_bad_parent, 0);
         for s in &skel.sockets {
-            assert!(skel.bone_index_ci(&s.bone).is_some(), "socket {} on unknown bone {}", s.name, s.bone);
+            assert!(
+                skel.bone_index_ci(&s.bone).is_some(),
+                "socket {} on unknown bone {}",
+                s.name,
+                s.bone
+            );
         }
         for r in &skel.retarget_sources {
             assert!(r.pose.len() <= skel.bones.len());
@@ -159,7 +203,9 @@ fn scan_every_mesh_export_in_testdata() {
     let mut failures = vec![];
     for f in &files {
         let rd = |e: &str| std::fs::read(f.with_extension(e)).unwrap_or_default();
-        let Ok(pkg) = fn_ueio::Package::parse(&rd("uasset"), &rd("uexp"), &rd("ubulk")) else { continue };
+        let Ok(pkg) = fn_ueio::Package::parse(&rd("uasset"), &rd("uexp"), &rd("ubulk")) else {
+            continue;
+        };
         packages += 1;
         for (class, which) in [("Skeleton", 0), ("SkeletalMesh", 1), ("StaticMesh", 2)] {
             if pkg.find_export(class).is_none() {
@@ -167,7 +213,9 @@ fn scan_every_mesh_export_in_testdata() {
             }
             let rel = f.strip_prefix(&td).unwrap().display().to_string();
             let r: Result<String, String> = match which {
-                0 => Skeleton::parse(&pkg).map(|s| format!("{} bones, {} sockets", s.bones.len(), s.sockets.len())).map_err(|e| e.to_string()),
+                0 => Skeleton::parse(&pkg)
+                    .map(|s| format!("{} bones, {} sockets", s.bones.len(), s.sockets.len()))
+                    .map_err(|e| e.to_string()),
                 1 => SkeletalMesh::parse(&pkg)
                     .and_then(|m| {
                         // every LOD must also convert to glTF
@@ -176,7 +224,14 @@ fn scan_every_mesh_export_in_testdata() {
                         }
                         Ok(m)
                     })
-                    .map(|m| format!("{} bones, {} LODs, {} verts LOD0", m.ref_skeleton.len(), m.lods.len(), m.lods[0].num_vertices))
+                    .map(|m| {
+                        format!(
+                            "{} bones, {} LODs, {} verts LOD0",
+                            m.ref_skeleton.len(),
+                            m.lods.len(),
+                            m.lods[0].num_vertices
+                        )
+                    })
                     .map_err(|e| e.to_string()),
                 _ => StaticMesh::parse(&pkg)
                     .and_then(|m| {
@@ -185,7 +240,13 @@ fn scan_every_mesh_export_in_testdata() {
                         }
                         Ok(m)
                     })
-                    .map(|m| format!("{} LODs, {} verts LOD0", m.lods.len(), m.lods[0].positions.len()))
+                    .map(|m| {
+                        format!(
+                            "{} LODs, {} verts LOD0",
+                            m.lods.len(),
+                            m.lods[0].positions.len()
+                        )
+                    })
                     .map_err(|e| e.to_string()),
             };
             match r {

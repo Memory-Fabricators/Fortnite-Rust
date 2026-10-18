@@ -25,12 +25,12 @@ pub mod props;
 pub mod quality;
 pub mod renderer;
 pub mod sky;
+#[allow(dead_code)]
+pub mod sky_params;
 pub mod static_loader;
 pub mod static_mesh;
 pub mod statics;
 pub mod synthetic;
-#[allow(dead_code)]
-pub mod sky_params;
 pub mod texture;
 pub mod tonemap;
 pub mod volfog; // VOLUMETRIC FOG HOOK: GPU volumetric fog passes (material setup, light scattering, final integration, composite)
@@ -38,11 +38,17 @@ pub mod volfog; // VOLUMETRIC FOG HOOK: GPU volumetric fog passes (material setu
 pub use camera::{CameraParams, CameraUniform};
 pub use gpu::{Gpu, GpuErrorSink, OffscreenTarget};
 pub use mesh::{MaterialImages, MaterialKind, SkinnedPrimitive, SkinnedVertex};
-pub use quality::{Backdrop, FxaaParams};
-pub use renderer::{ExposureInfo, FrameParams, FrameStats, HdrImage, ModelId, PropVertex, RenderOptions, Renderer, RendererAssets, UiOverlay};
 pub use profiler::{GpuPassTime, PassTimings};
 pub use props::{PropInstance, PropTemplates};
+pub use quality::{Backdrop, FxaaParams};
+pub use renderer::{
+    ExposureInfo, FrameParams, FrameStats, HdrImage, ModelId, PropVertex, RenderOptions, Renderer,
+    RendererAssets, TerrainMesh, UiOverlay,
+};
 pub use sky::SkyAssets;
-pub use static_mesh::{AlphaMode, StaticLod, StaticMaterialData, StaticMaterialHandle, StaticMeshData, StaticMeshHandle, StaticMeshInstance, StaticSection, StaticVertex};
+pub use static_mesh::{
+    AlphaMode, StaticLod, StaticMaterialData, StaticMaterialHandle, StaticMeshData,
+    StaticMeshHandle, StaticMeshInstance, StaticSection, StaticVertex,
+};
 pub use statics::StaticStats;
 pub use wgpu;

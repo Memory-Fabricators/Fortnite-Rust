@@ -31,41 +31,76 @@ pub enum Console {
 mod imp {
     use super::{Console, Rect};
     use std::io::{Read, Write};
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle};
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{Condvar, Mutex};
-    use std::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle};
     use windows_sys::Win32::Foundation::{HANDLE, INVALID_HANDLE_VALUE, POINT, RECT};
     use windows_sys::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITORINFO};
     use windows_sys::Win32::Storage::FileSystem::{GetFileType, FILE_TYPE_UNKNOWN};
-    use windows_sys::Win32::System::Console::{AttachConsole, GetStdHandle, SetStdHandle, ATTACH_PARENT_PROCESS, STD_ERROR_HANDLE, STD_OUTPUT_HANDLE};
-    use windows_sys::Win32::UI::WindowsAndMessaging::{ClipCursor, GetClipCursor, GetCursorPos, GetForegroundWindow, MessageBoxW, MB_ICONERROR, MB_OK, MB_SETFOREGROUND, MB_TOPMOST};
+    use windows_sys::Win32::System::Console::{
+        AttachConsole, GetStdHandle, SetStdHandle, ATTACH_PARENT_PROCESS, STD_ERROR_HANDLE,
+        STD_OUTPUT_HANDLE,
+    };
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        ClipCursor, GetClipCursor, GetCursorPos, GetForegroundWindow, MessageBoxW, MB_ICONERROR,
+        MB_OK, MB_SETFOREGROUND, MB_TOPMOST,
+    };
 
-    fn wide(s: &str) -> Vec<u16> { s.encode_utf16().chain(std::iter::once(0)).collect() }
-    fn rect(r: RECT) -> Rect { (r.left, r.top, r.right, r.bottom) }
+    fn wide(s: &str) -> Vec<u16> {
+        s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+    fn rect(r: RECT) -> Rect {
+        (r.left, r.top, r.right, r.bottom)
+    }
 
     /// Modal native error box (topmost, foreground). The cursor clip is lifted first so the box can always be clicked.
     pub fn message_box(title: &str, text: &str) {
         release_cursor_clip();
         let (t, c) = (wide(title), wide(text));
         // SAFETY: both buffers are NUL-terminated UTF-16 that outlive the call; a null owner window is allowed by MessageBoxW.
-        unsafe { MessageBoxW(0, c.as_ptr(), t.as_ptr(), MB_OK | MB_ICONERROR | MB_TOPMOST | MB_SETFOREGROUND); }
+        unsafe {
+            MessageBoxW(
+                0,
+                c.as_ptr(),
+                t.as_ptr(),
+                MB_OK | MB_ICONERROR | MB_TOPMOST | MB_SETFOREGROUND,
+            );
+        }
     }
 
     fn std_handle_ok(which: u32) -> bool {
         // SAFETY: GetStdHandle / GetFileType only read process state and tolerate NULL / INVALID_HANDLE_VALUE.
-        unsafe { let h = GetStdHandle(which); h != 0 && h != INVALID_HANDLE_VALUE && GetFileType(h) != FILE_TYPE_UNKNOWN }
+        unsafe {
+            let h = GetStdHandle(which);
+            h != 0 && h != INVALID_HANDLE_VALUE && GetFileType(h) != FILE_TYPE_UNKNOWN
+        }
     }
 
     /// Makes stdout / stderr usable: keeps inherited handles, else attaches to the parent console (terminal launch), else leaves them unset.
     pub fn console_init() -> Console {
-        if std_handle_ok(STD_ERROR_HANDLE) { return Console::Inherited; }
+        if std_handle_ok(STD_ERROR_HANDLE) {
+            return Console::Inherited;
+        }
         // SAFETY: AttachConsole has no pointer arguments; failure (no parent console) just returns 0.
-        if unsafe { AttachConsole(ATTACH_PARENT_PROCESS) } == 0 { return Console::None; }
-        let open = || std::fs::OpenOptions::new().read(true).write(true).open("CONOUT$").ok();
-        let Some(out) = open() else { return Console::None };
+        if unsafe { AttachConsole(ATTACH_PARENT_PROCESS) } == 0 {
+            return Console::None;
+        }
+        let open = || {
+            std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open("CONOUT$")
+                .ok()
+        };
+        let Some(out) = open() else {
+            return Console::None;
+        };
         let h = out.into_raw_handle() as HANDLE; // intentionally leaked: it is the process's stdout / stderr from now on
-        // SAFETY: `h` is a valid, open console output handle that is never closed.
-        unsafe { SetStdHandle(STD_OUTPUT_HANDLE, h); SetStdHandle(STD_ERROR_HANDLE, h); }
+                                                 // SAFETY: `h` is a valid, open console output handle that is never closed.
+        unsafe {
+            SetStdHandle(STD_OUTPUT_HANDLE, h);
+            SetStdHandle(STD_ERROR_HANDLE, h);
+        }
         Console::Attached
     }
 
@@ -74,44 +109,74 @@ mod imp {
     static FLUSHED: (Mutex<u64>, Condvar) = (Mutex::new(0), Condvar::new());
     static TEE_ACTIVE: AtomicBool = AtomicBool::new(false);
 
-    fn find(hay: &[u8], needle: &[u8]) -> Option<usize> { hay.windows(needle.len()).position(|w| w == needle) }
+    fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
+        hay.windows(needle.len()).position(|w| w == needle)
+    }
 
     /// Replaces the process stderr by an anonymous pipe and starts a thread that hands every chunk to `sink` and copies it to the previous stderr
     /// (the terminal, a redirected file, ...). Returns false when the pipe could not be installed (stderr then stays as it was).
     /// Call [`tee_flush`] before the process exits, otherwise the last lines can still be in the pipe.
     pub fn tee_stderr(mut sink: impl FnMut(&[u8]) + Send + 'static) -> bool {
-        let Ok((mut reader, writer)) = std::io::pipe() else { return false };
+        let Ok((mut reader, writer)) = std::io::pipe() else {
+            return false;
+        };
         // SAFETY: reads the current handle; ownership stays with the system / the parent, we only borrow it for writing below.
-        let orig: HANDLE = if std_handle_ok(STD_ERROR_HANDLE) { unsafe { GetStdHandle(STD_ERROR_HANDLE) } } else { 0 };
+        let orig: HANDLE = if std_handle_ok(STD_ERROR_HANDLE) {
+            unsafe { GetStdHandle(STD_ERROR_HANDLE) }
+        } else {
+            0
+        };
         let wh = writer.as_raw_handle() as HANDLE;
         // SAFETY: `wh` is a valid pipe write end; the writer is leaked below so the handle stays open for the life of the process.
-        if unsafe { SetStdHandle(STD_ERROR_HANDLE, wh) } == 0 { return false; }
+        if unsafe { SetStdHandle(STD_ERROR_HANDLE, wh) } == 0 {
+            return false;
+        }
         std::mem::forget(writer);
-        let spawned = std::thread::Builder::new().name("stderr-tee".into()).spawn(move || {
-            // SAFETY: a non-owning view of the old stderr handle (ManuallyDrop: never closed here).
-            let mut orig_file = (orig != 0).then(|| std::mem::ManuallyDrop::new(unsafe { std::fs::File::from_raw_handle(orig as _) }));
-            let mut forward = |bytes: &[u8]| { if bytes.is_empty() { return; } sink(bytes); if let Some(f) = orig_file.as_mut() { let _ = f.write_all(bytes); let _ = f.flush(); } };
-            let (mut buf, mut pending) = ([0u8; 4096], Vec::<u8>::new());
-            loop {
-                match reader.read(&mut buf) {
-                    Ok(0) | Err(_) => break,
-                    Ok(n) => pending.extend_from_slice(&buf[..n]),
-                }
-                loop {
-                    if let Some(i) = find(&pending, MARK) {
-                        forward(&pending[..i]);
-                        pending.drain(..i + MARK.len());
-                        *FLUSHED.0.lock().unwrap_or_else(|e| e.into_inner()) += 1; FLUSHED.1.notify_all();
-                        continue;
+        let spawned = std::thread::Builder::new()
+            .name("stderr-tee".into())
+            .spawn(move || {
+                // SAFETY: a non-owning view of the old stderr handle (ManuallyDrop: never closed here).
+                let mut orig_file = (orig != 0).then(|| {
+                    std::mem::ManuallyDrop::new(unsafe {
+                        std::fs::File::from_raw_handle(orig as _)
+                    })
+                });
+                let mut forward = |bytes: &[u8]| {
+                    if bytes.is_empty() {
+                        return;
                     }
-                    // everything except a tail that could still become the marker
-                    let keep = (1..MARK.len().min(pending.len() + 1)).rev().find(|&k| pending.ends_with(&MARK[..k])).unwrap_or(0);
-                    let upto = pending.len() - keep;
-                    forward(&pending[..upto]); pending.drain(..upto);
-                    break;
+                    sink(bytes);
+                    if let Some(f) = orig_file.as_mut() {
+                        let _ = f.write_all(bytes);
+                        let _ = f.flush();
+                    }
+                };
+                let (mut buf, mut pending) = ([0u8; 4096], Vec::<u8>::new());
+                loop {
+                    match reader.read(&mut buf) {
+                        Ok(0) | Err(_) => break,
+                        Ok(n) => pending.extend_from_slice(&buf[..n]),
+                    }
+                    loop {
+                        if let Some(i) = find(&pending, MARK) {
+                            forward(&pending[..i]);
+                            pending.drain(..i + MARK.len());
+                            *FLUSHED.0.lock().unwrap_or_else(|e| e.into_inner()) += 1;
+                            FLUSHED.1.notify_all();
+                            continue;
+                        }
+                        // everything except a tail that could still become the marker
+                        let keep = (1..MARK.len().min(pending.len() + 1))
+                            .rev()
+                            .find(|&k| pending.ends_with(&MARK[..k]))
+                            .unwrap_or(0);
+                        let upto = pending.len() - keep;
+                        forward(&pending[..upto]);
+                        pending.drain(..upto);
+                        break;
+                    }
                 }
-            }
-        });
+            });
         let ok = spawned.is_ok();
         TEE_ACTIVE.store(ok, Ordering::Relaxed);
         ok
@@ -119,10 +184,14 @@ mod imp {
 
     /// Blocks (at most `timeout`) until everything written to stderr so far has been copied out by the tee thread. No-op without a tee.
     pub fn tee_flush(timeout: std::time::Duration) {
-        if !TEE_ACTIVE.load(Ordering::Relaxed) { return; }
+        if !TEE_ACTIVE.load(Ordering::Relaxed) {
+            return;
+        }
         let want = *FLUSHED.0.lock().unwrap_or_else(|e| e.into_inner()) + 1;
         let mut err = std::io::stderr();
-        if err.write_all(MARK).is_err() { return; }
+        if err.write_all(MARK).is_err() {
+            return;
+        }
         let _ = err.flush();
         let guard = FLUSHED.0.lock().unwrap_or_else(|e| e.into_inner());
         let _ = FLUSHED.1.wait_timeout_while(guard, timeout, |n| *n < want);
@@ -130,11 +199,18 @@ mod imp {
     /// Unconditional `ClipCursor(NULL)`: the pointer may move over the whole desktop again.
     pub fn release_cursor_clip() {
         // SAFETY: a null RECT pointer is the documented way to remove the clip.
-        unsafe { ClipCursor(std::ptr::null()); }
+        unsafe {
+            ClipCursor(std::ptr::null());
+        }
     }
     /// The current clip rectangle (the whole virtual desktop when nothing is clipped).
     pub fn clip_rect() -> Option<Rect> {
-        let mut r = RECT { left: 0, top: 0, right: 0, bottom: 0 };
+        let mut r = RECT {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        };
         // SAFETY: `r` is a valid out pointer.
         (unsafe { GetClipCursor(&mut r) } != 0).then(|| rect(r))
     }
@@ -150,7 +226,22 @@ mod imp {
     }
     /// Work area (monitor minus taskbar) of an `HMONITOR`.
     pub fn monitor_work_area(hmonitor: isize) -> Option<Rect> {
-        let mut mi = MONITORINFO { cbSize: std::mem::size_of::<MONITORINFO>() as u32, rcMonitor: RECT { left: 0, top: 0, right: 0, bottom: 0 }, rcWork: RECT { left: 0, top: 0, right: 0, bottom: 0 }, dwFlags: 0 };
+        let mut mi = MONITORINFO {
+            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+            rcMonitor: RECT {
+                left: 0,
+                top: 0,
+                right: 0,
+                bottom: 0,
+            },
+            rcWork: RECT {
+                left: 0,
+                top: 0,
+                right: 0,
+                bottom: 0,
+            },
+            dwFlags: 0,
+        };
         // SAFETY: `mi` is a valid MONITORINFO with cbSize set; an invalid HMONITOR makes the call fail, which is handled.
         (unsafe { GetMonitorInfoW(hmonitor, &mut mi) } != 0).then(|| rect(mi.rcWork))
     }
@@ -160,14 +251,26 @@ mod imp {
 mod imp {
     use super::{Console, Rect};
     pub fn message_box(_title: &str, _text: &str) {}
-    pub fn console_init() -> Console { Console::Inherited }
-    pub fn tee_stderr(_sink: impl FnMut(&[u8]) + Send + 'static) -> bool { false }
+    pub fn console_init() -> Console {
+        Console::Inherited
+    }
+    pub fn tee_stderr(_sink: impl FnMut(&[u8]) + Send + 'static) -> bool {
+        false
+    }
     pub fn tee_flush(_timeout: std::time::Duration) {}
     pub fn release_cursor_clip() {}
-    pub fn clip_rect() -> Option<Rect> { None }
-    pub fn cursor_pos() -> Option<(i32, i32)> { None }
-    pub fn foreground_window() -> isize { 0 }
-    pub fn monitor_work_area(_hmonitor: isize) -> Option<Rect> { None }
+    pub fn clip_rect() -> Option<Rect> {
+        None
+    }
+    pub fn cursor_pos() -> Option<(i32, i32)> {
+        None
+    }
+    pub fn foreground_window() -> isize {
+        0
+    }
+    pub fn monitor_work_area(_hmonitor: isize) -> Option<Rect> {
+        None
+    }
 }
 
 pub use imp::*;

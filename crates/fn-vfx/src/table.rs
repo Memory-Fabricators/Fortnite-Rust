@@ -57,16 +57,28 @@ impl MuzzleTable {
     /// A weapon by `WID_*` package path (`/Game/Athena/Items/Weapons/WID_X`, with or without `.WID_X`) or short name.
     pub fn weapon(&self, wid: &str) -> Option<&WeaponMuzzle> {
         let pkg = wid.split('.').next().unwrap_or(wid);
-        self.weapons.get(pkg).or_else(|| { let short = pkg.rsplit('/').next().unwrap_or(pkg); self.weapons.values().find(|w| w.wid.rsplit('/').next() == Some(short)) })
+        self.weapons.get(pkg).or_else(|| {
+            let short = pkg.rsplit('/').next().unwrap_or(pkg);
+            self.weapons
+                .values()
+                .find(|w| w.wid.rsplit('/').next() == Some(short))
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn weapon_lookup_accepts_package_object_and_short_names() {
+    #[test]
+    fn weapon_lookup_accepts_package_object_and_short_names() {
         let mut t = MuzzleTable::default();
-        t.weapons.insert("/Game/Athena/Items/Weapons/WID_A".into(), WeaponMuzzle { wid: "/Game/Athena/Items/Weapons/WID_A".into(), ..Default::default() });
+        t.weapons.insert(
+            "/Game/Athena/Items/Weapons/WID_A".into(),
+            WeaponMuzzle {
+                wid: "/Game/Athena/Items/Weapons/WID_A".into(),
+                ..Default::default()
+            },
+        );
         assert!(t.weapon("/Game/Athena/Items/Weapons/WID_A").is_some());
         assert!(t.weapon("/Game/Athena/Items/Weapons/WID_A.WID_A").is_some());
         assert!(t.weapon("WID_A").is_some());

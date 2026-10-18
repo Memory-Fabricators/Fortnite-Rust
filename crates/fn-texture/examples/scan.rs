@@ -41,7 +41,9 @@ fn main() {
     let dir = PathBuf::from(std::env::args().nth(1).expect("directory"));
     let list_rare = std::env::args().any(|a| a == "--list-rare");
     // `--format=PF_BC4` additionally lists header-only packages that contain that pixel format name
-    let list_formats: Vec<String> = std::env::args().filter_map(|a| a.strip_prefix("--format=").map(str::to_string)).collect();
+    let list_formats: Vec<String> = std::env::args()
+        .filter_map(|a| a.strip_prefix("--format=").map(str::to_string))
+        .collect();
     let mut files = Vec::new();
     walk(&dir, &mut files);
     files.sort();
@@ -70,7 +72,8 @@ fn main() {
         };
         for i in 0..pkg.exports.len() {
             let class = pkg.export_class(i);
-            if !class.contains("Texture") || class.contains("Material") || class.contains("Sample") {
+            if !class.contains("Texture") || class.contains("Material") || class.contains("Sample")
+            {
                 continue;
             }
             bump(&mut classes, class.clone());
@@ -83,13 +86,30 @@ fn main() {
                 match Texture2D::parse_export(&pkg, i) {
                     Ok(t) => {
                         bump(&mut formats, format!("{} ({})", t.format.name(), t.class));
-                        bump(&mut compression, format!("{} / {}", t.compression_settings, t.format.name()));
-                        bump(&mut srgb, format!("SRGB={} / {}", t.srgb, t.compression_settings));
+                        bump(
+                            &mut compression,
+                            format!("{} / {}", t.compression_settings, t.format.name()),
+                        );
+                        bump(
+                            &mut srgb,
+                            format!("SRGB={} / {}", t.srgb, t.compression_settings),
+                        );
                         bump(&mut slices, format!("slices={}", t.num_slices));
                         let ub = t.mips.iter().filter(|m| m.in_ubulk()).count();
                         let avail = t.mips.iter().filter(|m| m.is_available()).count();
-                        bump(&mut stream, format!("mips={} available={} ubulk_mips={}", t.mips.len(), avail, ub));
-                        if matches!(t.format.name(), "PF_BC7" | "PF_BC6H") || t.is_cube() || !t.format.bytes_per_unit().is_some() {
+                        bump(
+                            &mut stream,
+                            format!(
+                                "mips={} available={} ubulk_mips={}",
+                                t.mips.len(),
+                                avail,
+                                ub
+                            ),
+                        );
+                        if matches!(t.format.name(), "PF_BC7" | "PF_BC6H")
+                            || t.is_cube()
+                            || !t.format.bytes_per_unit().is_some()
+                        {
                             rare.push(format!("{} [{} {}]", f.display(), t.class, t.format.name()));
                         }
                     }
@@ -99,15 +119,28 @@ fn main() {
                 }
             } else {
                 let pf: Vec<&String> = pkg.names.iter().filter(|n| n.starts_with("PF_")).collect();
-                let key = if pf.is_empty() { "(no PF_ name)".to_string() } else { pf.iter().map(|s| s.as_str()).collect::<Vec<_>>().join("+") };
+                let key = if pf.is_empty() {
+                    "(no PF_ name)".to_string()
+                } else {
+                    pf.iter().map(|s| s.as_str()).collect::<Vec<_>>().join("+")
+                };
                 bump(&mut formats, format!("{key} ({class}) [name table]"));
-                if class == "TextureCube" || pf.iter().any(|n| *n == "PF_BC7" || *n == "PF_BC6H" || list_formats.contains(n)) {
+                if class == "TextureCube"
+                    || pf
+                        .iter()
+                        .any(|n| *n == "PF_BC7" || *n == "PF_BC6H" || list_formats.contains(n))
+                {
                     rare.push(format!("{} [{} {}]", f.display(), class, key));
                 }
             }
         }
     }
-    println!("{} .uasset files, {} parse failures, {} Texture2D/TextureCube exports", files.len(), parse_fail, textures);
+    println!(
+        "{} .uasset files, {} parse failures, {} Texture2D/TextureCube exports",
+        files.len(),
+        parse_fail,
+        textures
+    );
     print("texture-like export classes", &classes);
     print("pixel formats", &formats);
     print("compression settings / format", &compression);

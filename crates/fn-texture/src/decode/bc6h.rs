@@ -11,7 +11,10 @@ const HALF_ONE: u16 = 0x3c00;
 
 /// Endpoint precision (bits) per detex mode.
 const EPB: [u32; 14] = [10, 7, 11, 11, 11, 9, 8, 8, 8, 6, 10, 11, 12, 16];
-const MAP_MODE: [i8; 32] = [0, 1, 2, 10, -1, -1, 3, 11, -1, -1, 4, 12, -1, -1, 5, 13, -1, -1, 6, -1, -1, -1, 7, -1, -1, -1, 8, -1, -1, -1, 9, -1];
+const MAP_MODE: [i8; 32] = [
+    0, 1, 2, 10, -1, -1, 3, 11, -1, -1, 4, 12, -1, -1, 5, 13, -1, -1, 6, -1, -1, -1, 7, -1, -1, -1,
+    8, -1, -1, -1, 9, -1,
+];
 
 /// Bits `lo..=hi` of a 64 bit word.
 #[inline]
@@ -51,7 +54,11 @@ fn unquantize(x: i32, mode: usize) -> i32 {
 }
 
 fn interpolate(e0: i32, e1: i32, idx: usize, bits: u32) -> i32 {
-    let w = if bits == 3 { WEIGHT3[idx] } else { WEIGHT4[idx] } as i32;
+    let w = if bits == 3 {
+        WEIGHT3[idx]
+    } else {
+        WEIGHT4[idx]
+    } as i32;
     ((64 - w) * e0 + w * e1 + 32) >> 6
 }
 
@@ -62,7 +69,11 @@ pub fn decode_block(b: &[u8], out: &mut [[u16; 4]; 16]) {
     let d1 = u64::from_le_bytes(b[8..16].try_into().unwrap());
 
     let m2 = (d0 & 3) as usize;
-    let mode: i32 = if m2 < 2 { m2 as i32 } else { MAP_MODE[m2 | (((d0 >> 2) & 7) as usize) << 2] as i32 };
+    let mode: i32 = if m2 < 2 {
+        m2 as i32
+    } else {
+        MAP_MODE[m2 | (((d0 >> 2) & 7) as usize) << 2] as i32
+    };
     if mode < 0 {
         *out = [[0, 0, 0, HALF_ONE]; 16];
         return;
@@ -447,7 +458,11 @@ pub fn decode_block(b: &[u8], out: &mut [[u16; 4]; 16]) {
     let ibits: u32 = if d0 & 3 == 3 { 4 } else { 3 };
     let mut bits = idx_start;
     let mut take = |n: u32| -> usize {
-        let v = if bits >= 64 { (d1 >> (bits - 64)) & ((1u64 << n) - 1) } else { (d0 >> bits) & ((1u64 << n) - 1) };
+        let v = if bits >= 64 {
+            (d1 >> (bits - 64)) & ((1u64 << n) - 1)
+        } else {
+            (d0 >> bits) & ((1u64 << n) - 1)
+        };
         bits += n;
         v as usize
     };
@@ -455,7 +470,9 @@ pub fn decode_block(b: &[u8], out: &mut [[u16; 4]; 16]) {
         let s = subset_of(i);
         let n = if i == anchor(s) { ibits - 1 } else { ibits };
         let idx = take(n);
-        let ch = |a: &[i32; 4]| -> u16 { (interpolate(a[2 * s], a[2 * s + 1], idx, ibits) * 31 / 64) as u16 };
+        let ch = |a: &[i32; 4]| -> u16 {
+            (interpolate(a[2 * s], a[2 * s + 1], idx, ibits) * 31 / 64) as u16
+        };
         out[i] = [ch(&r), ch(&gg), ch(&bb), HALF_ONE];
     }
 }

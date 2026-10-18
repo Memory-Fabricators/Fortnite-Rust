@@ -156,19 +156,48 @@ pub struct StartupLayout {
 
 impl StartupLayout {
     /// DPI scale from the shared curve (`crate::layout::dpi_scale`).
-    pub fn new(w: f32, h: f32) -> Self { Self::with_scale(w, h, crate::layout::dpi_scale(w, h)) }
+    pub fn new(w: f32, h: f32) -> Self {
+        Self::with_scale(w, h, crate::layout::dpi_scale(w, h))
+    }
 
     pub fn with_scale(w: f32, h: f32, s: f32) -> Self {
-        let plate = Rect::new(w - (BADGE_MARGIN_RIGHT + BADGE_W) * s, BADGE_MARGIN_TOP * s, BADGE_W * s, BADGE_H * s);
+        let plate = Rect::new(
+            w - (BADGE_MARGIN_RIGHT + BADGE_W) * s,
+            BADGE_MARGIN_TOP * s,
+            BADGE_W * s,
+            BADGE_H * s,
+        );
         let pad = BADGE_TEXT_PAD;
-        let plate_text_area = Rect::new(plate.x + pad[0] * s, plate.y + pad[1] * s, plate.w - (pad[0] + pad[2]) * s, plate.h - (pad[1] + pad[3]) * s);
-        let bar = Rect::new(BAR_MARGIN_X * s, h - (BAR_MARGIN_BOTTOM + BAR_H) * s, (w - 2. * BAR_MARGIN_X * s).max(1.), BAR_H * s);
+        let plate_text_area = Rect::new(
+            plate.x + pad[0] * s,
+            plate.y + pad[1] * s,
+            plate.w - (pad[0] + pad[2]) * s,
+            plate.h - (pad[1] + pad[3]) * s,
+        );
+        let bar = Rect::new(
+            BAR_MARGIN_X * s,
+            h - (BAR_MARGIN_BOTTOM + BAR_H) * s,
+            (w - 2. * BAR_MARGIN_X * s).max(1.),
+            BAR_H * s,
+        );
         let row_bottom = bar.y - BAR_SLOT_PAD_TOP * s;
-        Self { scale: s, w, h, atlas: Rect::new(0., 0., w, h), plate, plate_text_area, bar, row_bottom, font_px: ((FONT_SIZE * s).round().max(6.)) as u32 }
+        Self {
+            scale: s,
+            w,
+            h,
+            atlas: Rect::new(0., 0., w, h),
+            plate,
+            plate_text_area,
+            bar,
+            row_bottom,
+            font_px: ((FONT_SIZE * s).round().max(6.)) as u32,
+        }
     }
 
     /// Whether the original would create the atlas brush at this system resolution width (see [`ART_MIN_RES_X`]).
-    pub fn atlas_brush_exists(res_x: f32) -> bool { res_x >= ART_MIN_RES_X }
+    pub fn atlas_brush_exists(res_x: f32) -> bool {
+        res_x >= ART_MIN_RES_X
+    }
 
     /// EARLY ACCESS text: (pen x, baseline y) in pixels for a line of width `text_w` with the font's `ascent` and `descent` (positive) in pixels:
     /// centred horizontally and vertically in [`StartupLayout::plate_text_area`].
@@ -188,8 +217,16 @@ impl StartupLayout {
         let text_top = top + (row_h - lh) * 0.5;
         let throbber_x = x + text_w + THROBBER_PAD_LEFT * s;
         LoadingRow {
-            text_x: x, baseline: text_top + ascent, row: Rect::new(x, top, text_w + (THROBBER_PAD_LEFT + THROBBER_DESIRED) * s, row_h),
-            throbber_center: [throbber_x + THROBBER_RADIUS * s, top + row_h * 0.5], throbber_radius: THROBBER_RADIUS * s,
+            text_x: x,
+            baseline: text_top + ascent,
+            row: Rect::new(
+                x,
+                top,
+                text_w + (THROBBER_PAD_LEFT + THROBBER_DESIRED) * s,
+                row_h,
+            ),
+            throbber_center: [throbber_x + THROBBER_RADIUS * s, top + row_h * 0.5],
+            throbber_radius: THROBBER_RADIUS * s,
         }
     }
 
@@ -197,78 +234,168 @@ impl StartupLayout {
     pub fn bar_fill(&self, fraction: f32) -> Rect {
         let inset = BAR_BORDER_PADDING_X * self.scale;
         let inner_w = (self.bar.w - 2. * inset).max(0.);
-        Rect::new(self.bar.x + inset, self.bar.y, inner_w * fraction.clamp(0., 1.), self.bar.h)
+        Rect::new(
+            self.bar.x + inset,
+            self.bar.y,
+            inner_w * fraction.clamp(0., 1.),
+            self.bar.h,
+        )
     }
 }
 
 /// Geometry of the LOADING row in pixels.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct LoadingRow { pub text_x: f32, pub baseline: f32, pub row: Rect, pub throbber_center: [f32; 2], pub throbber_radius: f32 }
+pub struct LoadingRow {
+    pub text_x: f32,
+    pub baseline: f32,
+    pub row: Rect,
+    pub throbber_center: [f32; 2],
+    pub throbber_radius: f32,
+}
 
 /// Displayed progress (the SProgressBar.Percent getter): `fading` = the fade curve is playing.
-pub fn bar_fraction(progress: f32, fading: bool) -> f32 { if fading { 1. } else { (progress as f64 * BAR_PERCENT_SCALE as f64).clamp(0., 1.) as f32 } }
+pub fn bar_fraction(progress: f32, fading: bool) -> f32 {
+    if fading {
+        1.
+    } else {
+        (progress as f64 * BAR_PERCENT_SCALE as f64).clamp(0., 1.) as f32
+    }
+}
 
 /// Alpha of a fading layer `t` seconds after `Play`: `1 - clamp((t - delay) / FADE_SECONDS, 0, 1)` (GetLerp of a linear curve; see `fade.alpha`).
-pub fn fade_alpha(t: f32, delay: f32) -> f32 { 1. - ((t - delay) / FADE_SECONDS).clamp(0., 1.) }
+pub fn fade_alpha(t: f32, delay: f32) -> f32 {
+    1. - ((t - delay) / FADE_SECONDS).clamp(0., 1.)
+}
 
 /// Throbber revolution phase in 0..1 at time `t` (one revolution per [`THROBBER_PERIOD`]; ASSUMED how the engine maps it to piece positions).
-pub fn throbber_phase(t: f32) -> f32 { (t / THROBBER_PERIOD).rem_euclid(1.) }
+pub fn throbber_phase(t: f32) -> f32 {
+    (t / THROBBER_PERIOD).rem_euclid(1.)
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn close(a: f32, b: f32) -> bool { (a - b).abs() < 1e-3 }
-    #[test] fn constants_are_the_recovered_slate_numbers() {
+    fn close(a: f32, b: f32) -> bool {
+        (a - b).abs() < 1e-3
+    }
+    #[test]
+    fn constants_are_the_recovered_slate_numbers() {
         assert!(!PROVISIONAL);
-        assert_eq!((BADGE_W, BADGE_H, BADGE_MARGIN_TOP, BADGE_MARGIN_RIGHT), (584., 160., 40., 60.));
+        assert_eq!(
+            (BADGE_W, BADGE_H, BADGE_MARGIN_TOP, BADGE_MARGIN_RIGHT),
+            (584., 160., 40., 60.)
+        );
         assert_eq!(BADGE_TEXT_PAD, [0., 7., 7., 0.]);
         assert_eq!((FONT_SIZE, BADGE_TEXT_PX, LOADING_PX), (48., 48., 48.));
-        assert_eq!((BAR_H, BAR_MARGIN_X, BAR_MARGIN_BOTTOM, BAR_SLOT_PAD_TOP), (6., 16., 16., 6.));
-        assert_eq!((THROBBER_RADIUS, THROBBER_PAD_LEFT, THROBBER_PIECES, THROBBER_PERIOD), (20., 16., 6, 0.75));
-        assert_eq!((FADE_SECONDS, FLAG1_FADE_DELAY_SECONDS, MANAGER_MIN_SHOW_SECONDS, VIEWPORT_ZORDER), (0.2, 1., 2., 20000));
+        assert_eq!(
+            (BAR_H, BAR_MARGIN_X, BAR_MARGIN_BOTTOM, BAR_SLOT_PAD_TOP),
+            (6., 16., 16., 6.)
+        );
+        assert_eq!(
+            (
+                THROBBER_RADIUS,
+                THROBBER_PAD_LEFT,
+                THROBBER_PIECES,
+                THROBBER_PERIOD
+            ),
+            (20., 16., 6, 0.75)
+        );
+        assert_eq!(
+            (
+                FADE_SECONDS,
+                FLAG1_FADE_DELAY_SECONDS,
+                MANAGER_MIN_SHOW_SECONDS,
+                VIEWPORT_ZORDER
+            ),
+            (0.2, 1., 2., 20000)
+        );
         assert!(close(BAR_BOX_MARGIN, 0.416_666_67));
         assert!(!ART_COVER && ART_MIN_RES_X == 1920.);
     }
-    #[test] fn plate_is_top_right_at_native_size_with_the_overlay_padding() {
+    #[test]
+    fn plate_is_top_right_at_native_size_with_the_overlay_padding() {
         let l = StartupLayout::with_scale(1920., 1080., 1.);
-        assert_eq!((l.plate.x, l.plate.y, l.plate.w, l.plate.h), (1920. - 60. - 584., 40., 584., 160.));
-        assert_eq!((l.plate_text_area.x, l.plate_text_area.y, l.plate_text_area.w, l.plate_text_area.h), (l.plate.x, 47., 577., 153.));
+        assert_eq!(
+            (l.plate.x, l.plate.y, l.plate.w, l.plate.h),
+            (1920. - 60. - 584., 40., 584., 160.)
+        );
+        assert_eq!(
+            (
+                l.plate_text_area.x,
+                l.plate_text_area.y,
+                l.plate_text_area.w,
+                l.plate_text_area.h
+            ),
+            (l.plate.x, 47., 577., 153.)
+        );
         let l2 = StartupLayout::with_scale(2560., 1440., 1.5);
-        assert!(close(l2.plate.right(), 2560. - 60. * 1.5) && close(l2.plate.w, 584. * 1.5) && close(l2.plate.y, 60.));
+        assert!(
+            close(l2.plate.right(), 2560. - 60. * 1.5)
+                && close(l2.plate.w, 584. * 1.5)
+                && close(l2.plate.y, 60.)
+        );
     }
-    #[test] fn badge_text_is_centred_in_the_padded_box() {
+    #[test]
+    fn badge_text_is_centred_in_the_padded_box() {
         let l = StartupLayout::with_scale(1920., 1080., 1.);
         // BurbankBigRegular-Bold @ 48: advance("EARLY ACCESS") = 284.256, ascent 45.6, descent 14.4 -> baseline 99.1 below the plate top = 0.619 of 160
         let [x, base] = l.badge_text_origin(284.256, 45.6, 14.4);
-        assert!(close(x, l.plate.x + (577. - 284.256) / 2.) && close(base, 40. + 7. + (153. - 60.) / 2. + 45.6));
+        assert!(
+            close(x, l.plate.x + (577. - 284.256) / 2.)
+                && close(base, 40. + 7. + (153. - 60.) / 2. + 45.6)
+        );
         assert!(((base - l.plate.y) / l.plate.h - BADGE_TEXT_BASELINE).abs() < 1e-3);
     }
-    #[test] fn bar_spans_the_window_minus_the_border_padding_and_sits_16_units_up() {
+    #[test]
+    fn bar_spans_the_window_minus_the_border_padding_and_sits_16_units_up() {
         let l = StartupLayout::with_scale(1920., 1080., 1.);
-        assert_eq!((l.bar.x, l.bar.y, l.bar.w, l.bar.h), (16., 1080. - 22., 1920. - 32., 6.));
+        assert_eq!(
+            (l.bar.x, l.bar.y, l.bar.w, l.bar.h),
+            (16., 1080. - 22., 1920. - 32., 6.)
+        );
         assert!(close(l.bar.bottom(), 1080. - 16.));
         assert!(close(l.row_bottom, 1080. - 28.));
         let f = l.bar_fill(0.5);
         assert!(close(f.x, 17.) && close(f.w, (1888. - 2.) * 0.5));
     }
-    #[test] fn loading_row_is_bottom_left_with_the_throbber_right_of_the_text() {
+    #[test]
+    fn loading_row_is_bottom_left_with_the_throbber_right_of_the_text() {
         let l = StartupLayout::with_scale(1920., 1080., 1.);
         let r = l.loading_row(168.528, 45.6, 14.4);
         assert!(close(r.text_x, 16.) && close(r.baseline, 1080. - 28. - 14.4));
-        assert!(close(r.throbber_center[0], 16. + 168.528 + 16. + 20.) && close(r.throbber_center[1], 1080. - 28. - 30.) && r.throbber_radius == 20.);
+        assert!(
+            close(r.throbber_center[0], 16. + 168.528 + 16. + 20.)
+                && close(r.throbber_center[1], 1080. - 28. - 30.)
+                && r.throbber_radius == 20.
+        );
         // the legacy margin constants reproduce the same baseline through the old formula (baseline = h - LOADING_MARGIN_BOTTOM - BAR_H - BAR_MARGIN_BOTTOM)
-        assert!(close(1080. - LOADING_MARGIN_BOTTOM - BAR_H - BAR_MARGIN_BOTTOM, r.baseline));
+        assert!(close(
+            1080. - LOADING_MARGIN_BOTTOM - BAR_H - BAR_MARGIN_BOTTOM,
+            r.baseline
+        ));
     }
-    #[test] fn progress_and_fade_follow_the_getters() {
-        assert!(close(bar_fraction(0.5, false), 0.49) && bar_fraction(1.2, false) == 1. && bar_fraction(-1., false) == 0. && bar_fraction(0.1, true) == 1.);
+    #[test]
+    fn progress_and_fade_follow_the_getters() {
+        assert!(
+            close(bar_fraction(0.5, false), 0.49)
+                && bar_fraction(1.2, false) == 1.
+                && bar_fraction(-1., false) == 0.
+                && bar_fraction(0.1, true) == 1.
+        );
         assert_eq!(fade_alpha(0., 0.), 1.);
         assert!(close(fade_alpha(0.1, 0.), 0.5) && fade_alpha(0.3, 0.) == 0.);
         assert_eq!(fade_alpha(0.9, 1.), 1.);
         assert!(close(fade_alpha(1.1, 1.), 0.5));
         assert!(close(throbber_phase(0.75 + 0.375), 0.5));
     }
-    #[test] fn atlas_gate_matches_the_exe() { assert!(StartupLayout::atlas_brush_exists(1920.) && !StartupLayout::atlas_brush_exists(1919.)); }
-    #[test] fn new_uses_the_shared_dpi_curve() {
+    #[test]
+    fn atlas_gate_matches_the_exe() {
+        assert!(
+            StartupLayout::atlas_brush_exists(1920.) && !StartupLayout::atlas_brush_exists(1919.)
+        );
+    }
+    #[test]
+    fn new_uses_the_shared_dpi_curve() {
         let l = StartupLayout::new(1280., 720.);
         assert!(close(l.scale, 0.666) && l.font_px == 32);
     }

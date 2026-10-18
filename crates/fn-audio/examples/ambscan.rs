@@ -28,8 +28,13 @@ fn main() {
     let mut hist: BTreeMap<String, usize> = BTreeMap::new();
     let lvl_filter = a.get(4).cloned().unwrap_or_default();
     for (lp, _) in &levels {
-        if !lp.contains(&lvl_filter) { continue; }
-        let Ok(pd) = PackageData::load(&set, lp) else { println!("cannot load {lp}"); continue };
+        if !lp.contains(&lvl_filter) {
+            continue;
+        }
+        let Ok(pd) = PackageData::load(&set, lp) else {
+            println!("cannot load {lp}");
+            continue;
+        };
         let Ok(pkg) = pd.package() else { continue };
         for i in 0..pkg.exports.len() {
             let cn = pkg.export_class_name(i);
@@ -38,7 +43,12 @@ fn main() {
                 *hist.entry(cn.clone()).or_insert(0) += 1;
                 if dump.as_ref().map_or(false, |d| l.contains(d.as_str())) {
                     match pkg.read_export(i) {
-                        Ok(o) => println!("DUMP {lp} #{i} {} {} {}", cn, pkg.exports[i].name, o.props.to_json(&pkg)),
+                        Ok(o) => println!(
+                            "DUMP {lp} #{i} {} {} {}",
+                            cn,
+                            pkg.exports[i].name,
+                            o.props.to_json(&pkg)
+                        ),
                         Err(e) => println!("DUMPERR {lp} #{i} {cn} {e}"),
                     }
                 }

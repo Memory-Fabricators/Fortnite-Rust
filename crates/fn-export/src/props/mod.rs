@@ -29,10 +29,14 @@ pub struct PropsArgs {
 pub fn parse(args: &[String]) -> Result<PropsArgs, String> {
     let mut a = PropsArgs {
         cmd: args.first().cloned().unwrap_or_default(),
-        paks: PathBuf::from("C:/Users/Brady/Downloads/1.8/Fortnite/Fortnite/FortniteGame/Content/Paks"),
+        paks: PathBuf::from(
+            "C:/Users/Brady/Downloads/1.8/Fortnite/Fortnite/FortniteGame/Content/Paks",
+        ),
         out: PathBuf::from("assets/props"),
         file: None,
-        jobs: std::thread::available_parallelism().map_or(4, |n| n.get()).min(8),
+        jobs: std::thread::available_parallelism()
+            .map_or(4, |n| n.get())
+            .min(8),
         rest: vec![],
     };
     let mut it = args.iter().skip(1);
@@ -41,7 +45,13 @@ pub fn parse(args: &[String]) -> Result<PropsArgs, String> {
             "--paks" => a.paks = PathBuf::from(it.next().ok_or("--paks needs a value")?),
             "--out" => a.out = PathBuf::from(it.next().ok_or("--out needs a value")?),
             "--file" => a.file = Some(PathBuf::from(it.next().ok_or("--file needs a value")?)),
-            "--jobs" => a.jobs = it.next().ok_or("--jobs needs a value")?.parse().map_err(|_| "bad --jobs")?,
+            "--jobs" => {
+                a.jobs = it
+                    .next()
+                    .ok_or("--jobs needs a value")?
+                    .parse()
+                    .map_err(|_| "bad --jobs")?
+            }
             other => a.rest.push(other.to_string()),
         }
     }
@@ -72,7 +82,9 @@ pub fn main(args: &[String]) -> i32 {
         "foliage" => foliage::run(&src, &a),             // FOLIAGE HOOK
         "export" => export::run(&src, &a),
         "sheet" => sheet::run(&a.out).map(|f| println!("{}", f.join(", "))),
-        c => Err(format!("unknown props command '{c}' (survey | layout | export)")),
+        c => Err(format!(
+            "unknown props command '{c}' (survey | layout | export)"
+        )),
     };
     match r {
         Ok(()) => 0,
@@ -82,6 +94,3 @@ pub fn main(args: &[String]) -> i32 {
         }
     }
 }
-
-
-

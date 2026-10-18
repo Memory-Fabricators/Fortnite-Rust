@@ -23,8 +23,10 @@ fn fail(e: impl std::fmt::Display) -> ! {
 fn render(lib: &mut Library, cue: &str) -> Vec<f32> {
     let mut eng = AudioEngine::new(48000);
     let h = eng.handle();
-    lib.prepare_cue(&h, cue).unwrap_or_else(|e| fail(format!("{cue}: {e}")));
-    h.play_cue(cue, PlayParams::default()).unwrap_or_else(|e| fail(e));
+    lib.prepare_cue(&h, cue)
+        .unwrap_or_else(|e| fail(format!("{cue}: {e}")));
+    h.play_cue(cue, PlayParams::default())
+        .unwrap_or_else(|e| fail(e));
     eng.render_offline(48000 * 2, 1)
 }
 
@@ -73,11 +75,22 @@ fn main() {
                 eprintln!("warning: {p}: {why}");
             }
             let st = write_pack(install, &cl.files, &out).unwrap_or_else(|e| fail(e));
-            println!("{}: {} entries from {} packages, {} bytes ({} payload) in {:.1}s", out.display(), st.entries, cl.packages.len(), st.bytes, st.payload_bytes, t.elapsed().as_secs_f64());
+            println!(
+                "{}: {} entries from {} packages, {} bytes ({} payload) in {:.1}s",
+                out.display(),
+                st.entries,
+                cl.packages.len(),
+                st.bytes,
+                st.payload_bytes,
+                t.elapsed().as_secs_f64()
+            );
             if let Some(m) = manifest {
-                let mut by_ext: std::collections::BTreeMap<String, (usize, u64)> = Default::default();
+                let mut by_ext: std::collections::BTreeMap<String, (usize, u64)> =
+                    Default::default();
                 for (n, s) in &cl.files {
-                    let e = by_ext.entry(n.rsplit('.').next().unwrap_or("").to_ascii_lowercase()).or_default();
+                    let e = by_ext
+                        .entry(n.rsplit('.').next().unwrap_or("").to_ascii_lowercase())
+                        .or_default();
                     e.0 += 1;
                     e.1 += s;
                 }
@@ -89,17 +102,26 @@ fn main() {
                     "problems": cl.problems.iter().map(|(a, b)| format!("{a}: {b}")).collect::<Vec<_>>(),
                     "files": cl.files.keys().collect::<Vec<_>>(),
                 });
-                fs::write(&m, serde_json::to_string_pretty(&v).unwrap()).unwrap_or_else(|e| fail(e));
+                fs::write(&m, serde_json::to_string_pretty(&v).unwrap())
+                    .unwrap_or_else(|e| fail(e));
             }
         }
         "list" if args.len() == 2 => {
             let inst = open_pack(&args[1]).unwrap_or_else(|e| fail(e));
-            let mut v: Vec<(String, u64)> = inst.paks.effective().map(|(_, e)| (e.rel_path().to_string(), e.size)).collect();
+            let mut v: Vec<(String, u64)> = inst
+                .paks
+                .effective()
+                .map(|(_, e)| (e.rel_path().to_string(), e.size))
+                .collect();
             v.sort();
             for (n, s) in &v {
                 println!("{s:>10}  {n}");
             }
-            println!("{} entries, {} bytes", v.len(), v.iter().map(|x| x.1).sum::<u64>());
+            println!(
+                "{} entries, {} bytes",
+                v.len(),
+                v.iter().map(|x| x.1).sum::<u64>()
+            );
         }
         "verify" if args.len() == 2 => {
             let mut a = Library::open(&root).unwrap_or_else(|e| fail(e));
@@ -107,23 +129,47 @@ fn main() {
             let (ca, cb) = (a.classes().clone(), b.classes().clone());
             let mut bad = 0;
             if ca.len() != cb.len() || ca.master_volume() != cb.master_volume() {
-                println!("SoundClass tree differs: install {} classes, pack {}", ca.len(), cb.len());
+                println!(
+                    "SoundClass tree differs: install {} classes, pack {}",
+                    ca.len(),
+                    cb.len()
+                );
                 bad += 1;
             } else {
-                println!("SoundClass tree: {} classes, master {} (identical)", cb.len(), cb.master_volume());
+                println!(
+                    "SoundClass tree: {} classes, master {} (identical)",
+                    cb.len(),
+                    cb.master_volume()
+                );
             }
             for cue in default_cues() {
                 let (ra, rb) = (render(&mut a, cue), render(&mut b, cue));
-                let same = ra.len() == rb.len() && ra.iter().zip(&rb).all(|(x, y)| x.to_bits() == y.to_bits());
+                let same = ra.len() == rb.len()
+                    && ra.iter().zip(&rb).all(|(x, y)| x.to_bits() == y.to_bits());
                 let peak = rb.iter().fold(0f32, |m, &x| m.max(x.abs()));
-                println!("{:<86} {} peak {:.3}", cue.rsplit('/').next().unwrap(), if same { "identical" } else { "DIFFERENT" }, peak);
+                println!(
+                    "{:<86} {} peak {:.3}",
+                    cue.rsplit('/').next().unwrap(),
+                    if same { "identical" } else { "DIFFERENT" },
+                    peak
+                );
                 // a cue that is silent in its first 2 s (random-delay / long-lead ambience loops) is only a problem when the install renders it differently: identical silence is still a faithful copy
                 if !same {
                     bad += 1;
                 }
             }
-            let mix = fn_audio::soundclass::SoundMix::load(&b.install, "/Game/Sounds/FortSoundClassesAndModes/Fort_WeaponMelee_Duck_MixMod");
-            println!("duck mix from pack: {}", if matches!(mix, Ok(Some(_))) { "ok" } else { "MISSING" });
+            let mix = fn_audio::soundclass::SoundMix::load(
+                &b.install,
+                "/Game/Sounds/FortSoundClassesAndModes/Fort_WeaponMelee_Duck_MixMod",
+            );
+            println!(
+                "duck mix from pack: {}",
+                if matches!(mix, Ok(Some(_))) {
+                    "ok"
+                } else {
+                    "MISSING"
+                }
+            );
             if !matches!(mix, Ok(Some(_))) {
                 bad += 1;
             }
@@ -134,4 +180,3 @@ fn main() {
         _ => usage(),
     }
 }
-

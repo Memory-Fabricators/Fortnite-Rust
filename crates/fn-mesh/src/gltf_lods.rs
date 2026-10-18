@@ -16,7 +16,7 @@
 //! the glTF bitangent `cross(N, T) * w` equals the swapped UE bitangent only for `w = -sign_UE`; this writer stores
 //! `w = -sign_UE` (the legacy skeletal/static exporter stores `+sign_UE`; see its docs).
 use crate::static_mesh::{StaticLod, StaticMesh};
-use crate::{unpack_normal_unit, tangent_sign};
+use crate::{tangent_sign, unpack_normal_unit};
 use fn_ueio::{Error, Result};
 use std::fmt::Write as _;
 
@@ -111,11 +111,31 @@ impl Doc {
         }
         let off = self.bin.len();
         self.bin.extend_from_slice(bytes);
-        self.views.push(View { byte_offset: off, byte_length: bytes.len() });
+        self.views.push(View {
+            byte_offset: off,
+            byte_length: bytes.len(),
+        });
         self.views.len() - 1
     }
-    fn acc(&mut self, view: usize, byte_offset: usize, component: u32, count: usize, ty: &'static str, normalized: bool, min_max: Option<([f32; 3], [f32; 3])>) -> usize {
-        self.accs.push(Acc { view, byte_offset, component, count, ty, normalized, min_max });
+    fn acc(
+        &mut self,
+        view: usize,
+        byte_offset: usize,
+        component: u32,
+        count: usize,
+        ty: &'static str,
+        normalized: bool,
+        min_max: Option<([f32; 3], [f32; 3])>,
+    ) -> usize {
+        self.accs.push(Acc {
+            view,
+            byte_offset,
+            component,
+            count,
+            ty,
+            normalized,
+            min_max,
+        });
         self.accs.len() - 1
     }
 }
@@ -152,8 +172,14 @@ fn add_lod(doc: &mut Doc, lod: &StaticLod) -> Result<LodAcc> {
     if n == 0 || lod.indices.is_empty() {
         return Err(Error::Invalid("LOD has no geometry".into()));
     }
-    if lod.tangent_x.len() != n || lod.tangent_z.len() != n || lod.uvs.iter().any(|u| u.len() != n) || (!lod.colors.is_empty() && lod.colors.len() != n) {
-        return Err(Error::Invalid("vertex streams have different lengths".into()));
+    if lod.tangent_x.len() != n
+        || lod.tangent_z.len() != n
+        || lod.uvs.iter().any(|u| u.len() != n)
+        || (!lod.colors.is_empty() && lod.colors.len() != n)
+    {
+        return Err(Error::Invalid(
+            "vertex streams have different lengths".into(),
+        ));
     }
     let mut pos = Vec::with_capacity(n * 3);
     let mut nrm = Vec::with_capacity(n * 3);
@@ -219,16 +245,29 @@ fn add_lod(doc: &mut Doc, lod: &StaticLod) -> Result<LodAcc> {
         let a = s.first_index as usize;
         let cnt = 3 * s.num_triangles as usize;
         if a + cnt > lod.indices.len() {
-            return Err(Error::Invalid(format!("section {si} exceeds the index buffer")));
+            return Err(Error::Invalid(format!(
+                "section {si} exceeds the index buffer"
+            )));
         }
         sections.push(doc.acc(iv, a * size, comp, cnt, "SCALAR", false, None));
     }
-    Ok(LodAcc { position, normal, tangent, color, uvs, sections })
+    Ok(LodAcc {
+        position,
+        normal,
+        tangent,
+        color,
+        uvs,
+        sections,
+    })
 }
 
 /// Build `(<name>.gltf text, <name>.bin bytes)` for every LOD of `mesh`. `materials[i]` describes material slot `i`
 /// (missing entries get a neutral grey material named after the slot).
-pub fn static_mesh_to_gltf_lods(mesh: &StaticMesh, name: &str, materials: &[PropMaterial]) -> Result<(String, Vec<u8>)> {
+pub fn static_mesh_to_gltf_lods(
+    mesh: &StaticMesh,
+    name: &str,
+    materials: &[PropMaterial],
+) -> Result<(String, Vec<u8>)> {
     if mesh.lods.is_empty() {
         return Err(Error::Invalid("mesh has no LODs".into()));
     }
@@ -254,12 +293,17 @@ pub fn static_mesh_to_gltf_lods(mesh: &StaticMesh, name: &str, materials: &[Prop
     let n_slots = mesh.materials.len().max(materials.len());
     for slot in 0..n_slots {
         let sm = mesh.materials.get(slot);
-        let m = materials.get(slot).cloned().unwrap_or_else(|| PropMaterial {
-            name: sm.and_then(|s| s.material_name.clone()).unwrap_or_else(|| format!("material_{slot}")),
-            slot_name: sm.map(|s| s.slot_name.clone()).unwrap_or_default(),
-            base_color_factor: [0.5, 0.5, 0.5, 1.0],
-            ..Default::default()
-        });
+        let m = materials
+            .get(slot)
+            .cloned()
+            .unwrap_or_else(|| PropMaterial {
+                name: sm
+                    .and_then(|s| s.material_name.clone())
+                    .unwrap_or_else(|| format!("material_{slot}")),
+                slot_name: sm.map(|s| s.slot_name.clone()).unwrap_or_default(),
+                base_color_factor: [0.5, 0.5, 0.5, 1.0],
+                ..Default::default()
+            });
         let bc = img(&m.base_color_uri);
         let nm = img(&m.normal_uri);
         let mk = img(&m.mask_uri);
@@ -268,7 +312,10 @@ pub fn static_mesh_to_gltf_lods(mesh: &StaticMesh, name: &str, materials: &[Prop
         if let Some(i) = bc {
             let _ = write!(s, "        \"baseColorTexture\": {{\"index\": {i}}},\n");
         }
-        let _ = write!(s, "        \"metallicFactor\": 0.0,\n        \"roughnessFactor\": 0.9\n      }},\n");
+        let _ = write!(
+            s,
+            "        \"metallicFactor\": 0.0,\n        \"roughnessFactor\": 0.9\n      }},\n"
+        );
         if let Some(i) = nm {
             let _ = write!(s, "      \"normalTexture\": {{\"index\": {i}}},\n");
         }
@@ -276,7 +323,12 @@ pub fn static_mesh_to_gltf_lods(mesh: &StaticMesh, name: &str, materials: &[Prop
         if m.alpha_mode == "MASK" {
             let _ = write!(s, "      \"alphaCutoff\": {},\n", f(m.alpha_cutoff));
         }
-        let _ = write!(s, "      \"doubleSided\": {},\n      \"extras\": {{\"slot\": {slot}, \"slot_name\": {}", m.double_sided, js(&m.slot_name));
+        let _ = write!(
+            s,
+            "      \"doubleSided\": {},\n      \"extras\": {{\"slot\": {slot}, \"slot_name\": {}",
+            m.double_sided,
+            js(&m.slot_name)
+        );
         if let Some(p) = sm.and_then(|x| x.material.as_ref()) {
             let _ = write!(s, ", \"ue_material\": {}", js(p));
         }
@@ -311,9 +363,16 @@ pub fn static_mesh_to_gltf_lods(mesh: &StaticMesh, name: &str, materials: &[Prop
     out.push_str("  ],\n");
     let _ = write!(out, "  \"meshes\": [\n");
     for (i, (l, a)) in mesh.lods.iter().zip(&lod_accs).enumerate() {
-        let _ = write!(out, "    {{\"name\": {}, \"primitives\": [\n", js(&format!("{name}_LOD{i}")));
+        let _ = write!(
+            out,
+            "    {{\"name\": {}, \"primitives\": [\n",
+            js(&format!("{name}_LOD{i}"))
+        );
         for (si, s) in l.sections.iter().enumerate() {
-            let mut attrs = format!("\"POSITION\": {}, \"NORMAL\": {}, \"TANGENT\": {}", a.position, a.normal, a.tangent);
+            let mut attrs = format!(
+                "\"POSITION\": {}, \"NORMAL\": {}, \"TANGENT\": {}",
+                a.position, a.normal, a.tangent
+            );
             if let Some(c) = a.color {
                 let _ = write!(attrs, ", \"COLOR_0\": {c}");
             }
@@ -330,15 +389,30 @@ pub fn static_mesh_to_gltf_lods(mesh: &StaticMesh, name: &str, materials: &[Prop
                 if si + 1 < l.sections.len() { "," } else { "" }
             );
         }
-        let _ = write!(out, "    ]}}{}\n", if i + 1 < mesh.lods.len() { "," } else { "" });
+        let _ = write!(
+            out,
+            "    ]}}{}\n",
+            if i + 1 < mesh.lods.len() { "," } else { "" }
+        );
     }
     out.push_str("  ],\n");
     let _ = write!(out, "  \"materials\": [\n{mats_json}\n  ],\n");
     if !images.is_empty() {
         out.push_str("  \"images\": [");
-        out.push_str(&images.iter().map(|u| format!("{{\"uri\": {}}}", js(u))).collect::<Vec<_>>().join(", "));
+        out.push_str(
+            &images
+                .iter()
+                .map(|u| format!("{{\"uri\": {}}}", js(u)))
+                .collect::<Vec<_>>()
+                .join(", "),
+        );
         out.push_str("],\n  \"textures\": [");
-        out.push_str(&(0..images.len()).map(|i| format!("{{\"source\": {i}, \"sampler\": 0}}")).collect::<Vec<_>>().join(", "));
+        out.push_str(
+            &(0..images.len())
+                .map(|i| format!("{{\"source\": {i}, \"sampler\": 0}}"))
+                .collect::<Vec<_>>()
+                .join(", "),
+        );
         out.push_str("],\n  \"samplers\": [{\"magFilter\": 9729, \"minFilter\": 9987, \"wrapS\": 10497, \"wrapT\": 10497}],\n");
     }
     let (bmin, bmax) = mesh.bounds.box_min_max();
@@ -361,10 +435,21 @@ pub fn static_mesh_to_gltf_lods(mesh: &StaticMesh, name: &str, materials: &[Prop
         lods_json.join(", ")
     );
 
-    let _ = write!(out, "  \"buffers\": [{{\"uri\": {}, \"byteLength\": {}}}],\n", js(&format!("{name}.bin")), doc.bin.len());
+    let _ = write!(
+        out,
+        "  \"buffers\": [{{\"uri\": {}, \"byteLength\": {}}}],\n",
+        js(&format!("{name}.bin")),
+        doc.bin.len()
+    );
     out.push_str("  \"bufferViews\": [\n");
     for (i, v) in doc.views.iter().enumerate() {
-        let _ = write!(out, "    {{\"buffer\": 0, \"byteOffset\": {}, \"byteLength\": {}}}{}\n", v.byte_offset, v.byte_length, if i + 1 < doc.views.len() { "," } else { "" });
+        let _ = write!(
+            out,
+            "    {{\"buffer\": 0, \"byteOffset\": {}, \"byteLength\": {}}}{}\n",
+            v.byte_offset,
+            v.byte_length,
+            if i + 1 < doc.views.len() { "," } else { "" }
+        );
     }
     out.push_str("  ],\n  \"accessors\": [\n");
     for (i, a) in doc.accs.iter().enumerate() {
@@ -373,21 +458,41 @@ pub fn static_mesh_to_gltf_lods(mesh: &StaticMesh, name: &str, materials: &[Prop
             s.push_str(", \"normalized\": true");
         }
         if let Some((mn, mx)) = a.min_max {
-            let _ = write!(s, ", \"min\": [{}, {}, {}], \"max\": [{}, {}, {}]", f(mn[0]), f(mn[1]), f(mn[2]), f(mx[0]), f(mx[1]), f(mx[2]));
+            let _ = write!(
+                s,
+                ", \"min\": [{}, {}, {}], \"max\": [{}, {}, {}]",
+                f(mn[0]),
+                f(mn[1]),
+                f(mn[2]),
+                f(mx[0]),
+                f(mx[1]),
+                f(mx[2])
+            );
         }
         s.push('}');
-        let _ = write!(out, "{s}{}\n", if i + 1 < doc.accs.len() { "," } else { "" });
+        let _ = write!(
+            out,
+            "{s}{}\n",
+            if i + 1 < doc.accs.len() { "," } else { "" }
+        );
     }
     out.push_str("  ]\n}\n");
     Ok((out, doc.bin))
 }
 
 /// Write `<dir>/<name>.gltf` and `<dir>/<name>.bin`.
-pub fn export_static_mesh_lods(mesh: &StaticMesh, dir: &std::path::Path, name: &str, materials: &[PropMaterial]) -> Result<()> {
+pub fn export_static_mesh_lods(
+    mesh: &StaticMesh,
+    dir: &std::path::Path,
+    name: &str,
+    materials: &[PropMaterial],
+) -> Result<()> {
     let (json, bin) = static_mesh_to_gltf_lods(mesh, name, materials)?;
     std::fs::create_dir_all(dir).map_err(|e| Error::Invalid(format!("{}: {e}", dir.display())))?;
-    std::fs::write(dir.join(format!("{name}.gltf")), json).map_err(|e| Error::Invalid(e.to_string()))?;
-    std::fs::write(dir.join(format!("{name}.bin")), bin).map_err(|e| Error::Invalid(e.to_string()))?;
+    std::fs::write(dir.join(format!("{name}.gltf")), json)
+        .map_err(|e| Error::Invalid(e.to_string()))?;
+    std::fs::write(dir.join(format!("{name}.bin")), bin)
+        .map_err(|e| Error::Invalid(e.to_string()))?;
     Ok(())
 }
 
@@ -403,19 +508,32 @@ mod tests {
         let mut l = StaticLod::default();
         for y in 0..w {
             for x in 0..w {
-                l.positions.push([x as f32 * 10.0, y as f32 * 10.0, (x + y) as f32]);
+                l.positions
+                    .push([x as f32 * 10.0, y as f32 * 10.0, (x + y) as f32]);
                 l.tangent_x.push([255, 127, 127, 255]);
-                l.tangent_z.push([127, 127, 255, if x % 2 == 0 { 255 } else { 0 }]);
+                l.tangent_z
+                    .push([127, 127, 255, if x % 2 == 0 { 255 } else { 0 }]);
             }
         }
-        l.uvs = vec![l.positions.iter().map(|p| [p[0] / 100.0, p[1] / 100.0]).collect(), l.positions.iter().map(|p| [p[1], p[0]]).collect()];
+        l.uvs = vec![
+            l.positions
+                .iter()
+                .map(|p| [p[0] / 100.0, p[1] / 100.0])
+                .collect(),
+            l.positions.iter().map(|p| [p[1], p[0]]).collect(),
+        ];
         l.num_tex_coords = 2;
         if with_colors {
             l.colors = (0..w * w).map(|i| [(i % 256) as u8, 1, 2, 255]).collect();
         }
         for y in 0..n {
             for x in 0..n {
-                let (a, b, c, d) = ((y * w + x) as u32, (y * w + x + 1) as u32, ((y + 1) * w + x) as u32, ((y + 1) * w + x + 1) as u32);
+                let (a, b, c, d) = (
+                    (y * w + x) as u32,
+                    (y * w + x + 1) as u32,
+                    ((y + 1) * w + x) as u32,
+                    ((y + 1) * w + x + 1) as u32,
+                );
                 l.indices.extend_from_slice(&[a, b, c, b, d, c]);
             }
         }
@@ -425,17 +543,42 @@ mod tests {
         let (a0, a1) = mm(&l.indices[..half]);
         let (b0, b1) = mm(&l.indices[half..]);
         l.sections = vec![
-            StaticSection { material_index: 0, first_index: 0, num_triangles: (half / 3) as u32, min_vertex_index: a0, max_vertex_index: a1, enable_collision: true, cast_shadow: true },
-            StaticSection { material_index: 1, first_index: half as u32, num_triangles: (tris - half / 3) as u32, min_vertex_index: b0, max_vertex_index: b1, enable_collision: true, cast_shadow: true },
+            StaticSection {
+                material_index: 0,
+                first_index: 0,
+                num_triangles: (half / 3) as u32,
+                min_vertex_index: a0,
+                max_vertex_index: a1,
+                enable_collision: true,
+                cast_shadow: true,
+            },
+            StaticSection {
+                material_index: 1,
+                first_index: half as u32,
+                num_triangles: (tris - half / 3) as u32,
+                min_vertex_index: b0,
+                max_vertex_index: b1,
+                enable_collision: true,
+                cast_shadow: true,
+            },
         ];
         l
     }
 
     fn mesh(lods: Vec<StaticLod>) -> StaticMesh {
-        let mat = |n: &str| StaticMaterial { slot_name: n.into(), material: Some(format!("/Game/M/{n}.{n}")), material_name: Some(n.into()), uv_channel: UvChannelInfo::default() };
+        let mat = |n: &str| StaticMaterial {
+            slot_name: n.into(),
+            material: Some(format!("/Game/M/{n}.{n}")),
+            material_name: Some(n.into()),
+            uv_channel: UvChannelInfo::default(),
+        };
         StaticMesh {
             name: "T".into(),
-            bounds: Bounds { origin: [0.0; 3], extent: [50.0; 3], radius: 90.0 },
+            bounds: Bounds {
+                origin: [0.0; 3],
+                extent: [50.0; 3],
+                radius: 90.0,
+            },
             materials: vec![mat("Bark"), mat("Leaves")],
             lods,
             screen_size: [1.0, 0.5, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -455,42 +598,79 @@ mod tests {
     #[test]
     fn multi_lod_document_is_consistent() {
         let m = mesh(vec![grid(6, true), grid(4, true), grid(2, false)]);
-        assert!(m.validate().iter().all(|c| c.problems.is_empty()), "{:?}", m.validate());
+        assert!(
+            m.validate().iter().all(|c| c.problems.is_empty()),
+            "{:?}",
+            m.validate()
+        );
         let mats = vec![
-            PropMaterial { name: "Bark".into(), slot_name: "Bark".into(), base_color_uri: Some("../textures/B.png".into()), normal_uri: Some("../textures/BN.png".into()), ..Default::default() },
-            PropMaterial { name: "Leaves".into(), slot_name: "Leaves".into(), base_color_uri: Some("../textures/B.png".into()), alpha_mode: "MASK".into(), alpha_cutoff: 0.33, double_sided: true, ..Default::default() },
+            PropMaterial {
+                name: "Bark".into(),
+                slot_name: "Bark".into(),
+                base_color_uri: Some("../textures/B.png".into()),
+                normal_uri: Some("../textures/BN.png".into()),
+                ..Default::default()
+            },
+            PropMaterial {
+                name: "Leaves".into(),
+                slot_name: "Leaves".into(),
+                base_color_uri: Some("../textures/B.png".into()),
+                alpha_mode: "MASK".into(),
+                alpha_cutoff: 0.33,
+                double_sided: true,
+                ..Default::default()
+            },
         ];
         let (json, bin) = static_mesh_to_gltf_lods(&m, "T", &mats).unwrap();
         let j = parse(&json);
         assert_eq!(j["nodes"].as_array().unwrap().len(), 3);
         assert_eq!(j["scenes"][0]["nodes"], serde_json::json!([0]));
-        assert_eq!(j["images"].as_array().unwrap().len(), 2, "shared uri deduplicated");
+        assert_eq!(
+            j["images"].as_array().unwrap().len(),
+            2,
+            "shared uri deduplicated"
+        );
         assert_eq!(j["materials"][1]["alphaMode"], "MASK");
         assert_eq!(j["materials"][1]["doubleSided"], true);
         // every accessor lies inside its view and the view inside the bin
         let views = j["bufferViews"].as_array().unwrap();
         for v in views {
-            assert!(v["byteOffset"].as_u64().unwrap() + v["byteLength"].as_u64().unwrap() <= bin.len() as u64);
+            assert!(
+                v["byteOffset"].as_u64().unwrap() + v["byteLength"].as_u64().unwrap()
+                    <= bin.len() as u64
+            );
         }
-        assert_eq!(j["buffers"][0]["byteLength"].as_u64().unwrap() as usize, bin.len());
+        assert_eq!(
+            j["buffers"][0]["byteLength"].as_u64().unwrap() as usize,
+            bin.len()
+        );
         // counts of the file = counts of the LOD data
         for (li, l) in m.lods.iter().enumerate() {
             let prims = j["meshes"][li]["primitives"].as_array().unwrap();
             assert_eq!(prims.len(), l.sections.len());
-            let pos = &j["accessors"][prims[0]["attributes"]["POSITION"].as_u64().unwrap() as usize];
+            let pos =
+                &j["accessors"][prims[0]["attributes"]["POSITION"].as_u64().unwrap() as usize];
             assert_eq!(pos["count"].as_u64().unwrap() as usize, l.positions.len());
             let mut tris = 0;
             for (si, p) in prims.iter().enumerate() {
                 let a = &j["accessors"][p["indices"].as_u64().unwrap() as usize];
                 tris += a["count"].as_u64().unwrap() as usize / 3;
-                assert_eq!(a["count"].as_u64().unwrap() as u32, l.sections[si].num_triangles * 3);
-                assert_eq!(p["attributes"].get("COLOR_0").is_some(), !l.colors.is_empty());
+                assert_eq!(
+                    a["count"].as_u64().unwrap() as u32,
+                    l.sections[si].num_triangles * 3
+                );
+                assert_eq!(
+                    p["attributes"].get("COLOR_0").is_some(),
+                    !l.colors.is_empty()
+                );
                 assert!(p["attributes"].get("TEXCOORD_1").is_some());
             }
             assert_eq!(tris, l.indices.len() / 3);
         }
         // position accessor min/max are the swapped, scaled UE box of the LOD
-        let pos = &j["accessors"][j["meshes"][0]["primitives"][0]["attributes"]["POSITION"].as_u64().unwrap() as usize];
+        let pos = &j["accessors"][j["meshes"][0]["primitives"][0]["attributes"]["POSITION"]
+            .as_u64()
+            .unwrap() as usize];
         let (mn, mx) = m.position_bounds(0).unwrap();
         assert!((pos["max"][1].as_f64().unwrap() - mx[2] as f64 * 0.01).abs() < 1e-6);
         assert!((pos["max"][2].as_f64().unwrap() - mx[1] as f64 * 0.01).abs() < 1e-6);
@@ -507,9 +687,12 @@ mod tests {
         let a = &j["accessors"][p["indices"].as_u64().unwrap() as usize];
         assert_eq!(a["componentType"], 5123);
         let v = &j["bufferViews"][a["bufferView"].as_u64().unwrap() as usize];
-        let base = v["byteOffset"].as_u64().unwrap() as usize + a["byteOffset"].as_u64().unwrap() as usize;
+        let base =
+            v["byteOffset"].as_u64().unwrap() as usize + a["byteOffset"].as_u64().unwrap() as usize;
         let n = a["count"].as_u64().unwrap() as usize;
-        let got: Vec<u32> = (0..n).map(|i| u16::from_le_bytes([bin[base + 2 * i], bin[base + 2 * i + 1]]) as u32).collect();
+        let got: Vec<u32> = (0..n)
+            .map(|i| u16::from_le_bytes([bin[base + 2 * i], bin[base + 2 * i + 1]]) as u32)
+            .collect();
         assert_eq!(got, l.section_indices(1));
     }
 
@@ -520,12 +703,21 @@ mod tests {
         let m = mesh(vec![l.clone()]);
         let (json, bin) = static_mesh_to_gltf_lods(&m, "T", &[]).unwrap();
         let j = parse(&json);
-        let a = &j["accessors"][j["meshes"][0]["primitives"][0]["indices"].as_u64().unwrap() as usize];
+        let a =
+            &j["accessors"][j["meshes"][0]["primitives"][0]["indices"].as_u64().unwrap() as usize];
         assert_eq!(a["componentType"], 5125);
         let v = &j["bufferViews"][a["bufferView"].as_u64().unwrap() as usize];
-        let base = v["byteOffset"].as_u64().unwrap() as usize + a["byteOffset"].as_u64().unwrap() as usize;
+        let base =
+            v["byteOffset"].as_u64().unwrap() as usize + a["byteOffset"].as_u64().unwrap() as usize;
         let last = a["count"].as_u64().unwrap() as usize - 1;
-        let at = |i: usize| u32::from_le_bytes([bin[base + 4 * i], bin[base + 4 * i + 1], bin[base + 4 * i + 2], bin[base + 4 * i + 3]]);
+        let at = |i: usize| {
+            u32::from_le_bytes([
+                bin[base + 4 * i],
+                bin[base + 4 * i + 1],
+                bin[base + 4 * i + 2],
+                bin[base + 4 * i + 3],
+            ])
+        };
         assert_eq!(at(0), l.indices[0]);
         assert_eq!(at(last), l.indices[last]);
         assert!(l.indices.iter().any(|&i| i > 65535));
@@ -546,10 +738,19 @@ mod tests {
         let m = mesh(vec![grid(2, false)]);
         let (json, bin) = static_mesh_to_gltf_lods(&m, "T", &[]).unwrap();
         let j = parse(&json);
-        let a = &j["accessors"][j["meshes"][0]["primitives"][0]["attributes"]["TANGENT"].as_u64().unwrap() as usize];
+        let a = &j["accessors"][j["meshes"][0]["primitives"][0]["attributes"]["TANGENT"]
+            .as_u64()
+            .unwrap() as usize];
         let v = &j["bufferViews"][a["bufferView"].as_u64().unwrap() as usize];
         let base = v["byteOffset"].as_u64().unwrap() as usize;
-        let w = |i: usize| f32::from_le_bytes([bin[base + 16 * i + 12], bin[base + 16 * i + 13], bin[base + 16 * i + 14], bin[base + 16 * i + 15]]);
+        let w = |i: usize| {
+            f32::from_le_bytes([
+                bin[base + 16 * i + 12],
+                bin[base + 16 * i + 13],
+                bin[base + 16 * i + 14],
+                bin[base + 16 * i + 15],
+            ])
+        };
         // vertex 0: x = 0 -> UE sign +1 -> glTF -1; vertex 1: x = 1 -> UE sign -1 -> glTF +1
         assert_eq!(w(0), -1.0);
         assert_eq!(w(1), 1.0);

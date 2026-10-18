@@ -7,14 +7,15 @@
 //!              crate) supplies animation data. Pure pose math lives here for every consumer (`fn-pose`, the renderer): local transforms,
 //!              mesh-space additive with the tracked-bone mask ([`MeshAdditiveMode`]), HeadTrack, TwoBoneIk, hand retarget.
 //! * [`skin`]:  renderer-free CPU skinning of a pose ([`SkinnedMesh::pose`] = the old `Model::apply_pose`) plus the face-rigidity diagnostics.
-mod graph;
 pub mod anim_dynamics; // PART ANIM HOOK: AnimNode_AnimDynamics (BR character part AnimBPs)
+mod graph;
 pub mod skeleton;
 pub mod skin;
 
 pub use graph::*;
 pub use skeleton::{
-    grip_axis_distance, grip_center, handle_axis_xz, sample_blended_curve, solve_two_bone_ik, take_missing_clips, two_bone, BoneXform, ClipLibrary, ClipSource,
-    Pose, Skeleton, MeshAdditiveMode, HAND_IK_STATS, PICK_SOCKET_YAW,
+    grip_axis_distance, grip_center, handle_axis_xz, sample_blended_curve, solve_two_bone_ik,
+    take_missing_clips, two_bone, BoneXform, ClipLibrary, ClipSource, MeshAdditiveMode, Pose,
+    Skeleton, HAND_IK_STATS, PICK_SOCKET_YAW,
 };
 pub use skin::{PosedMesh, SkinPrimitive, SkinnedMesh};

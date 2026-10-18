@@ -18,27 +18,52 @@ pub struct FrameGraph<'a> {
     passes: Vec<(String, PassFn<'a>)>,
 }
 impl<'a> FrameGraph<'a> {
-    pub fn new() -> Self { FrameGraph { passes: Vec::new() } }
+    pub fn new() -> Self {
+        FrameGraph { passes: Vec::new() }
+    }
     /// Appends a pass; passes execute in the order they were added.
-    pub fn add(&mut self, name: impl Into<String>, f: impl FnOnce(&mut wgpu::CommandEncoder) + 'a) -> &mut Self {
+    pub fn add(
+        &mut self,
+        name: impl Into<String>,
+        f: impl FnOnce(&mut wgpu::CommandEncoder) + 'a,
+    ) -> &mut Self {
         self.passes.push((name.into(), Box::new(f)));
         self
     }
     /// Appends a pass only when `enabled`.
-    pub fn add_if(&mut self, enabled: bool, name: impl Into<String>, f: impl FnOnce(&mut wgpu::CommandEncoder) + 'a) -> &mut Self {
-        if enabled { self.add(name, f); }
+    pub fn add_if(
+        &mut self,
+        enabled: bool,
+        name: impl Into<String>,
+        f: impl FnOnce(&mut wgpu::CommandEncoder) + 'a,
+    ) -> &mut Self {
+        if enabled {
+            self.add(name, f);
+        }
         self
     }
-    pub fn names(&self) -> Vec<&str> { self.passes.iter().map(|(n, _)| n.as_str()).collect() }
-    pub fn len(&self) -> usize { self.passes.len() }
-    pub fn is_empty(&self) -> bool { self.passes.is_empty() }
+    pub fn names(&self) -> Vec<&str> {
+        self.passes.iter().map(|(n, _)| n.as_str()).collect()
+    }
+    pub fn len(&self) -> usize {
+        self.passes.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.passes.is_empty()
+    }
     /// Records every pass into `encoder`, returning the per-pass encode times.
     pub fn execute(self, encoder: &mut wgpu::CommandEncoder) -> Vec<PassTiming> {
-        self.passes.into_iter().map(|(name, f)| {
-            let t = Instant::now();
-            f(encoder);
-            PassTiming { name, encode_ms: t.elapsed().as_secs_f32() * 1000. }
-        }).collect()
+        self.passes
+            .into_iter()
+            .map(|(name, f)| {
+                let t = Instant::now();
+                f(encoder);
+                PassTiming {
+                    name,
+                    encode_ms: t.elapsed().as_secs_f32() * 1000.,
+                }
+            })
+            .collect()
     }
 }
 
@@ -48,7 +73,10 @@ mod tests {
     #[test]
     fn passes_keep_insertion_order_and_respect_enable_flags() {
         let mut g = FrameGraph::new();
-        g.add("a", |_| {}).add_if(false, "skipped", |_| {}).add_if(true, "b", |_| {}).add("c", |_| {});
+        g.add("a", |_| {})
+            .add_if(false, "skipped", |_| {})
+            .add_if(true, "b", |_| {})
+            .add("c", |_| {});
         assert_eq!(g.names(), vec!["a", "b", "c"]);
         assert_eq!(g.len(), 3);
     }

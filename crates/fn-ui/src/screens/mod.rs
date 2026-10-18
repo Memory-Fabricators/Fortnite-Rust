@@ -1,4 +1,4 @@
-﻿//! In-game HUD + loading screen as pure state -> [`RenderList`] (no GL, no globals, no thread-locals).
+//! In-game HUD + loading screen as pure state -> [`RenderList`] (no GL, no globals, no thread-locals).
 //!
 //! Every screen is a plain struct owned by the caller: `tick(dt)` advances animations, `build(ctx, w, h, &mut RenderList)` appends draw commands.
 //! * [`quickbar`]  AthenaQuickbarPrimary rail (item cards through `MaterialKind::ItemCard`).
@@ -12,11 +12,19 @@
 //!
 //! TEXT: the old runtime drew HUD text with fontdue atlases (HUD) or GDI Segoe UI bitmap atlases (loading screen). Everything here goes through
 //! [`crate::text::TextAtlases`] (fontdue, NotoSans); the loading screen's GDI metrics are therefore replaced by fontdue advances (APPROXIMATION).
+pub mod athena_lobby; // LOBBY UI: the BR lobby screen decoded from the 1.8 widget blueprints
+#[cfg(feature = "pak")]
+pub mod athena_locker; // LOCKER: the BR Locker tab (AthenaCustomizationTab) + the lobby pointer controller
+#[cfg(feature = "pak")]
+pub mod athena_settings; // SETTINGS: the BR Settings screen (OptionsMenu) composed from the widget blueprints
+#[cfg(feature = "pak")]
+pub mod athena_shop; // SHOP UI (Item Shop screen)
 pub mod equip_progress;
 pub mod equipped_item;
 pub mod hud;
 pub mod hud_extra;
 pub mod interaction;
+pub mod inventory_panel;
 pub mod loading;
 pub mod picker;
 pub mod quickbar;
@@ -24,20 +32,12 @@ pub mod reticle;
 pub mod reticle_state;
 mod scenes;
 mod scenes_world;
+pub mod slot_cooldown; // WIDGETS3 HOOK: QuickbarSlotCooldown
 pub mod startup_layout;
 pub mod startup_loading;
 pub mod target_info;
 pub mod vitals;
-pub mod xform; // WIDGETS3 HOOK: RenderTransform (rotation) of emitted glyph quads
-pub mod slot_cooldown; // WIDGETS3 HOOK: QuickbarSlotCooldown
-#[cfg(feature = "pak")]
-pub mod athena_shop; // SHOP UI (Item Shop screen)
-pub mod athena_lobby; // LOBBY UI: the BR lobby screen decoded from the 1.8 widget blueprints
-#[cfg(feature = "pak")]
-pub mod athena_settings; // SETTINGS: the BR Settings screen (OptionsMenu) composed from the widget blueprints
-#[cfg(feature = "pak")]
-pub mod athena_locker; // LOCKER: the BR Locker tab (AthenaCustomizationTab) + the lobby pointer controller
-pub mod inventory_panel; // WIDGETS3 HOOK: AthenaInventoryPanel
+pub mod xform; // WIDGETS3 HOOK: RenderTransform (rotation) of emitted glyph quads // WIDGETS3 HOOK: AthenaInventoryPanel
 
 use crate::assets::{Sampler, TexInfo};
 use crate::draw::RenderList;
@@ -47,15 +47,32 @@ use crate::text::FontId;
 pub const WHITE: [f32; 4] = [1., 1., 1., 1.];
 
 /// HUD/loading scenes (see [`scenes`] for the names and the old capture each one reproduces).
-pub fn scenes() -> Vec<SceneDef> { let mut v = scenes::all(); v.extend(scenes_world::all()); v }
+pub fn scenes() -> Vec<SceneDef> {
+    let mut v = scenes::all();
+    v.extend(scenes_world::all());
+    v
+}
 
 /// Mip-mapped, clamped UI art texture by file name (`TexInfo::NONE` when missing; recorded in `ctx.assets.missing`).
-pub(crate) fn art(ctx: &mut UiContext, name: &str) -> TexInfo { ctx.assets.texture(name) }
+pub(crate) fn art(ctx: &mut UiContext, name: &str) -> TexInfo {
+    ctx.assets.texture(name)
+}
 /// Texture sampled INSIDE a material shader (bilinear, no mips, clamp or wrap) - pixels are read by `material::hud::bake`.
-pub(crate) fn mat_tex(ctx: &mut UiContext, name: &str, wrap: bool) -> TexInfo { ctx.assets.texture_with(name, Sampler { filter: crate::assets::Filter::Linear, mips: false, wrap }) }
+pub(crate) fn mat_tex(ctx: &mut UiContext, name: &str, wrap: bool) -> TexInfo {
+    ctx.assets.texture_with(
+        name,
+        Sampler {
+            filter: crate::assets::Filter::Linear,
+            mips: false,
+            wrap,
+        },
+    )
+}
 
 /// Atlas pixel size of a text style: Slate size * DPI scale, rounded, never below 6 px (old `atlas_px`).
-pub fn atlas_px(size: f32, scale: f32) -> u32 { (size * scale).round().max(6.) as u32 }
+pub fn atlas_px(size: f32, scale: f32) -> u32 {
+    (size * scale).round().max(6.) as u32
+}
 
 /// How glyph origins are snapped to the pixel grid.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -68,31 +85,69 @@ pub enum Snap {
 
 /// Line height (ascent + |descent|) of an atlas line.
 pub fn line_height(ctx: &mut UiContext, font: FontId, px: u32) -> f32 {
-    let (_, a) = ctx.atlases.atlas(&mut ctx.assets.store, &ctx.fonts, font, px);
+    let (_, a) = ctx
+        .atlases
+        .atlas(&mut ctx.assets.store, &ctx.fonts, font, px);
     a.ascent + a.descent.abs()
 }
 /// Baseline of a line vertically centred in (`top`, `box_h`) using atlas ascent/descent (old `text()` rule).
 pub fn centred_baseline(ctx: &mut UiContext, font: FontId, px: u32, top: f32, box_h: f32) -> f32 {
-    let (_, a) = ctx.atlases.atlas(&mut ctx.assets.store, &ctx.fonts, font, px);
+    let (_, a) = ctx
+        .atlases
+        .atlas(&mut ctx.assets.store, &ctx.fonts, font, px);
     top + (box_h - (a.ascent + a.descent.abs())) * 0.5 + a.ascent
 }
 /// Atlas ascent of a font at a pixel size.
-pub fn ascent(ctx: &mut UiContext, font: FontId, px: u32) -> f32 { ctx.atlases.atlas(&mut ctx.assets.store, &ctx.fonts, font, px).1.ascent }
+pub fn ascent(ctx: &mut UiContext, font: FontId, px: u32) -> f32 {
+    ctx.atlases
+        .atlas(&mut ctx.assets.store, &ctx.fonts, font, px)
+        .1
+        .ascent
+}
 
 /// Text with its first glyph origin at `x` on `baseline`. `shadow` = optional (offset px, colour) pass drawn FIRST (old `text()` rule).
 #[allow(clippy::too_many_arguments)]
-pub fn put_text(ctx: &mut UiContext, out: &mut RenderList, font: FontId, px: u32, x: f32, baseline: f32, text: &str, color: [f32; 4], shadow: Option<([f32; 2], [f32; 4])>, snap: Snap) {
+pub fn put_text(
+    ctx: &mut UiContext,
+    out: &mut RenderList,
+    font: FontId,
+    px: u32,
+    x: f32,
+    baseline: f32,
+    text: &str,
+    color: [f32; 4],
+    shadow: Option<([f32; 2], [f32; 4])>,
+    snap: Snap,
+) {
     use crate::layout::Rect;
-    let (tex, a) = ctx.atlases.atlas(&mut ctx.assets.store, &ctx.fonts, font, px);
-    let passes: Vec<([f32; 2], [f32; 4])> = shadow.into_iter().chain(std::iter::once(([0., 0.], color))).collect();
+    let (tex, a) = ctx
+        .atlases
+        .atlas(&mut ctx.assets.store, &ctx.fonts, font, px);
+    let passes: Vec<([f32; 2], [f32; 4])> = shadow
+        .into_iter()
+        .chain(std::iter::once(([0., 0.], color)))
+        .collect();
     for (off, col) in passes {
-        let mut pen = match snap { Snap::PerGlyph => x, Snap::Pen => x.round() };
+        let mut pen = match snap {
+            Snap::PerGlyph => x,
+            Snap::Pen => x.round(),
+        };
         for ch in text.chars() {
             let Some(g) = a.glyphs.get(&ch) else { continue };
             if g.w > 0. {
                 let r = match snap {
-                    Snap::PerGlyph => Rect::new((pen + g.xmin + off[0]).round(), (baseline - g.ymin - g.h + off[1]).round(), g.w, g.h),
-                    Snap::Pen => Rect::new(pen + g.xmin + off[0], baseline - g.ymin - g.h + off[1], g.w, g.h),
+                    Snap::PerGlyph => Rect::new(
+                        (pen + g.xmin + off[0]).round(),
+                        (baseline - g.ymin - g.h + off[1]).round(),
+                        g.w,
+                        g.h,
+                    ),
+                    Snap::Pen => Rect::new(
+                        pen + g.xmin + off[0],
+                        baseline - g.ymin - g.h + off[1],
+                        g.w,
+                        g.h,
+                    ),
                 };
                 out.quad(tex, r, [g.u0, g.v0, g.u1, g.v1], col);
             }
@@ -101,11 +156,22 @@ pub fn put_text(ctx: &mut UiContext, out: &mut RenderList, font: FontId, px: u32
     }
 }
 /// Advance width of `text` (fontdue, no kerning).
-pub fn text_width(ctx: &UiContext, font: FontId, text: &str, px: u32) -> f32 { ctx.fonts.measure(font, text, px as f32) }
+pub fn text_width(ctx: &UiContext, font: FontId, text: &str, px: u32) -> f32 {
+    ctx.fonts.measure(font, text, px as f32)
+}
 
 /// Linear -> sRGB transfer (Slate composites tints in gamma space).
-pub fn srgb(c: f32) -> f32 { let c = c.clamp(0., 1.); if c <= 0.0031308 { c * 12.92 } else { 1.055 * c.powf(1. / 2.4) - 0.055 } }
-pub fn srgb3(c: [f32; 3]) -> [f32; 3] { [srgb(c[0]), srgb(c[1]), srgb(c[2])] }
+pub fn srgb(c: f32) -> f32 {
+    let c = c.clamp(0., 1.);
+    if c <= 0.0031308 {
+        c * 12.92
+    } else {
+        1.055 * c.powf(1. / 2.4) - 0.055
+    }
+}
+pub fn srgb3(c: [f32; 3]) -> [f32; 3] {
+    [srgb(c[0]), srgb(c[1]), srgb(c[2])]
+}
 
 /// Test helpers: crate-local copies of the old evidence reports and access to the old asset tree.
 #[cfg(test)]
@@ -113,15 +179,37 @@ pub(crate) mod testutil {
     use crate::scene::UiContext;
     use std::path::PathBuf;
     /// Old runtime tree root (`FN_UI_OLD_ROOT`, default the prototype's location).
-    pub fn old_root() -> PathBuf { crate::assets::DirAssets::old_root() }
+    pub fn old_root() -> PathBuf {
+        crate::assets::DirAssets::old_root()
+    }
     /// Evidence JSON copied into `crates/fn-ui/testdata/` (never moved from the old tree).
-    pub fn testdata(name: &str) -> String { std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("testdata").join(name)).unwrap_or_else(|e| panic!("testdata/{name}: {e}")) }
-    pub fn evidence(name: &str) -> serde_json::Value { serde_json::from_str(&testdata(name)).unwrap() }
+    pub fn testdata(name: &str) -> String {
+        std::fs::read_to_string(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("testdata")
+                .join(name),
+        )
+        .unwrap_or_else(|e| panic!("testdata/{name}: {e}"))
+    }
+    pub fn evidence(name: &str) -> serde_json::Value {
+        serde_json::from_str(&testdata(name)).unwrap()
+    }
     /// UiContext over the old asset tree, or None (with a note) when the tree / fonts are absent.
     pub fn ctx() -> Option<UiContext> {
         let root = crate::assets::DirAssets::default_root();
-        if !root.is_dir() { eprintln!("asset tree {} not found (set FN_UI_ASSETS / FN_UI_OLD_ROOT), skipping", root.display()); return None; }
-        match UiContext::from_default_assets() { Ok(c) => Some(c), Err(e) => { eprintln!("no UI context ({e}), skipping"); None } }
+        if !root.is_dir() {
+            eprintln!(
+                "asset tree {} not found (set FN_UI_ASSETS / FN_UI_OLD_ROOT), skipping",
+                root.display()
+            );
+            return None;
+        }
+        match UiContext::from_default_assets() {
+            Ok(c) => Some(c),
+            Err(e) => {
+                eprintln!("no UI context ({e}), skipping");
+                None
+            }
+        }
     }
 }
-

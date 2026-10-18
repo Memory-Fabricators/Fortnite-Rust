@@ -177,7 +177,12 @@ pub enum ObjectRef {
         path: String,
     },
     /// An object defined in this package.
-    Export { index: usize, name: String, class_name: String, path: String },
+    Export {
+        index: usize,
+        name: String,
+        class_name: String,
+        path: String,
+    },
 }
 
 impl ObjectRef {
@@ -204,7 +209,9 @@ pub struct ParseOptions {
 }
 impl Default for ParseOptions {
     fn default() -> Self {
-        ParseOptions { assumed_ue4_version: DEFAULT_ASSUMED_UE4_VERSION }
+        ParseOptions {
+            assumed_ue4_version: DEFAULT_ASSUMED_UE4_VERSION,
+        }
     }
 }
 /// Fortnite 1.8 cooked packages are unversioned; their layout matches `VER_UE4_LEVEL_STREAMING_DRAW_COLOR_TYPE_CHANGE`
@@ -244,11 +251,20 @@ impl<'a> Package<'a> {
         let mut r = Reader::new(asset);
         let tag = r.u32()?;
         if tag != PACKAGE_TAG {
-            return Err(Error::new(ErrorKind::BadMagic, format!("bad package tag {tag:#x}")));
+            return Err(Error::new(
+                ErrorKind::BadMagic,
+                format!("bad package tag {tag:#x}"),
+            ));
         }
-        let mut s = Summary { legacy_file_version: r.i32()?, ..Default::default() };
+        let mut s = Summary {
+            legacy_file_version: r.i32()?,
+            ..Default::default()
+        };
         if s.legacy_file_version >= 0 || s.legacy_file_version > -6 {
-            return Err(Error::new(ErrorKind::UnsupportedVersion, format!("legacy file version {}", s.legacy_file_version)));
+            return Err(Error::new(
+                ErrorKind::UnsupportedVersion,
+                format!("legacy file version {}", s.legacy_file_version),
+            ));
         }
         s.legacy_ue3_version = r.i32()?;
         s.file_version_ue4 = r.i32()?;
@@ -261,7 +277,11 @@ impl<'a> Package<'a> {
         }
         // Cooked Fortnite packages are *unversioned*: FileVersionUE4 == 0 and the loader assumes the engine's
         // current version. We substitute `opts.assumed_ue4_version`.
-        let v = if s.file_version_ue4 == 0 { opts.assumed_ue4_version } else { s.file_version_ue4 };
+        let v = if s.file_version_ue4 == 0 {
+            opts.assumed_ue4_version
+        } else {
+            s.file_version_ue4
+        };
         s.total_header_size = r.i32()?;
         s.folder_name = r.fstring()?;
         s.package_flags = r.u32()?;
@@ -292,7 +312,13 @@ impl<'a> Package<'a> {
             s.generations.push((ec, nc));
         }
         let read_ev = |r: &mut Reader| -> Result<EngineVersion> {
-            Ok(EngineVersion { major: r.u16()?, minor: r.u16()?, patch: r.u16()?, changelist: r.u32()?, branch: r.fstring()? })
+            Ok(EngineVersion {
+                major: r.u16()?,
+                minor: r.u16()?,
+                patch: r.u16()?,
+                changelist: r.u32()?,
+                branch: r.fstring()?,
+            })
         };
         if v >= ver::ENGINE_VERSION_OBJECT {
             s.saved_by_engine_version = read_ev(&mut r)?;
@@ -336,7 +362,11 @@ impl<'a> Package<'a> {
         // ---- name map
         let mut warnings = Vec::new();
         // sanity: every table entry occupies at least this many bytes of the header, so counts are bounded by its size
-        if s.name_count < 0 || s.name_offset < 0 || s.name_offset as usize > asset.len() || s.name_count as usize > asset.len() / 5 {
+        if s.name_count < 0
+            || s.name_offset < 0
+            || s.name_offset as usize > asset.len()
+            || s.name_count as usize > asset.len() / 5
+        {
             return Err(Error::malformed("bad name map location"));
         }
         let mut names = Vec::with_capacity(s.name_count as usize);
@@ -348,8 +378,14 @@ impl<'a> Package<'a> {
             }
         }
         let name_of = |idx: i32, num: i32| -> Result<String> {
-            let base = names.get(idx as usize).ok_or_else(|| Error::malformed(format!("name index {idx} out of range")))?;
-            Ok(if num > 0 { format!("{}_{}", base, num - 1) } else { base.clone() })
+            let base = names
+                .get(idx as usize)
+                .ok_or_else(|| Error::malformed(format!("name index {idx} out of range")))?;
+            Ok(if num > 0 {
+                format!("{}_{}", base, num - 1)
+            } else {
+                base.clone()
+            })
         };
 
         // ---- imports
@@ -363,7 +399,12 @@ impl<'a> Package<'a> {
             let (cn, cnn) = (ir.i32()?, ir.i32()?);
             let outer = PackageIndex(ir.i32()?);
             let (on, onn) = (ir.i32()?, ir.i32()?);
-            imports.push(Import { class_package: name_of(cp, cpn)?, class_name: name_of(cn, cnn)?, outer, name: name_of(on, onn)? });
+            imports.push(Import {
+                class_package: name_of(cp, cpn)?,
+                class_name: name_of(cn, cnn)?,
+                outer,
+                name: name_of(on, onn)?,
+            });
         }
 
         // ---- exports
@@ -375,18 +416,34 @@ impl<'a> Package<'a> {
         for _ in 0..s.export_count {
             let class_index = PackageIndex(er.i32()?);
             let super_index = PackageIndex(er.i32()?);
-            let template_index = if v >= ver::TEMPLATE_INDEX_IN_COOKED_EXPORTS { PackageIndex(er.i32()?) } else { PackageIndex(0) };
+            let template_index = if v >= ver::TEMPLATE_INDEX_IN_COOKED_EXPORTS {
+                PackageIndex(er.i32()?)
+            } else {
+                PackageIndex(0)
+            };
             let outer_index = PackageIndex(er.i32()?);
             let (n, nn) = (er.i32()?, er.i32()?);
             let object_flags = er.u32()?;
-            let (serial_size, serial_offset) = if v >= ver::SIXTY_FOUR_BIT_EXPORTMAP_SERIALSIZES { (er.i64()?, er.i64()?) } else { (er.i32()? as i64, er.i32()? as i64) };
+            let (serial_size, serial_offset) = if v >= ver::SIXTY_FOUR_BIT_EXPORTMAP_SERIALSIZES {
+                (er.i64()?, er.i64()?)
+            } else {
+                (er.i32()? as i64, er.i32()? as i64)
+            };
             let forced_export = er.bool32()?;
             let not_for_client = er.bool32()?;
             let not_for_server = er.bool32()?;
             let package_guid = er.guid()?;
             let package_flags = er.u32()?;
-            let not_always_loaded_for_editor_game = if v >= ver::LOAD_FOR_EDITOR_GAME { er.bool32()? } else { true };
-            let is_asset = if v >= ver::COOKED_ASSETS_IN_EDITOR_SUPPORT { er.bool32()? } else { false };
+            let not_always_loaded_for_editor_game = if v >= ver::LOAD_FOR_EDITOR_GAME {
+                er.bool32()?
+            } else {
+                true
+            };
+            let is_asset = if v >= ver::COOKED_ASSETS_IN_EDITOR_SUPPORT {
+                er.bool32()?
+            } else {
+                false
+            };
             let (mut a, mut b, mut c, mut d, mut e) = (-1, 0, 0, 0, 0);
             if v >= ver::PRELOAD_DEPENDENCIES_IN_COOKED_EXPORTS {
                 a = er.i32()?;
@@ -481,7 +538,11 @@ impl<'a> Package<'a> {
                     let class_name = tr.fstring()?;
                     let object_path = tr.fstring()?;
                     let file_offset = tr.i32()?;
-                    thumbnails.push(ThumbnailEntry { class_name, object_path, file_offset });
+                    thumbnails.push(ThumbnailEntry {
+                        class_name,
+                        object_path,
+                        file_offset,
+                    });
                 }
                 Ok(())
             })();
@@ -491,7 +552,21 @@ impl<'a> Package<'a> {
             }
         }
 
-        Ok(Package { summary: s, names, imports, exports, depends, soft_package_references, preload_dependencies, thumbnails, warnings, name: String::new(), effective_version: v, asset, uexp })
+        Ok(Package {
+            summary: s,
+            names,
+            imports,
+            exports,
+            depends,
+            soft_package_references,
+            preload_dependencies,
+            thumbnails,
+            warnings,
+            name: String::new(),
+            effective_version: v,
+            asset,
+            uexp,
+        })
     }
 
     /// Set the long package name (`/Game/Foo/Bar`) used when resolving object paths.
@@ -514,8 +589,17 @@ impl<'a> Package<'a> {
 
     /// Resolve an FName (index, number) to its string (`Name_N` when number > 0).
     pub fn fname(&self, idx: i32, num: i32) -> Result<String> {
-        let base = self.names.get(idx as usize).ok_or_else(|| Error::malformed(format!("name index {idx} out of range ({})", self.names.len())))?;
-        Ok(if num > 0 { format!("{}_{}", base, num - 1) } else { base.clone() })
+        let base = self.names.get(idx as usize).ok_or_else(|| {
+            Error::malformed(format!(
+                "name index {idx} out of range ({})",
+                self.names.len()
+            ))
+        })?;
+        Ok(if num > 0 {
+            format!("{}_{}", base, num - 1)
+        } else {
+            base.clone()
+        })
     }
 
     /// Borrowed base string for a name index (no number suffix).
@@ -525,7 +609,10 @@ impl<'a> Package<'a> {
 
     /// Bytes of an export's serialized payload.
     pub fn export_bytes(&self, i: usize) -> Result<&'a [u8]> {
-        let e = self.exports.get(i).ok_or_else(|| Error::not_found(format!("export {i}")))?;
+        let e = self
+            .exports
+            .get(i)
+            .ok_or_else(|| Error::not_found(format!("export {i}")))?;
         self.range_bytes(e.serial_offset, e.serial_size)
     }
 
@@ -550,14 +637,20 @@ impl<'a> Package<'a> {
         } else if off + size <= hs {
             return Ok(&self.asset[off..off + size]);
         }
-        Err(Error::truncated(&format!("export range {offset}+{size}"), off + size, hs + self.uexp.len()))
+        Err(Error::truncated(
+            &format!("export range {offset}+{size}"),
+            off + size,
+            hs + self.uexp.len(),
+        ))
     }
 
     /// Class name of an export (`"BlueprintGeneratedClass"`, `"Foo_C"`, ...). Empty for the `Class` export root
     /// (class_index = 0 means the export *is* a UClass-like object whose class is `Class`).
     pub fn export_class_name(&self, i: usize) -> String {
         match self.exports.get(i) {
-            Some(e) => self.index_name(e.class_index).unwrap_or_else(|| "Class".to_string()),
+            Some(e) => self
+                .index_name(e.class_index)
+                .unwrap_or_else(|| "Class".to_string()),
             None => String::new(),
         }
     }
@@ -629,7 +722,9 @@ impl<'a> Package<'a> {
     /// Resolve a package index to its import/export record with class and full path.
     pub fn resolve(&self, idx: PackageIndex) -> ObjectRef {
         if let Some(i) = idx.import_index() {
-            let Some(im) = self.imports.get(i) else { return ObjectRef::Null };
+            let Some(im) = self.imports.get(i) else {
+                return ObjectRef::Null;
+            };
             // outermost package
             let mut cur = im;
             for _ in 0..64 {
@@ -638,12 +733,24 @@ impl<'a> Package<'a> {
                     None => break,
                 }
             }
-            ObjectRef::Import { index: i, name: im.name.clone(), class_name: im.class_name.clone(), class_package: im.class_package.clone(), package: cur.name.clone(), path: self.object_path(idx) }
+            ObjectRef::Import {
+                index: i,
+                name: im.name.clone(),
+                class_name: im.class_name.clone(),
+                class_package: im.class_package.clone(),
+                package: cur.name.clone(),
+                path: self.object_path(idx),
+            }
         } else if let Some(i) = idx.export_index() {
             if i >= self.exports.len() {
                 return ObjectRef::Null;
             }
-            ObjectRef::Export { index: i, name: self.exports[i].name.clone(), class_name: self.export_class_name(i), path: self.object_path(idx) }
+            ObjectRef::Export {
+                index: i,
+                name: self.exports[i].name.clone(),
+                class_name: self.export_class_name(i),
+                path: self.object_path(idx),
+            }
         } else {
             ObjectRef::Null
         }
@@ -653,7 +760,8 @@ impl<'a> Package<'a> {
     pub fn class_export(&self) -> Option<usize> {
         (0..self.exports.len()).find(|&i| {
             let c = self.export_class_name(i);
-            (c == "Class" || c.ends_with("GeneratedClass")) && !self.exports[i].name.starts_with("Default__")
+            (c == "Class" || c.ends_with("GeneratedClass"))
+                && !self.exports[i].name.starts_with("Default__")
         })
     }
 
@@ -678,8 +786,8 @@ impl<'a> Package<'a> {
 
     /// The class default object export (`Default__*`, flagged `RF_ClassDefaultObject`).
     pub fn default_object_export(&self) -> Option<usize> {
-        self.exports.iter().position(|e| e.object_flags & RF_CLASS_DEFAULT_OBJECT != 0)
+        self.exports
+            .iter()
+            .position(|e| e.object_flags & RF_CLASS_DEFAULT_OBJECT != 0)
     }
 }
-
-

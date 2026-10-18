@@ -11,6 +11,7 @@ pub mod cmc;
 pub mod controller;
 pub mod params;
 pub mod scene;
+pub mod terrain;
 #[cfg(test)]
 mod tests;
 

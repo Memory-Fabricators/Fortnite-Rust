@@ -15,7 +15,7 @@
 //! Not recoverable / not done: the SubsurfaceProfile (`SS_HeroSkin_01`) screen-space pass and its atlas row (`__SubsurfaceProfile` is assigned at run time), runtime-driven
 //! parameters (`HitGlow`, `SuperChargedEffect`, `DissolveGradient*`, `AverageHandPosition`: defaults are used), the atmospheric-fog fade `TEXCOORD7.w` of the eyeshadow vertex
 //! shader (the fog start distance is a sky actor setting; 1.0 is used, exact inside the fog start distance), the per-vertex tangents (the renderer's derivative frame is used).
-use crate::br_character::{RgbaTexture, PartDef};
+use crate::br_character::{PartDef, RgbaTexture};
 use crate::br_material_gen as genm;
 use crate::{loader, ClipSourceDir};
 use fn_ueio::props::{read_props, Ctx, PropList, PropValue};
@@ -26,7 +26,12 @@ pub use genm::ALWAYS_DISCARD;
 
 /// A texture that is not a material parameter. `srgb` = the texture's SRGB flag AND the graph node's sampler type is `Color` (a `LinearColor` node reads the raw values).
 #[derive(Clone, Debug)]
-pub struct FixedTex { pub tex: RgbaTexture, pub srgb: bool, pub address: [String; 2], pub path: String }
+pub struct FixedTex {
+    pub tex: RgbaTexture,
+    pub srgb: bool,
+    pub address: [String; 2],
+    pub path: String,
+}
 
 #[derive(Clone, Debug)]
 pub struct CharSection {
@@ -62,15 +67,28 @@ pub const EYESHADOW_MATERIAL: &str = "/Game/Characters/Player/Common/Eyes/Materi
 
 fn export_props(pkg: &Package, idx: usize) -> Result<PropList, String> {
     let (start, end) = pkg.export_range(idx);
-    read_props(&mut Reader::at(&pkg.data[..end], start), &Ctx { names: &pkg.names, file_version: pkg.summary.file_version }).map_err(|e| e.to_string())
+    read_props(
+        &mut Reader::at(&pkg.data[..end], start),
+        &Ctx {
+            names: &pkg.names,
+            file_version: pkg.summary.file_version,
+        },
+    )
+    .map_err(|e| e.to_string())
 }
 
 fn obj_path(pkg: &Package, v: &PropValue) -> Option<String> {
-    match v { PropValue::Object(i) if *i < 0 => Some(pkg.import_path(*i)), PropValue::Str(s) if s.starts_with("/Game/") => Some(s.clone()), _ => None }
+    match v {
+        PropValue::Object(i) if *i < 0 => Some(pkg.import_path(*i)),
+        PropValue::Str(s) if s.starts_with("/Game/") => Some(s.clone()),
+        _ => None,
+    }
 }
 
 fn param_name(f: &PropList) -> Option<String> {
-    f.text("ParameterName").or_else(|| f.fields("ParameterInfo").and_then(|i| i.text("Name"))).map(str::to_owned)
+    f.text("ParameterName")
+        .or_else(|| f.fields("ParameterInfo").and_then(|i| i.text("Name")))
+        .map(str::to_owned)
 }
 
 /// Parameters of a material instance chain, leaf first wins (the engine looks parameters up leaf -> parent -> ... and falls back to the root material's expression default,
@@ -87,20 +105,42 @@ pub fn chain_params(src: &ClipSourceDir, material: &str) -> Result<ChainParams, 
     let mut out = ChainParams::default();
     let mut cur = Some(material.to_owned());
     while let Some(path) = cur.take() {
-        if out.packages.len() > 16 { return Err(format!("{material}: material parent chain too deep")); }
-        let (long, object) = path.split_once('.').ok_or_else(|| format!("{path}: material needs a full object path"))?;
-        let pkg = loader::package(src, long)?;
-        let idx = pkg.exports.iter().position(|e| e.object_name == object).ok_or_else(|| format!("{path}: missing material export"))?;
-        out.packages.push(long.to_owned());
-        if pkg.export_class(idx) != "MaterialInstanceConstant" { break; }
-        let props = export_props(&pkg, idx)?;
-        for v in props.array("ScalarParameterValues").map(|a| a.as_slice()).unwrap_or(&[]) {
-            let Some(f) = v.as_fields() else { continue };
-            if let (Some(n), Some(x)) = (param_name(f), f.float("ParameterValue")) { out.scalars.entry(n).or_insert(x as f32); }
+        if out.packages.len() > 16 {
+            return Err(format!("{material}: material parent chain too deep"));
         }
-        for v in props.array("VectorParameterValues").map(|a| a.as_slice()).unwrap_or(&[]) {
+        let (long, object) = path
+            .split_once('.')
+            .ok_or_else(|| format!("{path}: material needs a full object path"))?;
+        let pkg = loader::package(src, long)?;
+        let idx = pkg
+            .exports
+            .iter()
+            .position(|e| e.object_name == object)
+            .ok_or_else(|| format!("{path}: missing material export"))?;
+        out.packages.push(long.to_owned());
+        if pkg.export_class(idx) != "MaterialInstanceConstant" {
+            break;
+        }
+        let props = export_props(&pkg, idx)?;
+        for v in props
+            .array("ScalarParameterValues")
+            .map(|a| a.as_slice())
+            .unwrap_or(&[])
+        {
             let Some(f) = v.as_fields() else { continue };
-            if let (Some(n), Some(PropValue::Vec4(c))) = (param_name(f), f.get("ParameterValue")) { out.vectors.entry(n).or_insert(*c); }
+            if let (Some(n), Some(x)) = (param_name(f), f.float("ParameterValue")) {
+                out.scalars.entry(n).or_insert(x as f32);
+            }
+        }
+        for v in props
+            .array("VectorParameterValues")
+            .map(|a| a.as_slice())
+            .unwrap_or(&[])
+        {
+            let Some(f) = v.as_fields() else { continue };
+            if let (Some(n), Some(PropValue::Vec4(c))) = (param_name(f), f.get("ParameterValue")) {
+                out.vectors.entry(n).or_insert(*c);
+            }
         }
         cur = props.get("Parent").and_then(|v| obj_path(&pkg, v));
     }
@@ -111,13 +151,21 @@ pub fn chain_params(src: &ClipSourceDir, material: &str) -> Result<ChainParams, 
 pub fn read_swatch(src: &ClipSourceDir, swatch: &str) -> Result<Vec<(String, [f32; 4])>, String> {
     let long = swatch.split_once('.').map_or(swatch, |s| s.0);
     let pkg = loader::package(src, long)?;
-    let idx = (0..pkg.exports.len()).find(|&i| pkg.export_class(i).ends_with("ColorSwatch")).ok_or_else(|| format!("{swatch}: no colour swatch export"))?;
+    let idx = (0..pkg.exports.len())
+        .find(|&i| pkg.export_class(i).ends_with("ColorSwatch"))
+        .ok_or_else(|| format!("{swatch}: no colour swatch export"))?;
     let props = export_props(&pkg, idx)?;
     let mut out = vec![];
-    for v in props.array("ColorPairs").map(|a| a.as_slice()).unwrap_or(&[]) {
+    for v in props
+        .array("ColorPairs")
+        .map(|a| a.as_slice())
+        .unwrap_or(&[])
+    {
         let f = v.as_fields().ok_or("bad ColorPairs entry")?;
         let name = f.text("ColorName").ok_or("ColorPair without a name")?;
-        let Some(PropValue::Vec4(c)) = f.get("ColorValue") else { return Err(format!("{swatch}: ColorPair {name} has no colour")) };
+        let Some(PropValue::Vec4(c)) = f.get("ColorValue") else {
+            return Err(format!("{swatch}: ColorPair {name} has no colour"));
+        };
         out.push((name.to_owned(), *c));
     }
     Ok(out)
@@ -126,8 +174,22 @@ pub fn read_swatch(src: &ClipSourceDir, swatch: &str) -> Result<Vec<(String, [f3
 /// Parameter names the constant buffer recipe of a permutation looks up.
 pub fn recipe_param_names(perm: &str) -> Vec<String> {
     let names = std::cell::RefCell::new(vec![]);
-    let rec = |n: &str, d: [f32; 4]| { names.borrow_mut().push(n.to_owned()); d };
-    match perm { "head" => { genm::head_cb(&rec); } "hair" => { genm::hair_cb(&rec); } "body" => { genm::body_cb(&rec); } _ => {} }
+    let rec = |n: &str, d: [f32; 4]| {
+        names.borrow_mut().push(n.to_owned());
+        d
+    };
+    match perm {
+        "head" => {
+            genm::head_cb(&rec);
+        }
+        "hair" => {
+            genm::hair_cb(&rec);
+        }
+        "body" => {
+            genm::body_cb(&rec);
+        }
+        _ => {}
+    }
     let mut v = names.into_inner();
     v.sort();
     v.dedup();
@@ -136,55 +198,123 @@ pub fn recipe_param_names(perm: &str) -> Vec<String> {
 
 /// One line per swatch: which of its colour names some character material parameter consumes (empty = none does: the swatch has no visible effect on that material).
 pub fn swatch_report(swatch: &str, pairs: &[(String, [f32; 4])]) -> String {
-    let all: Vec<String> = ["head", "hair", "body"].iter().flat_map(|p| recipe_param_names(p)).collect();
-    let used: Vec<&str> = pairs.iter().map(|(n, _)| n.as_str()).filter(|n| all.iter().any(|a| a == n)).collect();
+    let all: Vec<String> = ["head", "hair", "body"]
+        .iter()
+        .flat_map(|p| recipe_param_names(p))
+        .collect();
+    let used: Vec<&str> = pairs
+        .iter()
+        .map(|(n, _)| n.as_str())
+        .filter(|n| all.iter().any(|a| a == n))
+        .collect();
     format!("swatch {swatch}: {} colour pairs ({}); consumed by a head / hair / body material parameter: {:?}", pairs.len(), pairs.iter().map(|p| p.0.as_str()).collect::<Vec<_>>().join(", "), used)
 }
 
 fn load_fixed(src: &ClipSourceDir, path: &str, linear_sampler: bool) -> Result<FixedTex, String> {
-    let (long, object) = path.split_once('.').ok_or("texture requires a full object path")?;
+    let (long, object) = path
+        .split_once('.')
+        .ok_or("texture requires a full object path")?;
     let pkg = loader::package(src, long)?;
-    let idx = pkg.exports.iter().position(|e| e.object_name == object).ok_or_else(|| format!("{path}: missing texture export"))?;
+    let idx = pkg
+        .exports
+        .iter()
+        .position(|e| e.object_name == object)
+        .ok_or_else(|| format!("{path}: missing texture export"))?;
     let t = fn_texture::Texture2D::parse_export(&pkg, idx).map_err(|e| format!("{path}: {e}"))?;
-    if t.num_slices != 1 { return Err(format!("{path}: not a plain 2D texture")); }
-    let mip = t.best_mip().ok_or_else(|| format!("{path}: no available mip"))?;
-    let img = t.decode(mip, fn_texture::DecodeOptions::default()).map_err(|e| format!("{path}: {e}"))?;
-    Ok(FixedTex { tex: RgbaTexture { width: img.width, height: img.height, rgba: img.to_rgba8() }, srgb: t.srgb && !linear_sampler, address: [t.address_x.clone(), t.address_y.clone()], path: path.to_owned() })
+    if t.num_slices != 1 {
+        return Err(format!("{path}: not a plain 2D texture"));
+    }
+    let mip = t
+        .best_mip()
+        .ok_or_else(|| format!("{path}: no available mip"))?;
+    let img = t
+        .decode(mip, fn_texture::DecodeOptions::default())
+        .map_err(|e| format!("{path}: {e}"))?;
+    Ok(FixedTex {
+        tex: RgbaTexture {
+            width: img.width,
+            height: img.height,
+            rgba: img.to_rgba8(),
+        },
+        srgb: t.srgb && !linear_sampler,
+        address: [t.address_x.clone(), t.address_y.clone()],
+        path: path.to_owned(),
+    })
 }
 
 /// The permutation that owns the shader map of `material`'s chain and the evaluated constant buffer. `overrides` (swatch colours) win over the instance chain, like the
 /// parameters the engine sets on a dynamic instance. `Ok(None)` = no owner in the chain (not a character material permutation).
-pub fn resolve_char_material(src: &ClipSourceDir, material: &str, overrides: &HashMap<String, [f32; 4]>) -> Result<Option<CharSection>, String> {
+pub fn resolve_char_material(
+    src: &ClipSourceDir,
+    material: &str,
+    overrides: &HashMap<String, [f32; 4]>,
+) -> Result<Option<CharSection>, String> {
     let chain = chain_params(src, material)?;
-    let Some((perm, owner)) = chain.packages.iter().find_map(|p| genm::PERMS.iter().find(|q| q.owner == p.as_str() && q.id != "eyeshadow").map(|q| (q.id, q.owner))) else { return Ok(None) };
-    let lookup = |name: &str, d: [f32; 4]| -> [f32; 4] {
-        if let Some(v) = overrides.get(name) { *v }
-        else if let Some(v) = chain.vectors.get(name) { *v }
-        else if let Some(s) = chain.scalars.get(name) { [*s; 4] }
-        else { d }
+    let Some((perm, owner)) = chain.packages.iter().find_map(|p| {
+        genm::PERMS
+            .iter()
+            .find(|q| q.owner == p.as_str() && q.id != "eyeshadow")
+            .map(|q| (q.id, q.owner))
+    }) else {
+        return Ok(None);
     };
-    let cb: Vec<[f32; 4]> = match perm { "head" => genm::head_cb(&lookup).to_vec(), "hair" => genm::hair_cb(&lookup).to_vec(), "body" => genm::body_cb(&lookup).to_vec(), o => return Err(format!("unknown permutation {o}")) };
+    let lookup = |name: &str, d: [f32; 4]| -> [f32; 4] {
+        if let Some(v) = overrides.get(name) {
+            *v
+        } else if let Some(v) = chain.vectors.get(name) {
+            *v
+        } else if let Some(s) = chain.scalars.get(name) {
+            [*s; 4]
+        } else {
+            d
+        }
+    };
+    let cb: Vec<[f32; 4]> = match perm {
+        "head" => genm::head_cb(&lookup).to_vec(),
+        "hair" => genm::hair_cb(&lookup).to_vec(),
+        "body" => genm::body_cb(&lookup).to_vec(),
+        o => return Err(format!("unknown permutation {o}")),
+    };
     let noise = load_fixed(src, NOISE_PATH, false)?;
-    Ok(Some(CharSection { perm, owner: owner.to_owned(), cb, noise }))
+    Ok(Some(CharSection {
+        perm,
+        owner: owner.to_owned(),
+        cb,
+        noise,
+    }))
 }
 
 /// The Eyeshadow material's constants (cooked defaults: nothing sets its parameters for a standing character) and fixed textures.
 pub fn eyeshadow(src: &ClipSourceDir) -> Result<Eyeshadow, String> {
     let cb = genm::eyeshadow_cb(&|_, d| d).to_vec();
     let t = |i: usize| load_fixed(src, EYESHADOW_TEXTURES[i].0, EYESHADOW_TEXTURES[i].1);
-    Ok(Eyeshadow { cb, tex: [t(0)?, t(1)?, t(2)?] })
+    Ok(Eyeshadow {
+        cb,
+        tex: [t(0)?, t(1)?, t(2)?],
+    })
 }
 
 /// Overrides of the part's swatches (name -> colour), skin swatch first then hair swatch.
-pub fn swatch_overrides(src: &ClipSourceDir, defs: &[&PartDef], notes: &mut Vec<String>) -> HashMap<String, [f32; 4]> {
+pub fn swatch_overrides(
+    src: &ClipSourceDir,
+    defs: &[&PartDef],
+    notes: &mut Vec<String>,
+) -> HashMap<String, [f32; 4]> {
     let mut out = HashMap::new();
     let mut seen = vec![];
     for d in defs {
         for s in [&d.skin_swatch, &d.hair_swatch].into_iter().flatten() {
-            if seen.contains(s) { continue; }
+            if seen.contains(s) {
+                continue;
+            }
             seen.push(s.clone());
             match read_swatch(src, s) {
-                Ok(pairs) => { notes.push(swatch_report(s, &pairs)); for (n, c) in pairs { out.insert(n, c); } }
+                Ok(pairs) => {
+                    notes.push(swatch_report(s, &pairs));
+                    for (n, c) in pairs {
+                        out.insert(n, c);
+                    }
+                }
                 Err(e) => notes.push(format!("MISSING {s}: {e}")),
             }
         }

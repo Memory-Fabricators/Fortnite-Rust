@@ -43,7 +43,17 @@ pub fn apply(adj: &mut Vec<PlayAdj>, id: PlayId, a: Adjust) {
     let i = match adj.iter().position(|c| c.id == id) {
         Some(i) => i,
         None => {
-            adj.push(PlayAdj { id, cur: 1.0, target: 1.0, rate: 0.0, stop: false, position: None, atten: None, dist: None, lpf_hz: None });
+            adj.push(PlayAdj {
+                id,
+                cur: 1.0,
+                target: 1.0,
+                rate: 0.0,
+                stop: false,
+                position: None,
+                atten: None,
+                dist: None,
+                lpf_hz: None,
+            });
             adj.len() - 1
         }
     };
@@ -81,7 +91,11 @@ pub fn advance(adj: &mut [PlayAdj], dt: f32) -> Vec<PlayId> {
     for c in adj.iter_mut() {
         if c.rate > 0.0 {
             let step = c.rate * dt;
-            c.cur = if (c.target - c.cur).abs() <= step { c.target } else { c.cur + step.copysign(c.target - c.cur) };
+            c.cur = if (c.target - c.cur).abs() <= step {
+                c.target
+            } else {
+                c.cur + step.copysign(c.target - c.cur)
+            };
             if c.cur == c.target {
                 c.rate = 0.0;
             }
@@ -100,7 +114,14 @@ mod tests {
     #[test]
     fn ramp_starts_at_from_and_reaches_target_in_the_given_time() {
         let mut v = Vec::new();
-        apply(&mut v, 7, Adjust { gain: Some((Some(0.0), 1.0, 5.0, false)), ..Default::default() });
+        apply(
+            &mut v,
+            7,
+            Adjust {
+                gain: Some((Some(0.0), 1.0, 5.0, false)),
+                ..Default::default()
+            },
+        );
         assert_eq!(v[0].cur, 0.0);
         for _ in 0..250 {
             advance(&mut v, 0.01);
@@ -115,7 +136,14 @@ mod tests {
     #[test]
     fn fade_out_to_zero_stops_the_play() {
         let mut v = Vec::new();
-        apply(&mut v, 1, Adjust { gain: Some((None, 0.0, 1.0, true)), ..Default::default() });
+        apply(
+            &mut v,
+            1,
+            Adjust {
+                gain: Some((None, 0.0, 1.0, true)),
+                ..Default::default()
+            },
+        );
         let mut stopped = vec![];
         for _ in 0..120 {
             stopped.extend(advance(&mut v, 0.01));
@@ -126,9 +154,31 @@ mod tests {
     #[test]
     fn zero_seconds_jumps_and_overrides_can_be_cleared() {
         let mut v = Vec::new();
-        apply(&mut v, 1, Adjust { gain: Some((None, 0.25, 0.0, false)), dist: Some(Some(900.0)), lpf_hz: Some(Some(5000.0)), ..Default::default() });
-        assert_eq!((v[0].cur, v[0].dist, v[0].lpf_hz), (0.25, Some(900.0), Some(5000.0)));
-        apply(&mut v, 1, Adjust { dist: Some(None), ..Default::default() });
-        assert_eq!((v[0].cur, v[0].dist, v[0].lpf_hz), (0.25, None, Some(5000.0)));
+        apply(
+            &mut v,
+            1,
+            Adjust {
+                gain: Some((None, 0.25, 0.0, false)),
+                dist: Some(Some(900.0)),
+                lpf_hz: Some(Some(5000.0)),
+                ..Default::default()
+            },
+        );
+        assert_eq!(
+            (v[0].cur, v[0].dist, v[0].lpf_hz),
+            (0.25, Some(900.0), Some(5000.0))
+        );
+        apply(
+            &mut v,
+            1,
+            Adjust {
+                dist: Some(None),
+                ..Default::default()
+            },
+        );
+        assert_eq!(
+            (v[0].cur, v[0].dist, v[0].lpf_hz),
+            (0.25, None, Some(5000.0))
+        );
     }
 }

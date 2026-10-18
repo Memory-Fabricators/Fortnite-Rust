@@ -146,7 +146,14 @@ fn read_struct_base<'a>(pkg: &Package, r: &mut Reader<'a>) -> Result<StructBase<
         return Err(Error::malformed("negative script storage size"));
     }
     let script = r.bytes(storage as usize)?;
-    Ok(StructBase { next, super_struct, children, child_list, script_bytecode_size, script })
+    Ok(StructBase {
+        next,
+        super_struct,
+        children,
+        child_list,
+        script_bytecode_size,
+        script,
+    })
 }
 
 fn is_class_like(class: &str) -> bool {
@@ -179,14 +186,29 @@ fn class_from_object<'a>(pkg: &Package<'a>, obj: &ExportObject<'a>) -> Result<Cl
     let n = r.count(12)?;
     let mut interfaces = Vec::with_capacity(n);
     for _ in 0..n {
-        interfaces.push(ImplementedInterface { class: idx(&mut r)?, pointer_offset: r.i32()?, implemented_by_k2: r.bool32()? });
+        interfaces.push(ImplementedInterface {
+            class: idx(&mut r)?,
+            pointer_offset: r.i32()?,
+            implemented_by_k2: r.bool32()?,
+        });
     }
     let _deprecated_force_script_order = r.bool32()?;
     let _dummy = read_fname(pkg, &mut r)?;
     let cooked = r.bool32()?;
     let default_object = idx(&mut r)?;
     let extra = &obj.trailing[r.pos()..];
-    Ok(ClassData { base, func_map, class_flags, class_within, config_name, interfaces, class_generated_by, cooked, default_object, extra })
+    Ok(ClassData {
+        base,
+        func_map,
+        class_flags,
+        class_within,
+        config_name,
+        interfaces,
+        class_generated_by,
+        cooked,
+        default_object,
+        extra,
+    })
 }
 
 /// Decode a `Function` / `DelegateFunction` export.
@@ -202,11 +224,18 @@ fn function_from_object<'a>(pkg: &Package, obj: &ExportObject<'a>) -> Result<Fun
     let mut r = Reader::new(obj.trailing);
     let b = read_struct_base(pkg, &mut r)?;
     let function_flags = r.u32()?;
-    let rep_offset = if function_flags & FUNC_NET != 0 { Some(r.u16()?) } else { None };
+    let rep_offset = if function_flags & FUNC_NET != 0 {
+        Some(r.u16()?)
+    } else {
+        None
+    };
     let event_graph_function = idx(&mut r)?;
     let event_graph_call_offset = r.i32()?;
     if r.remaining() != 0 {
-        return Err(Error::malformed(format!("function: {} unread byte(s) after EventGraphCallOffset", r.remaining())));
+        return Err(Error::malformed(format!(
+            "function: {} unread byte(s) after EventGraphCallOffset",
+            r.remaining()
+        )));
     }
     Ok(FunctionData {
         next: b.next,
@@ -239,7 +268,11 @@ fn property_from_object(pkg: &Package, obj: &ExportObject) -> Result<PropertyDec
     let mut refs: Vec<(&'static str, PackageIndex)> = Vec::new();
     let mut bool_bytes = None;
     match obj.class.as_str() {
-        "ObjectProperty" | "WeakObjectProperty" | "LazyObjectProperty" | "AssetObjectProperty" | "SoftObjectProperty" => refs.push(("PropertyClass", idx(&mut r)?)),
+        "ObjectProperty"
+        | "WeakObjectProperty"
+        | "LazyObjectProperty"
+        | "AssetObjectProperty"
+        | "SoftObjectProperty" => refs.push(("PropertyClass", idx(&mut r)?)),
         "ClassProperty" | "AssetClassProperty" | "SoftClassProperty" => {
             refs.push(("PropertyClass", idx(&mut r)?));
             refs.push(("MetaClass", idx(&mut r)?));
@@ -261,13 +294,28 @@ fn property_from_object(pkg: &Package, obj: &ExportObject) -> Result<PropertyDec
             refs.push(("KeyProp", idx(&mut r)?));
             refs.push(("ValueProp", idx(&mut r)?));
         }
-        "DelegateProperty" | "MulticastDelegateProperty" => refs.push(("SignatureFunction", idx(&mut r)?)),
+        "DelegateProperty" | "MulticastDelegateProperty" => {
+            refs.push(("SignatureFunction", idx(&mut r)?))
+        }
         _ => {}
     }
     if r.remaining() != 0 {
-        return Err(Error::malformed(format!("{}: {} unread byte(s)", obj.class, r.remaining())));
+        return Err(Error::malformed(format!(
+            "{}: {} unread byte(s)",
+            obj.class,
+            r.remaining()
+        )));
     }
-    Ok(PropertyDecl { class: obj.class.clone(), name: obj.name.clone(), next, array_dim, property_flags, rep_notify_func, refs, bool_bytes })
+    Ok(PropertyDecl {
+        class: obj.class.clone(),
+        name: obj.name.clone(),
+        next,
+        array_dim,
+        property_flags,
+        rep_notify_func,
+        refs,
+        bool_bytes,
+    })
 }
 
 /// Decode an `Enum` / `UserDefinedEnum` export.
@@ -289,8 +337,16 @@ fn enum_from_object(pkg: &Package, obj: &ExportObject) -> Result<EnumData> {
         let v = r.i64()?;
         names.push((name, v));
     }
-    let cpp_form = if r.remaining() >= 1 { Some(r.u8()?) } else { None };
-    Ok(EnumData { names, cpp_form, remaining: r.remaining() })
+    let cpp_form = if r.remaining() >= 1 {
+        Some(r.u8()?)
+    } else {
+        None
+    };
+    Ok(EnumData {
+        names,
+        cpp_form,
+        remaining: r.remaining(),
+    })
 }
 
 /// Decode a `ScriptStruct` / `UserDefinedStruct` export header (UStruct part + flags).
@@ -303,7 +359,11 @@ pub fn read_script_struct<'a>(pkg: &Package<'a>, i: usize) -> Result<ScriptStruc
     let base = read_struct_base(pkg, &mut r)?;
     let struct_flags = r.u32()?;
     let extra = &obj.trailing[r.pos()..];
-    Ok(ScriptStructData { base, struct_flags, extra })
+    Ok(ScriptStructData {
+        base,
+        struct_flags,
+        extra,
+    })
 }
 
 /// Rows of a `DataTable` / `CurveTable` export: `i32 n`, then `n x { RowName FName, tagged property list of the row
@@ -325,7 +385,11 @@ pub fn read_table(pkg: &Package, i: usize) -> Result<TableData> {
 }
 
 fn table_from_object<'a>(pkg: &Package<'a>, obj: &ExportObject<'a>) -> Result<TableData> {
-    let row_struct = obj.props.get("RowStruct").and_then(|v| v.as_object()).unwrap_or_default();
+    let row_struct = obj
+        .props
+        .get("RowStruct")
+        .and_then(|v| v.as_object())
+        .unwrap_or_default();
     let mut r = Reader::new(obj.trailing);
     let n = r.count(8)?;
     let mut rows = Vec::with_capacity(n);
@@ -336,7 +400,10 @@ fn table_from_object<'a>(pkg: &Package<'a>, obj: &ExportObject<'a>) -> Result<Ta
         rows.push((name, props));
     }
     if r.remaining() != 0 {
-        return Err(Error::malformed(format!("table: {} unread byte(s) after the last row", r.remaining())));
+        return Err(Error::malformed(format!(
+            "table: {} unread byte(s) after the last row",
+            r.remaining()
+        )));
     }
     Ok(TableData { row_struct, rows })
 }
@@ -348,7 +415,10 @@ pub fn check_export(pkg: &Package, i: usize, obj: &ExportObject) -> Result<()> {
     if is_class_like(class) {
         let c = class_from_object(pkg, obj)?;
         if !c.extra.is_empty() {
-            return Err(Error::malformed(format!("class: {} byte(s) of extra native data", c.extra.len())));
+            return Err(Error::malformed(format!(
+                "class: {} byte(s) of extra native data",
+                c.extra.len()
+            )));
         }
         let _ = i;
         return Ok(());
@@ -361,19 +431,53 @@ pub fn check_export(pkg: &Package, i: usize, obj: &ExportObject) -> Result<()> {
                 return Err(Error::malformed(format!("kismet: {e}")));
             }
             if !f.script.is_empty() && (!d.reached_end || d.end != f.script.len()) {
-                return Err(Error::malformed(format!("kismet: script ends at {} of {} (reached END: {})", d.end, f.script.len(), d.reached_end)));
+                return Err(Error::malformed(format!(
+                    "kismet: script ends at {} of {} (reached END: {})",
+                    d.end,
+                    f.script.len(),
+                    d.reached_end
+                )));
             }
             Ok(())
         }
-        "BoolProperty" | "ByteProperty" | "IntProperty" | "UInt32Property" | "Int64Property" | "UInt64Property" | "Int16Property" | "UInt16Property" | "Int8Property" | "FloatProperty"
-        | "DoubleProperty" | "NameProperty" | "StrProperty" | "TextProperty" | "ObjectProperty" | "WeakObjectProperty" | "LazyObjectProperty" | "AssetObjectProperty" | "SoftObjectProperty"
-        | "ClassProperty" | "AssetClassProperty" | "SoftClassProperty" | "InterfaceProperty" | "StructProperty" | "EnumProperty" | "ArrayProperty" | "SetProperty" | "MapProperty"
-        | "DelegateProperty" | "MulticastDelegateProperty" => property_from_object(pkg, obj).map(|_| ()),
+        "BoolProperty"
+        | "ByteProperty"
+        | "IntProperty"
+        | "UInt32Property"
+        | "Int64Property"
+        | "UInt64Property"
+        | "Int16Property"
+        | "UInt16Property"
+        | "Int8Property"
+        | "FloatProperty"
+        | "DoubleProperty"
+        | "NameProperty"
+        | "StrProperty"
+        | "TextProperty"
+        | "ObjectProperty"
+        | "WeakObjectProperty"
+        | "LazyObjectProperty"
+        | "AssetObjectProperty"
+        | "SoftObjectProperty"
+        | "ClassProperty"
+        | "AssetClassProperty"
+        | "SoftClassProperty"
+        | "InterfaceProperty"
+        | "StructProperty"
+        | "EnumProperty"
+        | "ArrayProperty"
+        | "SetProperty"
+        | "MapProperty"
+        | "DelegateProperty"
+        | "MulticastDelegateProperty" => property_from_object(pkg, obj).map(|_| ()),
         "DataTable" | "CurveTable" => table_from_object(pkg, obj).map(|_| ()),
         "Enum" | "UserDefinedEnum" => {
             let e = enum_from_object(pkg, obj)?;
             if e.remaining != 0 {
-                return Err(Error::malformed(format!("enum: {} unread byte(s)", e.remaining)));
+                return Err(Error::malformed(format!(
+                    "enum: {} unread byte(s)",
+                    e.remaining
+                )));
             }
             Ok(())
         }
@@ -398,7 +502,9 @@ pub fn package_classes_json(pkg: &Package) -> Json {
                     "interfaces": c.interfaces.iter().map(|x| json!({"class": pkg.object_path(x.class), "k2": x.implemented_by_k2})).collect::<Vec<_>>(),
                     "scriptBytes": c.base.script.len(), "extraBytes": c.extra.len(),
                 }),
-                Err(e) => json!({"index": i, "kind": "class", "name": name, "error": e.to_string()}),
+                Err(e) => {
+                    json!({"index": i, "kind": "class", "name": name, "error": e.to_string()})
+                }
             }
         } else if class == "Function" || class == "DelegateFunction" {
             match read_function(pkg, i) {
@@ -412,7 +518,9 @@ pub fn package_classes_json(pkg: &Package) -> Json {
                         "disassemblyError": d.error,
                     })
                 }
-                Err(e) => json!({"index": i, "kind": "function", "name": name, "error": e.to_string()}),
+                Err(e) => {
+                    json!({"index": i, "kind": "function", "name": name, "error": e.to_string()})
+                }
             }
         } else if class.ends_with("Property") {
             match read_property_decl(pkg, i) {
@@ -420,17 +528,25 @@ pub fn package_classes_json(pkg: &Package) -> Json {
                     "index": i, "kind": "property", "class": class, "name": name, "flags": format!("{:#x}", p.property_flags), "arrayDim": p.array_dim,
                     "refs": p.refs.iter().map(|(k, v)| json!({"role": k, "object": pkg.object_path(*v)})).collect::<Vec<_>>(),
                 }),
-                Err(e) => json!({"index": i, "kind": "property", "name": name, "error": e.to_string()}),
+                Err(e) => {
+                    json!({"index": i, "kind": "property", "name": name, "error": e.to_string()})
+                }
             }
         } else if class == "DataTable" || class == "CurveTable" {
             match read_table(pkg, i) {
-                Ok(t) => json!({"index": i, "kind": "table", "class": class, "name": name, "rowStruct": pkg.object_path(t.row_struct),
-                                "rows": t.rows.iter().map(|(n, p)| json!({"name": n, "values": p.to_json(pkg)})).collect::<Vec<_>>()}),
-                Err(e) => json!({"index": i, "kind": "table", "name": name, "error": e.to_string()}),
+                Ok(t) => {
+                    json!({"index": i, "kind": "table", "class": class, "name": name, "rowStruct": pkg.object_path(t.row_struct),
+                                "rows": t.rows.iter().map(|(n, p)| json!({"name": n, "values": p.to_json(pkg)})).collect::<Vec<_>>()})
+                }
+                Err(e) => {
+                    json!({"index": i, "kind": "table", "name": name, "error": e.to_string()})
+                }
             }
         } else if class == "Enum" || class == "UserDefinedEnum" {
             match read_enum(pkg, i) {
-                Ok(e) => json!({"index": i, "kind": "enum", "name": name, "names": e.names.iter().map(|(n, v)| json!([n, v])).collect::<Vec<_>>()}),
+                Ok(e) => {
+                    json!({"index": i, "kind": "enum", "name": name, "names": e.names.iter().map(|(n, v)| json!([n, v])).collect::<Vec<_>>()})
+                }
                 Err(e) => json!({"index": i, "kind": "enum", "name": name, "error": e.to_string()}),
             }
         } else {
@@ -440,8 +556,3 @@ pub fn package_classes_json(pkg: &Package) -> Json {
     }
     Json::Array(out)
 }
-
-
-
-
-

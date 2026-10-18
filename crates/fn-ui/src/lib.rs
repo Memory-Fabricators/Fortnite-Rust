@@ -15,24 +15,21 @@
 pub mod assets;
 pub mod draw;
 pub mod input;
-pub mod layout;
-pub mod material;
-#[cfg(feature = "pak")]
-pub mod pak_assets;
 #[cfg(feature = "menu")]
 pub mod inputdev;
+pub mod layout;
+pub mod material;
 #[cfg(feature = "menu")]
 pub mod menu;
-#[cfg(all(test, feature = "menu"))]
-pub(crate) mod testutil;
+#[cfg(feature = "pak")]
+pub mod pak_assets;
 pub mod raster;
 pub mod router;
 pub mod scene;
 pub mod screens;
+#[cfg(all(test, feature = "menu"))]
+pub(crate) mod testutil;
 #[cfg(feature = "menu")]
 /// The settings model is the real one, `fn-settings` (typed `Settings`, descriptor table, ini persistence, apply layer, `PlatformHost`).
 pub use fn_settings as settings;
 pub mod text;
-
-
-

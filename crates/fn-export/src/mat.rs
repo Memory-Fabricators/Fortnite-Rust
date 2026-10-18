@@ -23,7 +23,11 @@ fn param_name(fields: &PropList) -> String {
     if let Some(n) = fields.text("ParameterName") {
         return n.to_string();
     }
-    fields.fields("ParameterInfo").and_then(|i| i.text("Name")).unwrap_or("").to_string()
+    fields
+        .fields("ParameterInfo")
+        .and_then(|i| i.text("Name"))
+        .unwrap_or("")
+        .to_string()
 }
 
 fn prop_json(pkg: &Package, v: &PropValue) -> Value {
@@ -64,7 +68,10 @@ pub fn material_json(pkg: &Package, name: &str) -> Result<Value, String> {
     let class = pkg.export_class(idx);
     let (s, e) = pkg.export_range(idx);
     let mut r = Reader::at(&pkg.data[..e], s);
-    let c = Ctx { names: &pkg.names, file_version: pkg.summary.file_version };
+    let c = Ctx {
+        names: &pkg.names,
+        file_version: pkg.summary.file_version,
+    };
     let props = read_props(&mut r, &c).map_err(|e| e.to_string())?;
     let mut scalars = Map::new();
     let mut vectors = Map::new();
@@ -97,17 +104,33 @@ pub fn material_json(pkg: &Package, name: &str) -> Result<Value, String> {
         }
     }
     // textures imported by the package (covers plain Material assets)
-    let imported_textures: Vec<Value> =
-        pkg.imports.iter().enumerate().filter(|(_, i)| i.class_name == "Texture2D").map(|(n, _)| json!(pkg.import_path(-(n as i32) - 1))).collect();
+    let imported_textures: Vec<Value> = pkg
+        .imports
+        .iter()
+        .enumerate()
+        .filter(|(_, i)| i.class_name == "Texture2D")
+        .map(|(n, _)| json!(pkg.import_path(-(n as i32) - 1)))
+        .collect();
     let mut out = Map::new();
     out.insert("name".into(), json!(name));
     out.insert("class".into(), json!(class));
-    out.insert("parent".into(), props.object("Parent").map(|i| json!(object_path(pkg, i))).unwrap_or(Value::Null));
+    out.insert(
+        "parent".into(),
+        props
+            .object("Parent")
+            .map(|i| json!(object_path(pkg, i)))
+            .unwrap_or(Value::Null),
+    );
     out.insert("scalars".into(), Value::Object(scalars));
     out.insert("vectors".into(), Value::Object(vectors));
     out.insert("textures".into(), Value::Object(textures));
     out.insert("imported_textures".into(), Value::Array(imported_textures));
-    for key in ["StaticParameters", "BasePropertyOverrides", "PhysMaterial", "bUseMobileSpecular"] {
+    for key in [
+        "StaticParameters",
+        "BasePropertyOverrides",
+        "PhysMaterial",
+        "bUseMobileSpecular",
+    ] {
         if let Some(v) = props.get(key) {
             out.insert(key.into(), prop_json(pkg, v));
         }

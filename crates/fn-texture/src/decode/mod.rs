@@ -37,23 +37,48 @@ pub struct DecodeOptions {
 
 impl Default for DecodeOptions {
     fn default() -> Self {
-        DecodeOptions { bc5_reconstruct_z: true, rounding: Rounding::NvttTruncate, dxt1_zero_transparent_rgb: true, threads: 0 }
+        DecodeOptions {
+            bc5_reconstruct_z: true,
+            rounding: Rounding::NvttTruncate,
+            dxt1_zero_transparent_rgb: true,
+            threads: 0,
+        }
     }
 }
 
 /// Decode one slice of `w` x `h` pixels from raw mip bytes.
-pub fn decode_mip(format: &PixelFormat, src: &[u8], w: usize, h: usize, o: &DecodeOptions) -> Result<DecodedImage> {
-    let need = format.mip_bytes(w, h).ok_or_else(|| Error::UnsupportedFormat(format.name().to_string()))?;
+pub fn decode_mip(
+    format: &PixelFormat,
+    src: &[u8],
+    w: usize,
+    h: usize,
+    o: &DecodeOptions,
+) -> Result<DecodedImage> {
+    let need = format
+        .mip_bytes(w, h)
+        .ok_or_else(|| Error::UnsupportedFormat(format.name().to_string()))?;
     if src.len() < need {
-        return Err(Error::Invalid(format!("{} {w}x{h} needs {need} bytes, got {}", format.name(), src.len())));
+        return Err(Error::Invalid(format!(
+            "{} {w}x{h} needs {need} bytes, got {}",
+            format.name(),
+            src.len()
+        )));
     }
     let px = match format {
-        PixelFormat::Dxt1 | PixelFormat::Dxt3 | PixelFormat::Dxt5 | PixelFormat::Bc4 | PixelFormat::Bc5 => Pixels::Rgba8(bc1235::decode(format, src, w, h, o)),
+        PixelFormat::Dxt1
+        | PixelFormat::Dxt3
+        | PixelFormat::Dxt5
+        | PixelFormat::Bc4
+        | PixelFormat::Bc5 => Pixels::Rgba8(bc1235::decode(format, src, w, h, o)),
         PixelFormat::Bc7 => Pixels::Rgba8(bc7::decode(src, w, h, o.threads)),
         PixelFormat::Bc6h => Pixels::RgbaF16(bc6h::decode(src, w, h, o.threads)),
         other => raw::decode(other, src, w, h)?,
     };
-    Ok(DecodedImage { width: w, height: h, pixels: px })
+    Ok(DecodedImage {
+        width: w,
+        height: h,
+        pixels: px,
+    })
 }
 
 fn thread_count(requested: usize, pixels: usize) -> usize {
@@ -63,12 +88,21 @@ fn thread_count(requested: usize, pixels: usize) -> usize {
     if requested > 0 {
         return requested;
     }
-    std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1)
+    std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1)
 }
 
 /// Decode a block compressed image. `f` decodes one block (`block_bytes` bytes) into 16 RGBA pixels (row-major 4x4).
 /// Edge blocks are clipped. Block rows are distributed over threads.
-pub(crate) fn decode_blocks<T, F>(src: &[u8], w: usize, h: usize, block_bytes: usize, threads: usize, f: F) -> Vec<T>
+pub(crate) fn decode_blocks<T, F>(
+    src: &[u8],
+    w: usize,
+    h: usize,
+    block_bytes: usize,
+    threads: usize,
+    f: F,
+) -> Vec<T>
 where
     T: Copy + Default + Send + Sync,
     F: Fn(&[u8], &mut [[T; 4]; 16]) + Sync,

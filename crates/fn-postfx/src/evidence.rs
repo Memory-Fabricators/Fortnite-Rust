@@ -98,22 +98,47 @@ pub const SCAN_KEYWORDS: &[&str] = &[
 
 /// Console variables whose baked strings we look for in blueprints and in the exe.
 pub const CVAR_NEEDLES: &[&str] = &[
-    "r.MotionBlur", "r.DepthOfField", "r.VolumetricFog", "r.BloomQuality", "r.Bloom", "r.LensFlare", "r.SceneColorFringe",
-    "r.AmbientOcclusion", "r.Tonemapper", "r.EyeAdaptation", "r.PostProcess", "r.DefaultFeature", "r.LightShaftQuality",
-    "r.Fog", "r.Atmosphere", "sg.PostProcessQuality", "sg.EffectsQuality", "ShowFlag.MotionBlur", "ShowFlag.DepthOfField",
-    "ShowFlag.VolumetricFog", "ShowFlag.Bloom", "ShowFlag.LensFlares",
+    "r.MotionBlur",
+    "r.DepthOfField",
+    "r.VolumetricFog",
+    "r.BloomQuality",
+    "r.Bloom",
+    "r.LensFlare",
+    "r.SceneColorFringe",
+    "r.AmbientOcclusion",
+    "r.Tonemapper",
+    "r.EyeAdaptation",
+    "r.PostProcess",
+    "r.DefaultFeature",
+    "r.LightShaftQuality",
+    "r.Fog",
+    "r.Atmosphere",
+    "sg.PostProcessQuality",
+    "sg.EffectsQuality",
+    "ShowFlag.MotionBlur",
+    "ShowFlag.DepthOfField",
+    "ShowFlag.VolumetricFog",
+    "ShowFlag.Bloom",
+    "ShowFlag.LensFlares",
 ];
 
 fn contains_bytes(hay: &[u8], needle: &[u8]) -> bool {
-    if needle.is_empty() || hay.len() < needle.len() { return false; }
+    if needle.is_empty() || hay.len() < needle.len() {
+        return false;
+    }
     let first = needle[0];
     let mut i = 0;
     while i + needle.len() <= hay.len() {
-        match hay[i..hay.len() - needle.len() + 1].iter().position(|&b| b == first) {
+        match hay[i..hay.len() - needle.len() + 1]
+            .iter()
+            .position(|&b| b == first)
+        {
             None => return false,
             Some(p) => {
                 i += p;
-                if &hay[i..i + needle.len()] == needle { return true; }
+                if &hay[i..i + needle.len()] == needle {
+                    return true;
+                }
                 i += 1;
             }
         }
@@ -121,14 +146,21 @@ fn contains_bytes(hay: &[u8], needle: &[u8]) -> bool {
     false
 }
 
-fn utf16(s: &str) -> Vec<u8> { s.encode_utf16().flat_map(|c| c.to_le_bytes()).collect() }
+fn utf16(s: &str) -> Vec<u8> {
+    s.encode_utf16().flat_map(|c| c.to_le_bytes()).collect()
+}
 
 /// Case-sensitive search for `needle` as ASCII and as UTF-16LE.
-pub fn contains_text(hay: &[u8], needle: &str) -> bool { contains_bytes(hay, needle.as_bytes()) || contains_bytes(hay, &utf16(needle)) }
+pub fn contains_text(hay: &[u8], needle: &str) -> bool {
+    contains_bytes(hay, needle.as_bytes()) || contains_bytes(hay, &utf16(needle))
+}
 
 /// All settings carried in a `Settings` struct property list as `name -> json`.
 fn struct_map(v: &Value, pkg: &Package) -> Map<String, Json> {
-    match v.to_json(pkg) { Json::Object(m) => m, _ => Map::new() }
+    match v.to_json(pkg) {
+        Json::Object(m) => m,
+        _ => Map::new(),
+    }
 }
 
 fn settings_of(set: &PakSet, long: &str, export: &str) -> Option<(Map<String, Json>, usize)> {
@@ -143,20 +175,37 @@ fn settings_of(set: &PakSet, long: &str, export: &str) -> Option<(Map<String, Js
 /// Merge parent + child tagged settings, resolve `bOverride_*` and classify every tagged / flagged field.
 pub fn merge_phase(parent: &Map<String, Json>, child: &Map<String, Json>) -> Json {
     let mut merged: BTreeMap<String, (Json, &'static str)> = BTreeMap::new();
-    for (k, v) in parent { merged.insert(k.clone(), (v.clone(), "TODM_A (parent)")); }
-    for (k, v) in child { merged.insert(k.clone(), (v.clone(), "TODM_A_Child_Athena (child delta)")); }
-    let flag = |k: &str| -> bool { merged.get(&format!("bOverride_{k}")).and_then(|(v, _)| v.as_bool()).unwrap_or(false) };
+    for (k, v) in parent {
+        merged.insert(k.clone(), (v.clone(), "TODM_A (parent)"));
+    }
+    for (k, v) in child {
+        merged.insert(k.clone(), (v.clone(), "TODM_A_Child_Athena (child delta)"));
+    }
+    let flag = |k: &str| -> bool {
+        merged
+            .get(&format!("bOverride_{k}"))
+            .and_then(|(v, _)| v.as_bool())
+            .unwrap_or(false)
+    };
     let mut applied = Map::new();
     let mut ignored = Map::new();
     let mut flagged_default = Vec::new();
     for (k, (v, src)) in &merged {
-        if k.starts_with("bOverride_") || k.starts_with('_') { continue; }
+        if k.starts_with("bOverride_") || k.starts_with('_') {
+            continue;
+        }
         let entry = json!({ "value": v, "source": src, "provenance": "RECOVERED" });
-        if flag(k) { applied.insert(k.clone(), entry); } else { ignored.insert(k.clone(), json!({ "value": v, "source": src, "why": "no bOverride_ flag true (ignored by the volume blend)" })); }
+        if flag(k) {
+            applied.insert(k.clone(), entry);
+        } else {
+            ignored.insert(k.clone(), json!({ "value": v, "source": src, "why": "no bOverride_ flag true (ignored by the volume blend)" }));
+        }
     }
     for (k, (v, _)) in &merged {
         if let Some(name) = k.strip_prefix("bOverride_") {
-            if v.as_bool() == Some(true) && !merged.contains_key(name) { flagged_default.push(name.to_string()); }
+            if v.as_bool() == Some(true) && !merged.contains_key(name) {
+                flagged_default.push(name.to_string());
+            }
         }
     }
     let assumed: Map<String, Json> = flagged_default.iter().filter_map(|n| {
@@ -178,7 +227,10 @@ pub fn todm_section(set: &PakSet) -> Json {
         let comp = format!("{phase}PostProcessComponent");
         let parent = settings_of(set, "/Game/TimeOfDay/TODM/TODM_A", &comp);
         let child = settings_of(set, "/Game/TimeOfDay/TODM/TODM_A_Child_Athena", &comp);
-        let (pm, cm) = (parent.map(|p| p.0).unwrap_or_default(), child.map(|c| c.0).unwrap_or_default());
+        let (pm, cm) = (
+            parent.map(|p| p.0).unwrap_or_default(),
+            child.map(|c| c.0).unwrap_or_default(),
+        );
         let mut j = merge_phase(&pm, &cm);
         j["parent_tagged_fields"] = json!(pm.len());
         j["child_tagged_fields"] = json!(cm.len());
@@ -186,30 +238,50 @@ pub fn todm_section(set: &PakSet) -> Json {
     }
     // fog / light components that influence volumetric fog and light shafts
     let comp = |long: &str, export: &str| -> Json {
-        PackageData::load(set, long).ok().and_then(|d| {
-            let pkg = d.package().ok()?;
-            let ex = pkg.read_export_named(export)?.ok()?;
-            Some(ex.props.to_json(&pkg))
-        }).unwrap_or(Json::Null)
+        PackageData::load(set, long)
+            .ok()
+            .and_then(|d| {
+                let pkg = d.package().ok()?;
+                let ex = pkg.read_export_named(export)?.ok()?;
+                Some(ex.props.to_json(&pkg))
+            })
+            .unwrap_or(Json::Null)
     };
     // every Volumetric* value of the TOD class default objects (phase structs), with its path
     fn collect(v: &Json, needle: &str, path: String, out: &mut Vec<Json>) {
         match v {
-            Json::Object(m) => for (k, x) in m {
-                let p = format!("{path}/{k}");
-                if k.contains(needle) && !x.is_object() && !x.is_array() { out.push(json!({ "path": p, "value": x })); }
-                collect(x, needle, p, out);
-            },
-            Json::Array(a) => for (i, x) in a.iter().enumerate() { collect(x, needle, format!("{path}[{i}]"), out); },
+            Json::Object(m) => {
+                for (k, x) in m {
+                    let p = format!("{path}/{k}");
+                    if k.contains(needle) && !x.is_object() && !x.is_array() {
+                        out.push(json!({ "path": p, "value": x }));
+                    }
+                    collect(x, needle, p, out);
+                }
+            }
+            Json::Array(a) => {
+                for (i, x) in a.iter().enumerate() {
+                    collect(x, needle, format!("{path}[{i}]"), out);
+                }
+            }
             _ => {}
         }
     }
     let mut volumetric = Vec::new();
-    for long in ["/Game/TimeOfDay/TODM/TODM_A", "/Game/TimeOfDay/TODM/TODM_A_Child_Athena"] {
-        if let Some(j) = PackageData::load(set, long).ok().and_then(|d| { let pkg = d.package().ok()?; let cdo = pkg.read_default_object()?.ok()?; Some(cdo.props.to_json(&pkg)) }) {
+    for long in [
+        "/Game/TimeOfDay/TODM/TODM_A",
+        "/Game/TimeOfDay/TODM/TODM_A_Child_Athena",
+    ] {
+        if let Some(j) = PackageData::load(set, long).ok().and_then(|d| {
+            let pkg = d.package().ok()?;
+            let cdo = pkg.read_default_object()?.ok()?;
+            Some(cdo.props.to_json(&pkg))
+        }) {
             let mut found = Vec::new();
             collect(&j, "Volumetric", String::new(), &mut found);
-            for f in found { volumetric.push(json!({ "asset": long, "path": f["path"], "value": f["value"] })); }
+            for f in found {
+                volumetric.push(json!({ "asset": long, "path": f["path"], "value": f["value"] }));
+            }
         }
     }
     json!({
@@ -229,10 +301,14 @@ fn collect_pp(v: &Value, pkg: &Package, out: &mut Vec<Map<String, Json>>) {
         Value::Struct { name, props } => {
             if name == "PostProcessSettings" {
                 let mut m = Map::new();
-                for p in props.iter() { m.insert(p.name.clone(), p.value.to_json(pkg)); }
+                for p in props.iter() {
+                    m.insert(p.name.clone(), p.value.to_json(pkg));
+                }
                 out.push(m);
             } else {
-                for p in props.iter() { collect_pp(&p.value, pkg, out); }
+                for p in props.iter() {
+                    collect_pp(&p.value, pkg, out);
+                }
             }
         }
         Value::Array(a) | Value::Set(a) => a.iter().for_each(|x| collect_pp(x, pkg, out)),
@@ -241,36 +317,83 @@ fn collect_pp(v: &Value, pkg: &Package, out: &mut Vec<Map<String, Json>>) {
 }
 
 const EFFECT_KEYS: &[&str] = &[
-    "DepthOfFieldMethod", "DepthOfFieldFocalDistance", "DepthOfFieldFocalRegion", "DepthOfFieldNearTransitionRegion", "DepthOfFieldFarTransitionRegion",
-    "DepthOfFieldNearBlurSize", "DepthOfFieldFarBlurSize", "DepthOfFieldScale", "MotionBlurAmount", "MotionBlurMax", "MotionBlurPerObjectSize",
-    "LensFlareIntensity", "SceneFringeIntensity", "BloomIntensity", "BloomThreshold", "BloomSizeScale", "VignetteIntensity",
+    "DepthOfFieldMethod",
+    "DepthOfFieldFocalDistance",
+    "DepthOfFieldFocalRegion",
+    "DepthOfFieldNearTransitionRegion",
+    "DepthOfFieldFarTransitionRegion",
+    "DepthOfFieldNearBlurSize",
+    "DepthOfFieldFarBlurSize",
+    "DepthOfFieldScale",
+    "MotionBlurAmount",
+    "MotionBlurMax",
+    "MotionBlurPerObjectSize",
+    "LensFlareIntensity",
+    "SceneFringeIntensity",
+    "BloomIntensity",
+    "BloomThreshold",
+    "BloomSizeScale",
+    "VignetteIntensity",
 ];
 
 /// Section 2: install-wide scan for other post-process carriers.
 pub fn scan_section(set: &PakSet) -> Json {
-    let files: Vec<_> = set.effective().filter(|(_, e)| { let p = e.path.to_ascii_lowercase(); p.ends_with(".uasset") || p.ends_with(".umap") }).collect();
-    let hits: Vec<(String, Vec<&'static str>, bool)> = files.par_iter().filter_map(|(pf, e)| {
-        let bytes = pf.read(e).ok()?;
-        let pkg = Package::parse(&bytes, &[]).ok()?;
-        let mut kw: Vec<&'static str> = Vec::new();
-        for k in SCAN_KEYWORDS { if pkg.names.iter().any(|n| n == k) { kw.push(k); } }
-        if kw.is_empty() { None } else { Some((e.path.clone(), kw, false)) }
-    }).collect();
+    let files: Vec<_> = set
+        .effective()
+        .filter(|(_, e)| {
+            let p = e.path.to_ascii_lowercase();
+            p.ends_with(".uasset") || p.ends_with(".umap")
+        })
+        .collect();
+    let hits: Vec<(String, Vec<&'static str>, bool)> = files
+        .par_iter()
+        .filter_map(|(pf, e)| {
+            let bytes = pf.read(e).ok()?;
+            let pkg = Package::parse(&bytes, &[]).ok()?;
+            let mut kw: Vec<&'static str> = Vec::new();
+            for k in SCAN_KEYWORDS {
+                if pkg.names.iter().any(|n| n == k) {
+                    kw.push(k);
+                }
+            }
+            if kw.is_empty() {
+                None
+            } else {
+                Some((e.path.clone(), kw, false))
+            }
+        })
+        .collect();
     let mut packages = Vec::new();
     let mut by_kw: BTreeMap<&str, usize> = BTreeMap::new();
-    for (path, kw, _) in &hits { for k in kw { *by_kw.entry(k).or_default() += 1; } let _ = path; }
+    for (path, kw, _) in &hits {
+        for k in kw {
+            *by_kw.entry(k).or_default() += 1;
+        }
+        let _ = path;
+    }
     for (path, kw, _) in &hits {
         let long = fn_pak::pak_path_to_game(path).unwrap_or_else(|| path.clone());
-        let Ok(data) = PackageData::load(set, &long) else { continue };
+        let Ok(data) = PackageData::load(set, &long) else {
+            continue;
+        };
         let Ok(pkg) = data.package() else { continue };
         let mut exports = Vec::new();
         for i in 0..pkg.exports.len() {
             let cls = pkg.export_class_name(i);
-            let Ok(obj) = pkg.read_export(i) else { continue };
+            let Ok(obj) = pkg.read_export(i) else {
+                continue;
+            };
             let mut pps = Vec::new();
-            for p in obj.props.iter() { collect_pp(&p.value, &pkg, &mut pps); }
-            let fog_volumetric = obj.props.get("bEnableVolumetricFog").and_then(|v| v.as_bool());
-            if pps.is_empty() && fog_volumetric.is_none() && cls != "PostProcessVolume" { continue; }
+            for p in obj.props.iter() {
+                collect_pp(&p.value, &pkg, &mut pps);
+            }
+            let fog_volumetric = obj
+                .props
+                .get("bEnableVolumetricFog")
+                .and_then(|v| v.as_bool());
+            if pps.is_empty() && fog_volumetric.is_none() && cls != "PostProcessVolume" {
+                continue;
+            }
             let settings: Vec<Json> = pps.iter().map(|m| {
                 let mut s = Map::new();
                 for k in EFFECT_KEYS { if let Some(v) = m.get(*k) { s.insert(k.to_string(), v.clone()); } }
@@ -281,8 +404,21 @@ pub fn scan_section(set: &PakSet) -> Json {
         }
         packages.push(json!({ "path": path, "keywords": kw, "exports": exports }));
     }
-    let post_process_volume_maps: Vec<String> = hits.iter().filter(|(p, kw, _)| p.to_ascii_lowercase().ends_with(".umap") && kw.contains(&"PostProcessVolume")).map(|(p, _, _)| p.clone()).collect();
-    let camera_hits: Vec<&String> = hits.iter().filter(|(p, _, _)| { let l = p.to_ascii_lowercase(); l.contains("/blueprints/camera/") || l.contains("cameramode") }).map(|(p, _, _)| p).collect();
+    let post_process_volume_maps: Vec<String> = hits
+        .iter()
+        .filter(|(p, kw, _)| {
+            p.to_ascii_lowercase().ends_with(".umap") && kw.contains(&"PostProcessVolume")
+        })
+        .map(|(p, _, _)| p.clone())
+        .collect();
+    let camera_hits: Vec<&String> = hits
+        .iter()
+        .filter(|(p, _, _)| {
+            let l = p.to_ascii_lowercase();
+            l.contains("/blueprints/camera/") || l.contains("cameramode")
+        })
+        .map(|(p, _, _)| p)
+        .collect();
     json!({
         "camera_mode_packages_with_post_process_keywords": camera_hits,
         "camera_mode_note": "empty = no Athena_PlayerCameraMode* / Blueprints/Camera package names any DOF / motion blur / bloom / post-process-settings property: the pickaxe (melee) camera mode carries FOV and offsets only",
@@ -303,7 +439,11 @@ fn day_param(day: &Json, name: &str) -> Json {
     if let Some(a) = day["tagged_but_not_overridden"].get(name) {
         return json!({ "name": name, "value": Json::Null, "provenance": "IGNORED", "tagged_value": a["value"], "source": a["source"], "why": "serialized but bOverride_ not true: the volume blend does not apply it" });
     }
-    let d = ENGINE_DEFAULTS_ASSUMED.iter().find(|(k, _)| *k == name).map(|(_, v)| json!(v)).unwrap_or(Json::Null);
+    let d = ENGINE_DEFAULTS_ASSUMED
+        .iter()
+        .find(|(k, _)| *k == name)
+        .map(|(_, v)| json!(v))
+        .unwrap_or(Json::Null);
     json!({ "name": name, "value": d, "provenance": "ENGINE_DEFAULT_ASSUMED", "source": "not overridden by the volume: view default (UE 4.16 C++ constructor, recalled)" })
 }
 
@@ -312,11 +452,29 @@ pub fn effects_section(report: &Json) -> Json {
     let day = &report["todm"]["phases"]["Day"];
     let p = |n: &str| day_param(day, n);
     let v = |n: &str| day_param(day, n)["value"].as_f64().unwrap_or(f64::NAN);
-    let shaders: Vec<String> = report["shader_cache"]["postfx_related"].as_array().map(|a| a.iter().filter_map(|s| s["name"].as_str().map(String::from)).collect()).unwrap_or_default();
-    let named = |subs: &[&str]| -> Vec<String> { shaders.iter().filter(|s| subs.iter().any(|x| s.contains(x))).cloned().collect() };
+    let shaders: Vec<String> = report["shader_cache"]["postfx_related"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter_map(|s| s["name"].as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+    let named = |subs: &[&str]| -> Vec<String> {
+        shaders
+            .iter()
+            .filter(|s| subs.iter().any(|x| s.contains(x)))
+            .cloned()
+            .collect()
+    };
     let exe = &report["cvars"]["exe_string_presence"];
     // numbers
-    let (far_size, focal, region, far_tr) = (v("DepthOfFieldFarBlurSize"), v("DepthOfFieldFocalDistance"), v("DepthOfFieldFocalRegion"), v("DepthOfFieldFarTransitionRegion"));
+    let (far_size, focal, region, far_tr) = (
+        v("DepthOfFieldFarBlurSize"),
+        v("DepthOfFieldFocalDistance"),
+        v("DepthOfFieldFocalRegion"),
+        v("DepthOfFieldFarTransitionRegion"),
+    );
     let sky = v("DepthOfFieldSkyFocusDistance");
     let (amount, maxp) = (v("MotionBlurAmount"), v("MotionBlurMax"));
     let blur_px = |w: f64| far_size * 0.01 * w;
@@ -327,15 +485,32 @@ pub fn effects_section(report: &Json) -> Json {
     };
     let (d1920, h1920) = mb_halflen(1920.0, 1.5, 80.0);
     let (d1280, h1280) = mb_halflen(1280.0, 1.5, 80.0);
-    let tints: Vec<f64> = (1..=6).map(|i| { let t = day_param(day, &format!("Bloom{i}Tint")); t["value"].as_array().and_then(|a| a[0].as_f64()).or(t["value"].as_f64()).unwrap_or(f64::NAN) }).collect();
+    let tints: Vec<f64> = (1..=6)
+        .map(|i| {
+            let t = day_param(day, &format!("Bloom{i}Tint"));
+            t["value"]
+                .as_array()
+                .and_then(|a| a[0].as_f64())
+                .or(t["value"].as_f64())
+                .unwrap_or(f64::NAN)
+        })
+        .collect();
     let tint_sum: f64 = tints.iter().sum();
     let tint_sum_old: f64 = [0.3465, 0.138, 0.1176, 0.066, 0.066, 0.061].iter().sum();
     let bloom_i = v("BloomIntensity");
-    let corner = |i: f64| { let c = 2.0f64.sqrt() * i; 1.0 / (1.0 + c * c).powi(2) };
+    let corner = |i: f64| {
+        let c = 2.0f64.sqrt() * i;
+        1.0 / (1.0 + c * c).powi(2)
+    };
     let corner_day = corner(v("VignetteIntensity"));
     let corner_old = corner(0.4);
     let tonemap_names: Vec<String> = named(&["TonemapPS"]).into_iter().take(1).collect();
-    let bloom_names: Vec<String> = named(&["BloomSetupPS", "DownsamplePS1", "TFilterPS", "TonemapPS"]).into_iter().filter(|s| !s.contains("ES2")).take(8).collect();
+    let bloom_names: Vec<String> =
+        named(&["BloomSetupPS", "DownsamplePS1", "TFilterPS", "TonemapPS"])
+            .into_iter()
+            .filter(|s| !s.contains("ES2"))
+            .take(8)
+            .collect();
     let ao_names: Vec<String> = named(&["AmbientOcclusion"]).into_iter().take(6).collect();
     json!([
         {
@@ -448,8 +623,20 @@ pub fn effects_section(report: &Json) -> Json {
 
 /// Which packages reference which time-of-day Blueprint (names, imports, soft package references). Decides which TOD is live in Athena.
 pub fn tod_reference_section(set: &PakSet) -> Json {
-    let needles = ["TODM_A_Child_Athena", "Athena_TerrainTOD2", "Athena_TerrainTOD", "TODM_A"];
-    let files: Vec<_> = set.effective().filter(|(_, e)| { let p = e.path.to_ascii_lowercase(); (p.ends_with(".uasset") || p.ends_with(".umap")) && (p.contains("athena") || p.contains("timeofday") || p.contains("/maps/")) }).collect();
+    let needles = [
+        "TODM_A_Child_Athena",
+        "Athena_TerrainTOD2",
+        "Athena_TerrainTOD",
+        "TODM_A",
+    ];
+    let files: Vec<_> = set
+        .effective()
+        .filter(|(_, e)| {
+            let p = e.path.to_ascii_lowercase();
+            (p.ends_with(".uasset") || p.ends_with(".umap"))
+                && (p.contains("athena") || p.contains("timeofday") || p.contains("/maps/"))
+        })
+        .collect();
     let hits: Vec<Json> = files.par_iter().filter_map(|(pf, e)| {
         let bytes = pf.read(e).ok()?;
         let pkg = Package::parse(&bytes, &[]).ok()?;
@@ -465,14 +652,24 @@ pub fn tod_reference_section(set: &PakSet) -> Json {
     // Athena_Terrain's WorldSettings.WorldTimeOfDayManager is a soft class path string inside the map's uexp
     let mut world_tod: Vec<String> = Vec::new();
     for ext in ["umap", "uexp"] {
-        if let Ok(bytes) = set.read(&format!("FortniteGame/Content/Athena/Maps/Athena_Terrain.{ext}")) {
+        if let Ok(bytes) = set.read(&format!(
+            "FortniteGame/Content/Athena/Maps/Athena_Terrain.{ext}"
+        )) {
             let mut i = 0;
             while i < bytes.len() {
-                if bytes[i] == b'/' && bytes[i..].starts_with(b"/Game/TimeOfDay/") || bytes[i..].starts_with(b"/Game/Athena/Prototype/Terrain/Athena_TerrainTOD") {
-                    let j = bytes[i..].iter().position(|&b| !(b.is_ascii_graphic())).unwrap_or(0) + i;
+                if bytes[i] == b'/' && bytes[i..].starts_with(b"/Game/TimeOfDay/")
+                    || bytes[i..].starts_with(b"/Game/Athena/Prototype/Terrain/Athena_TerrainTOD")
+                {
+                    let j = bytes[i..]
+                        .iter()
+                        .position(|&b| !(b.is_ascii_graphic()))
+                        .unwrap_or(0)
+                        + i;
                     world_tod.push(String::from_utf8_lossy(&bytes[i..j]).into_owned());
                     i = j;
-                } else { i += 1; }
+                } else {
+                    i += 1;
+                }
             }
         }
     }
@@ -488,21 +685,71 @@ pub fn tod_reference_section(set: &PakSet) -> Json {
 
 /// Section 3: baked console-variable strings (blueprint constants) and exe presence.
 pub fn cvar_section(set: &PakSet, exe: Option<&[u8]>) -> Json {
-    let files: Vec<_> = set.effective().filter(|(_, e)| { let p = e.path.to_ascii_lowercase(); (p.ends_with(".uexp") && e.size < 8_000_000) || p.ends_with(".umap") || p.ends_with(".uasset") && e.size < 2_000_000 }).collect();
-    let hits: Vec<(String, Vec<&'static str>)> = files.par_iter().filter_map(|(pf, e)| {
-        let bytes = pf.read(e).ok()?;
-        let found: Vec<&'static str> = CVAR_NEEDLES.iter().copied().filter(|n| contains_text(&bytes, n)).collect();
-        if found.is_empty() { None } else { Some((e.path.clone(), found)) }
-    }).collect();
+    let files: Vec<_> = set
+        .effective()
+        .filter(|(_, e)| {
+            let p = e.path.to_ascii_lowercase();
+            (p.ends_with(".uexp") && e.size < 8_000_000)
+                || p.ends_with(".umap")
+                || p.ends_with(".uasset") && e.size < 2_000_000
+        })
+        .collect();
+    let hits: Vec<(String, Vec<&'static str>)> = files
+        .par_iter()
+        .filter_map(|(pf, e)| {
+            let bytes = pf.read(e).ok()?;
+            let found: Vec<&'static str> = CVAR_NEEDLES
+                .iter()
+                .copied()
+                .filter(|n| contains_text(&bytes, n))
+                .collect();
+            if found.is_empty() {
+                None
+            } else {
+                Some((e.path.clone(), found))
+            }
+        })
+        .collect();
     // control: the scanner must find unrelated cvars, otherwise "none of the post-process cvars are baked" would be meaningless
-    let control_needles = ["r.ScreenPercentage", "r.Shadow", "r.SetRes", "t.MaxFPS", "sg.", "r.MaxAnisotropy", "r.Streaming"];
-    let control_hits: usize = files.par_iter().filter(|(pf, e)| pf.read(e).map(|b| control_needles.iter().any(|n| contains_text(&b, n))).unwrap_or(false)).count();
+    let control_needles = [
+        "r.ScreenPercentage",
+        "r.Shadow",
+        "r.SetRes",
+        "t.MaxFPS",
+        "sg.",
+        "r.MaxAnisotropy",
+        "r.Streaming",
+    ];
+    let control_hits: usize = files
+        .par_iter()
+        .filter(|(pf, e)| {
+            pf.read(e)
+                .map(|b| control_needles.iter().any(|n| contains_text(&b, n)))
+                .unwrap_or(false)
+        })
+        .count();
     let inis: Vec<_> = set.glob("**/*.ini");
     let enc = inis.iter().filter(|(_, e)| e.encrypted).count();
     let exe_hits: Map<String, Json> = match exe {
-        Some(b) => ["r.VolumetricFog", "r.MotionBlurQuality", "r.DepthOfFieldQuality", "r.BloomQuality", "r.LensFlareQuality", "r.SceneColorFringeQuality", "r.MotionBlur.Max", "r.DepthOfField.MaxSize",
-            "bEnableVolumetricFog", "VolumetricFogScatteringScale", "VolumetricFogAbsorptionScale", "VolumetricFogScatteringDistribution", "SetVolumetricFog", "VolumetricFogDistance"]
-            .iter().map(|n| (n.to_string(), json!(contains_text(b, n)))).collect(),
+        Some(b) => [
+            "r.VolumetricFog",
+            "r.MotionBlurQuality",
+            "r.DepthOfFieldQuality",
+            "r.BloomQuality",
+            "r.LensFlareQuality",
+            "r.SceneColorFringeQuality",
+            "r.MotionBlur.Max",
+            "r.DepthOfField.MaxSize",
+            "bEnableVolumetricFog",
+            "VolumetricFogScatteringScale",
+            "VolumetricFogAbsorptionScale",
+            "VolumetricFogScatteringDistribution",
+            "SetVolumetricFog",
+            "VolumetricFogDistance",
+        ]
+        .iter()
+        .map(|n| (n.to_string(), json!(contains_text(b, n))))
+        .collect(),
         None => Map::new(),
     };
     json!({

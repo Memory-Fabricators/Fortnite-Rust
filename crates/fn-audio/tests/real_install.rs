@@ -1,4 +1,4 @@
-﻿//! Verification against the real Fortnite 1.8 install (skipped with a message when it is not present; set `FN_ROOT`).
+//! Verification against the real Fortnite 1.8 install (skipped with a message when it is not present; set `FN_ROOT`).
 
 use fn_audio::analysis::{loop_seam_ratio, spectrum};
 use fn_audio::codec::{decode_asset, ogg, opus, panics_caught};
@@ -24,11 +24,13 @@ fn root() -> Option<String> {
 
 fn install() -> Option<&'static Install> {
     static I: OnceLock<Option<Install>> = OnceLock::new();
-    I.get_or_init(|| root().map(|r| Install::open(r).expect("open install"))).as_ref()
+    I.get_or_init(|| root().map(|r| Install::open(r).expect("open install")))
+        .as_ref()
 }
 
 const PICKAXE_ENEMY: &str = "FortniteGame/Content/Sounds/Fort_Weapons/PickAxe/PickAxe_Enemy_001";
-const MINE_LOOP: &str = "FortniteGame/Content/Sounds/Trans_AmbientLoops/RoomTones/MineA019_Loop_Stereo";
+const MINE_LOOP: &str =
+    "FortniteGame/Content/Sounds/Trans_AmbientLoops/RoomTones/MineA019_Loop_Stereo";
 const MISSION_STINGER: &str = "FortniteGame/Content/Sounds/Fort_Music/Missions/mission_success_03";
 
 /// The pickaxe sound that blocked the first (Codex) attempt: an inline `OGG` format block after bCooked/NumFormats.
@@ -56,7 +58,9 @@ fn sixty_waves_across_formats_match_their_properties() {
     let (mut ogg_n, mut opus_n) = (0, 0);
     // deterministic stride through the sorted list, at most 14 OGG waves per sample rate so rare rates are represented
     for p in paths.iter().step_by(7) {
-        let Ok(a) = inst.load_soundwave(p) else { continue };
+        let Ok(a) = inst.load_soundwave(p) else {
+            continue;
+        };
         let is_opus = a.streamed.is_some();
         let rate = a.info.sample_rate.unwrap_or(0);
         // pure-Rust Opus decodes at ~8x real time (slower in dev builds): keep the test to short streams
@@ -79,8 +83,11 @@ fn sixty_waves_across_formats_match_their_properties() {
         if ogg_n >= 56 && rates.len() >= 5 {
             break;
         }
-    }    // top up Opus with the streaming waves (they are rare, ~0.2 % of all waves)
-    for p in paths.iter().filter(|p| p.contains("RoomTones") || p.contains("Fort_Music") || p.contains("Ambient")) {
+    } // top up Opus with the streaming waves (they are rare, ~0.2 % of all waves)
+    for p in paths
+        .iter()
+        .filter(|p| p.contains("RoomTones") || p.contains("Fort_Music") || p.contains("Ambient"))
+    {
         if opus_n >= 5 {
             break;
         }
@@ -100,10 +107,20 @@ fn sixty_waves_across_formats_match_their_properties() {
     assert!(ogg_n >= 40, "ogg waves {ogg_n}");
     let mut worst = 0i64;
     for p in &picked {
-        let (w, a) = inst.decode_soundwave(p).unwrap_or_else(|e| panic!("{p}: {e}"));
-        let dur = a.info.duration.unwrap_or_else(|| panic!("{p}: no Duration"));
+        let (w, a) = inst
+            .decode_soundwave(p)
+            .unwrap_or_else(|e| panic!("{p}: {e}"));
+        let dur = a
+            .info
+            .duration
+            .unwrap_or_else(|| panic!("{p}: no Duration"));
         let (delta, ok) = duration_matches(w.frames(), w.sample_rate, dur);
-        assert!(ok, "{p}: {} frames @ {} Hz vs Duration {dur}s (delta {delta})", w.frames(), w.sample_rate);
+        assert!(
+            ok,
+            "{p}: {} frames @ {} Hz vs Duration {dur}s (delta {delta})",
+            w.frames(),
+            w.sample_rate
+        );
         worst = worst.max(delta.abs());
         assert_eq!(Some(w.channels), a.info.channels, "{p}");
         if a.streamed.is_none() {
@@ -122,7 +139,11 @@ fn three_waves_wav_analysis() {
     let Some(inst) = install() else { return };
     let dir = std::env::temp_dir().join("fn-audio-wav-check");
     std::fs::create_dir_all(&dir).unwrap();
-    for (path, min_rms, max_dom_hz) in [(PICKAXE_ENEMY, 0.05, 400.0), (MINE_LOOP, 0.02, 600.0), (MISSION_STINGER, 0.05, 600.0)] {
+    for (path, min_rms, max_dom_hz) in [
+        (PICKAXE_ENEMY, 0.05, 400.0),
+        (MINE_LOOP, 0.02, 600.0),
+        (MISSION_STINGER, 0.05, 600.0),
+    ] {
         let (w, _) = inst.decode_soundwave(path).unwrap();
         let bytes = wav_bytes(&w).unwrap();
         let name = path.rsplit('/').next().unwrap();
@@ -130,16 +151,32 @@ fn three_waves_wav_analysis() {
         // header sanity
         assert_eq!(&bytes[0..4], b"RIFF");
         assert_eq!(&bytes[8..16], b"WAVEfmt ");
-        assert_eq!(u32::from_le_bytes(bytes[4..8].try_into().unwrap()) as usize, bytes.len() - 8);
+        assert_eq!(
+            u32::from_le_bytes(bytes[4..8].try_into().unwrap()) as usize,
+            bytes.len() - 8
+        );
         assert_eq!(u16::from_le_bytes([bytes[20], bytes[21]]), 1, "PCM");
         assert_eq!(u16::from_le_bytes([bytes[22], bytes[23]]), w.channels);
-        assert_eq!(u32::from_le_bytes(bytes[24..28].try_into().unwrap()), w.sample_rate);
-        assert_eq!(u32::from_le_bytes(bytes[40..44].try_into().unwrap()) as usize, w.samples.len() * 2);
+        assert_eq!(
+            u32::from_le_bytes(bytes[24..28].try_into().unwrap()),
+            w.sample_rate
+        );
+        assert_eq!(
+            u32::from_le_bytes(bytes[40..44].try_into().unwrap()) as usize,
+            w.samples.len() * 2
+        );
         // round trip
         let back = read_wav(&bytes).unwrap();
         assert_eq!(back.frames(), w.frames());
-        let max_err = w.samples.iter().zip(&back.samples).fold(0f32, |a, (x, y)| a.max((x - y).abs()));
-        assert!(max_err < 1.0 / 16000.0, "{name}: wav quantisation error {max_err}");
+        let max_err = w
+            .samples
+            .iter()
+            .zip(&back.samples)
+            .fold(0f32, |a, (x, y)| a.max((x - y).abs()));
+        assert!(
+            max_err < 1.0 / 16000.0,
+            "{name}: wav quantisation error {max_err}"
+        );
         // levels
         let st = w.stats();
         assert_eq!(st.non_finite, 0);
@@ -148,8 +185,16 @@ fn three_waves_wav_analysis() {
         assert!(st.max_clip_run <= 8, "{name}: clip run {}", st.max_clip_run);
         // spectrum: band-limited, bass-heavy material with no broadband noise floor
         let sp = spectrum(&w, w.frames() / 3, 8192).unwrap();
-        assert!(sp.dominant_hz > 0.0 && sp.dominant_hz < max_dom_hz, "{name}: dominant {} Hz", sp.dominant_hz);
-        assert!(sp.high_band_fraction < 0.05, "{name}: high band {}", sp.high_band_fraction);
+        assert!(
+            sp.dominant_hz > 0.0 && sp.dominant_hz < max_dom_hz,
+            "{name}: dominant {} Hz",
+            sp.dominant_hz
+        );
+        assert!(
+            sp.high_band_fraction < 0.05,
+            "{name}: high band {}",
+            sp.high_band_fraction
+        );
         eprintln!("{name}: {:?} stats {st:?}", sp);
     }
 }
@@ -159,16 +204,25 @@ fn three_waves_wav_analysis() {
 #[test]
 fn known_looped_sample_loops_seamlessly() {
     let Some(inst) = install() else { return };
-    let mut paths: Vec<String> = inst.sound_paths().into_iter().filter(|p| p.contains("Loop") && !p.contains("L10N")).collect();
+    let mut paths: Vec<String> = inst
+        .sound_paths()
+        .into_iter()
+        .filter(|p| p.contains("Loop") && !p.contains("L10N"))
+        .collect();
     paths.sort();
     let mut ratios = Vec::new();
     for p in &paths {
-        let Ok(a) = inst.load_soundwave(p) else { continue };
+        let Ok(a) = inst.load_soundwave(p) else {
+            continue;
+        };
         if !a.info.looping || a.streamed.is_some() {
             continue;
         }
         let w = decode_asset(&a).unwrap();
-        assert_eq!((w.loop_start, w.loop_end), (Some(0), Some(w.frames() as u64)));
+        assert_eq!(
+            (w.loop_start, w.loop_end),
+            (Some(0), Some(w.frames() as u64))
+        );
         if let Some(r) = loop_seam_ratio(&w) {
             ratios.push((r, p.clone()));
         }
@@ -176,10 +230,17 @@ fn known_looped_sample_loops_seamlessly() {
             break;
         }
     }
-    assert!(ratios.len() >= 4, "only {} looping OGG waves found", ratios.len());
+    assert!(
+        ratios.len() >= 4,
+        "only {} looping OGG waves found",
+        ratios.len()
+    );
     let good = ratios.iter().filter(|(r, _)| *r < 3.0).count();
     assert!(good * 10 >= ratios.len() * 7, "seam ratios {ratios:?}");
-    assert!(ratios.iter().any(|(r, _)| *r < 1.0), "no loop with a seam smoother than average: {ratios:?}");
+    assert!(
+        ratios.iter().any(|(r, _)| *r < 1.0),
+        "no loop with a seam smoother than average: {ratios:?}"
+    );
 }
 /// Offline render of the pickaxe swing cue with a fixed seed: deterministic, golden length / peak / RMS.
 #[test]
@@ -189,7 +250,11 @@ fn pickaxe_swing_cue_golden_render() {
     let mut render = |seed: u64| -> Vec<f32> {
         let mut eng = AudioEngine::new(48000);
         let h = eng.handle();
-        assert_eq!(lib.prepare_cue(&h, events::SWING).unwrap(), 0, "waves missing");
+        assert_eq!(
+            lib.prepare_cue(&h, events::SWING).unwrap(),
+            0,
+            "waves missing"
+        );
         h.play_cue(events::SWING, PlayParams::default()).unwrap();
         eng.render_offline(72000, seed)
     };
@@ -203,10 +268,22 @@ fn pickaxe_swing_cue_golden_render() {
     assert_eq!(w.frames(), 72000);
     assert_eq!(st.non_finite, 0);
     // golden values (seed 7): see GOLDEN below
-    assert!((st.peak - GOLDEN_PEAK).abs() < GOLDEN_PEAK * 0.01, "peak {}", st.peak);
-    assert!((st.rms - GOLDEN_RMS).abs() < GOLDEN_RMS * 0.01, "rms {:.9}", st.rms);
+    assert!(
+        (st.peak - GOLDEN_PEAK).abs() < GOLDEN_PEAK * 0.01,
+        "peak {}",
+        st.peak
+    );
+    assert!(
+        (st.rms - GOLDEN_RMS).abs() < GOLDEN_RMS * 0.01,
+        "rms {:.9}",
+        st.rms
+    );
     // audible tail ends where the cue's own duration (1.37 s) says
-    let last = w.samples.chunks(2).rposition(|f| f[0].abs() > 1e-4 || f[1].abs() > 1e-4).unwrap();
+    let last = w
+        .samples
+        .chunks(2)
+        .rposition(|f| f[0].abs() > 1e-4 || f[1].abs() > 1e-4)
+        .unwrap();
     let secs = last as f32 / 48000.0;
     assert!((0.3..1.4).contains(&secs), "audible until {secs}s");
 }
@@ -222,8 +299,19 @@ fn swing_cue_spatialisation() {
         let mut eng = AudioEngine::new(48000);
         let h = eng.handle();
         lib.prepare_cue(&h, events::SWING).unwrap();
-        h.set_listener(Vec3::default(), Vec3::new(0.0, 0.0, -1.0), Vec3::new(0.0, 1.0, 0.0));
-        h.play_cue(events::SWING, PlayParams { position: Some(pos), ..Default::default() }).unwrap();
+        h.set_listener(
+            Vec3::default(),
+            Vec3::new(0.0, 0.0, -1.0),
+            Vec3::new(0.0, 1.0, 0.0),
+        );
+        h.play_cue(
+            events::SWING,
+            PlayParams {
+                position: Some(pos),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         let out = eng.render_offline(48000, 3);
         let (mut l, mut rr, mut p) = (0f64, 0f64, 0f32);
         for f in out.chunks(2) {
@@ -239,9 +327,18 @@ fn swing_cue_spatialisation() {
     let (_, _, far) = render(Vec3::new(0.0, 0.0, -700.0));
     let (_, _, mid) = render(Vec3::new(0.0, 0.0, -2000.0)); // only the distant (3000 cm falloff) layer is left
     let (_, _, cull) = render(Vec3::new(0.0, 0.0, -3500.0));
-    assert!(rr_ > rl * 1.5, "right source should be louder on the right ({rl} vs {rr_})");
-    assert!(ll > lr * 1.5, "left source should be louder on the left ({ll} vs {lr})");
-    assert!((nl / nr - 1.0).abs() < 0.2, "front source is centred ({nl} vs {nr})");
+    assert!(
+        rr_ > rl * 1.5,
+        "right source should be louder on the right ({rl} vs {rr_})"
+    );
+    assert!(
+        ll > lr * 1.5,
+        "left source should be louder on the left ({ll} vs {lr})"
+    );
+    assert!(
+        (nl / nr - 1.0).abs() < 0.2,
+        "front source is centred ({nl} vs {nr})"
+    );
     assert!(far < nl.max(nr), "700 cm quieter than 250 cm");
     assert!(mid > 0.0 && mid < far, "2000 cm: close layers culled (inner 300 + falloff 800), distant layer still audible ({mid} vs {far})");
     assert_eq!(cull, 0.0, "beyond 3000 cm every layer is culled");
@@ -259,8 +356,15 @@ fn fuzzed_payloads_never_panic() {
         rng ^= rng << 17;
         rng
     };
-    let ogg_payload = inst.load_soundwave(PICKAXE_ENEMY).unwrap().formats[0].payload.clone();
-    let opus_stream = inst.load_soundwave(MINE_LOOP).unwrap().streamed.unwrap().stream_bytes();
+    let ogg_payload = inst.load_soundwave(PICKAXE_ENEMY).unwrap().formats[0]
+        .payload
+        .clone();
+    let opus_stream = inst
+        .load_soundwave(MINE_LOOP)
+        .unwrap()
+        .streamed
+        .unwrap()
+        .stream_bytes();
     let opus_head = &opus_stream[..opus_stream.len().min(6_000)];
     let mut errors = 0;
     // truncations
@@ -291,7 +395,10 @@ fn fuzzed_payloads_never_panic() {
         h[at] ^= (next() & 0xff) as u8 | 1;
         let _ = opus::decode_ue_opus(&h);
     }
-    assert!(errors > 20, "truncation should usually be rejected ({errors})");
+    assert!(
+        errors > 20,
+        "truncation should usually be rejected ({errors})"
+    );
     assert_eq!(panics_caught(), before, "a decoder panicked");
 }
 
@@ -330,7 +437,9 @@ fn fuzzed_packages_never_panic() {
             }
         }
         let r = std::panic::catch_unwind(|| {
-            let Ok(pkg) = Package::parse(&a, &u) else { return false };
+            let Ok(pkg) = Package::parse(&a, &u) else {
+                return false;
+            };
             let idx: Vec<usize> = pkg.exports_of_class("SoundWave").collect();
             for i in idx {
                 if let Ok(sw) = fn_audio::soundwave::parse_soundwave(&pkg, i, &[]) {
@@ -351,7 +460,12 @@ fn fuzzed_packages_never_panic() {
 #[test]
 fn opus_split_matches_whole_packet_decode() {
     let Some(inst) = install() else { return };
-    let s = inst.load_soundwave(MINE_LOOP).unwrap().streamed.unwrap().stream_bytes();
+    let s = inst
+        .load_soundwave(MINE_LOOP)
+        .unwrap()
+        .streamed
+        .unwrap()
+        .stream_bytes();
     let h = opus::parse_header(&s).unwrap();
     let mut whole = opus_decoder::OpusDecoder::new(h.sample_rate, h.channels as usize).unwrap();
     let mut split = opus_decoder::OpusDecoder::new(h.sample_rate, h.channels as usize).unwrap();
@@ -368,7 +482,10 @@ fn opus_split_matches_whole_packet_decode() {
             got.extend_from_slice(&b[..m * 2]);
         }
         assert_eq!(got.len(), n * 2);
-        let max = got.iter().zip(&a[..n * 2]).fold(0f32, |m, (x, y)| m.max((x - y).abs()));
+        let max = got
+            .iter()
+            .zip(&a[..n * 2])
+            .fold(0f32, |m, (x, y)| m.max((x - y).abs()));
         assert!(max < 1e-6, "split decode differs by {max}");
     }
 }
@@ -379,7 +496,11 @@ fn fuzzed_cue_packages_never_panic() {
     let Some(inst) = install() else { return };
     use fn_audio::cue::{parse_cue, NoResolver};
     use fn_uasset::{Package, PackageData};
-    let d = PackageData::load(&inst.paks, "FortniteGame/Content/Athena/Sounds/Weapons/PickAxe_Swing_Athena_Cue.uasset").unwrap();
+    let d = PackageData::load(
+        &inst.paks,
+        "FortniteGame/Content/Athena/Sounds/Weapons/PickAxe_Swing_Athena_Cue.uasset",
+    )
+    .unwrap();
     let (asset, uexp) = (d.asset.to_vec(), d.uexp.to_vec());
     let mut rng = 0x0bad_cafe_f00d_1234u64;
     let mut next = move || {
@@ -418,6 +539,3 @@ fn fuzzed_cue_packages_never_panic() {
     }
     assert!(parsed > 20, "{parsed}");
 }
-
-
-

@@ -11,7 +11,11 @@ fn expand565(c: u16) -> [i32; 3] {
     let r = ((c >> 11) & 31) as i32;
     let g = ((c >> 5) & 63) as i32;
     let b = (c & 31) as i32;
-    [(r << 3) | (r >> 2), (g << 2) | (g >> 4), (b << 3) | (b >> 2)]
+    [
+        (r << 3) | (r >> 2),
+        (g << 2) | (g >> 4),
+        (b << 3) | (b >> 2),
+    ]
 }
 
 /// Build the 4 entry BC1 palette (RGBA). `c0 > c1` (raw 565 compare) selects 4-colour mode, otherwise the 3-colour

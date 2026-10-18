@@ -37,26 +37,54 @@ pub struct CameraParams {
 }
 impl CameraParams {
     /// Camera from OpenGL-prototype style yaw/pitch (degrees; yaw 0 faces -Z, positive yaw turns towards +X, pitch up positive).
-    pub fn from_yaw_pitch(eye: Vec3, yaw_deg: f32, pitch_deg: f32, width: u32, height: u32) -> Self {
+    pub fn from_yaw_pitch(
+        eye: Vec3,
+        yaw_deg: f32,
+        pitch_deg: f32,
+        width: u32,
+        height: u32,
+    ) -> Self {
         let (y, p) = (yaw_deg.to_radians(), pitch_deg.to_radians());
         let forward = Vec3::new(y.sin() * p.cos(), p.sin(), -y.cos() * p.cos());
         let right = Vec3::new(y.cos(), 0., y.sin());
-        Self { eye, forward, up: right.cross(forward), fov_deg: MELEE_FOV_DEG, near: NEAR, far: FAR, width, height }
+        Self {
+            eye,
+            forward,
+            up: right.cross(forward),
+            fov_deg: MELEE_FOV_DEG,
+            near: NEAR,
+            far: FAR,
+            width,
+            height,
+        }
     }
-    pub fn aspect(&self) -> f32 { self.width.max(1) as f32 / self.height.max(1) as f32 }
+    pub fn aspect(&self) -> f32 {
+        self.width.max(1) as f32 / self.height.max(1) as f32
+    }
     /// tan(half horizontal fov), tan(half vertical fov).
     pub fn tan_half(&self) -> (f32, f32) {
-        let (r, t) = frustum(self.fov_deg, self.width as f32, self.height as f32, self.near);
+        let (r, t) = frustum(
+            self.fov_deg,
+            self.width as f32,
+            self.height as f32,
+            self.near,
+        );
         ((r / self.near as f64) as f32, (t / self.near as f64) as f32)
     }
-    pub fn view_matrix(&self) -> Mat4 { Mat4::look_to_rh(self.eye, self.forward, self.up) }
+    pub fn view_matrix(&self) -> Mat4 {
+        Mat4::look_to_rh(self.eye, self.forward, self.up)
+    }
     fn projection(&self, near: f32, far: f32) -> Mat4 {
         let (_, ty) = self.tan_half();
         Mat4::perspective_rh(2. * ty.atan(), self.aspect(), near, far)
     }
-    pub fn proj_matrix(&self) -> Mat4 { self.projection(self.near, self.far) }
+    pub fn proj_matrix(&self) -> Mat4 {
+        self.projection(self.near, self.far)
+    }
     /// Projection for the sky pass: same frustum, near 0.1 m and far 4e6 m.
-    pub fn sky_proj_matrix(&self) -> Mat4 { self.projection(SKY_NEAR, SKY_FAR) }
+    pub fn sky_proj_matrix(&self) -> Mat4 {
+        self.projection(SKY_NEAR, SKY_FAR)
+    }
     /// Sky pass matrix: wide-clip projection times the view rotation only (the camera sits at the origin).
     pub fn sky_view_proj(&self) -> Mat4 {
         let mut v = self.view_matrix();
@@ -71,7 +99,12 @@ impl CameraParams {
             view: view.to_cols_array_2d(),
             view_inverse: view.inverse().to_cols_array_2d(),
             position: [self.eye.x, self.eye.y, self.eye.z, time],
-            viewport: [self.width as f32, self.height as f32, 1. / self.width.max(1) as f32, 1. / self.height.max(1) as f32],
+            viewport: [
+                self.width as f32,
+                self.height as f32,
+                1. / self.width.max(1) as f32,
+                1. / self.height.max(1) as f32,
+            ],
             proj: [tx, ty, self.near, self.far],
         }
     }
@@ -95,7 +128,9 @@ pub struct CameraUniform {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn cam(w: u32, h: u32) -> CameraParams { CameraParams::from_yaw_pitch(Vec3::new(1., 2., 3.), 30., -12., w, h) }
+    fn cam(w: u32, h: u32) -> CameraParams {
+        CameraParams::from_yaw_pitch(Vec3::new(1., 2., 3.), 30., -12., w, h)
+    }
 
     #[test]
     fn uniform_is_a_whole_number_of_vec4s_and_size_is_stable() {
@@ -119,7 +154,10 @@ mod tests {
         let p = c.proj_matrix();
         let near = p.project_point3(Vec3::new(0., 0., -c.near));
         let far = p.project_point3(Vec3::new(0., 0., -c.far));
-        assert!(near.z.abs() < 1e-5 && (far.z - 1.).abs() < 1e-4, "{near:?} {far:?}");
+        assert!(
+            near.z.abs() < 1e-5 && (far.z - 1.).abs() < 1e-4,
+            "{near:?} {far:?}"
+        );
     }
     #[test]
     fn sixteen_by_nine_horizontal_fov_is_eighty_degrees() {

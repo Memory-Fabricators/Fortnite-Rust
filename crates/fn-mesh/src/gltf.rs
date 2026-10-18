@@ -56,13 +56,21 @@ pub fn ue_to_gltf_rotation(q: [f32; 4]) -> [f32; 4] {
 /// Format like C's `%g` (6 significant digits, trailing zeros removed, exponent form below 1e-4 / from 1e6).
 pub fn fmt_g(v: f64) -> String {
     if v.is_nan() {
-        return if v.is_sign_negative() { "-nan".into() } else { "nan".into() };
+        return if v.is_sign_negative() {
+            "-nan".into()
+        } else {
+            "nan".into()
+        };
     }
     if v.is_infinite() {
         return if v < 0.0 { "-inf".into() } else { "inf".into() };
     }
     if v == 0.0 {
-        return if v.is_sign_negative() { "-0".into() } else { "0".into() };
+        return if v.is_sign_negative() {
+            "-0".into()
+        } else {
+            "0".into()
+        };
     }
     const P: i32 = 6;
     let e_form = format!("{:.*e}", (P - 1) as usize, v); // d.ddddde[-]x, correctly rounded
@@ -129,11 +137,19 @@ struct Coords {
 }
 
 fn vec_ma(a: &V3, scale: f32, b: &V3) -> V3 {
-    [a[0] + scale * b[0], a[1] + scale * b[1], a[2] + scale * b[2]]
+    [
+        a[0] + scale * b[0],
+        a[1] + scale * b[1],
+        a[2] + scale * b[2],
+    ]
 }
 
 fn axis_untransform_vector(axis: &[V3; 3], src: &V3) -> V3 {
-    let tmp = [axis[0][0] * src[0], axis[0][1] * src[0], axis[0][2] * src[0]]; // VectorScale: scale * a
+    let tmp = [
+        axis[0][0] * src[0],
+        axis[0][1] * src[0],
+        axis[0][2] * src[0],
+    ]; // VectorScale: scale * a
     let tmp = vec_ma(&tmp, src[1], &axis[1]);
     vec_ma(&tmp, src[2], &axis[2])
 }
@@ -151,7 +167,11 @@ fn coords_untransform(parent: &Coords, src: &Coords) -> Coords {
 }
 
 fn invert_coords(s: &Coords) -> Coords {
-    let o = [dot(&s.origin, &s.axis[0]), dot(&s.origin, &s.axis[1]), dot(&s.origin, &s.axis[2])];
+    let o = [
+        dot(&s.origin, &s.axis[0]),
+        dot(&s.origin, &s.axis[1]),
+        dot(&s.origin, &s.axis[2]),
+    ];
     Coords {
         origin: [-o[0], -o[1], -o[2]],
         axis: [
@@ -247,7 +267,11 @@ fn export_bones(mesh: &SkeletalMesh) -> (Vec<ExportBone>, Vec<usize>) {
             p = mesh.ref_skeleton[p as usize].parent;
             guard += 1;
         }
-        pos.push([b.ref_pos[0] * scale[0], b.ref_pos[1] * scale[1], b.ref_pos[2] * scale[2]]);
+        pos.push([
+            b.ref_pos[0] * scale[0],
+            b.ref_pos[1] * scale[1],
+            b.ref_pos[2] * scale[2],
+        ]);
         let mut q = b.ref_rot;
         if i >= 1 {
             q = [-q[0], -q[1], -q[2], q[3]];
@@ -260,8 +284,17 @@ fn export_bones(mesh: &SkeletalMesh) -> (Vec<ExportBone>, Vec<usize>) {
         .iter()
         .map(|&old| {
             let b = &mesh.ref_skeleton[old];
-            let parent = if b.parent > 0 { remap[b.parent as usize] } else { 0 };
-            ExportBone { name: b.name.clone(), parent, pos: pos[old], rot: rot[old] }
+            let parent = if b.parent > 0 {
+                remap[b.parent as usize]
+            } else {
+                0
+            };
+            ExportBone {
+                name: b.name.clone(),
+                parent,
+                pos: pos[old],
+                rot: rot[old],
+            }
         })
         .collect();
     (bones, remap)
@@ -322,7 +355,12 @@ struct ExpLod<'a> {
 
 /// `CPackedNormal` -> float4 as UEViewer's `Unpack(CVec4&, CPackedNormal)`.
 fn unpack4(p: [u8; 4]) -> [f32; 4] {
-    [crate::unpack_byte_uev(p[0]), crate::unpack_byte_uev(p[1]), crate::unpack_byte_uev(p[2]), crate::unpack_byte_uev(p[3])]
+    [
+        crate::unpack_byte_uev(p[0]),
+        crate::unpack_byte_uev(p[1]),
+        crate::unpack_byte_uev(p[2]),
+        crate::unpack_byte_uev(p[3]),
+    ]
 }
 
 struct Buffer {
@@ -336,8 +374,22 @@ struct Buffer {
 }
 
 impl Buffer {
-    fn new(count: usize, ty: &'static str, component: u32, item_size: usize, normalized: bool) -> Buffer {
-        Buffer { data: Vec::with_capacity(count * item_size), count, ty, component, normalized, min: None, max: None }
+    fn new(
+        count: usize,
+        ty: &'static str,
+        component: u32,
+        item_size: usize,
+        normalized: bool,
+    ) -> Buffer {
+        Buffer {
+            data: Vec::with_capacity(count * item_size),
+            count,
+            ty,
+            component,
+            normalized,
+            min: None,
+            max: None,
+        }
     }
     fn f32s(&mut self, v: &[f32]) {
         for x in v {
@@ -400,7 +452,11 @@ fn export_section(lod: &ExpLod, section_index: usize, buffers: &mut Vec<Buffer>,
     }
 
     let index_buf = buffers.len();
-    let mut ib = if local_verts <= 65536 { Buffer::new(n_idx, "SCALAR", 5123, 2, false) } else { Buffer::new(n_idx, "SCALAR", 5125, 4, false) };
+    let mut ib = if local_verts <= 65536 {
+        Buffer::new(n_idx, "SCALAR", 5123, 2, false)
+    } else {
+        Buffer::new(n_idx, "SCALAR", 5125, 4, false)
+    };
     for i in 0..n_idx {
         let nv = remap[get(i)] as u32;
         if local_verts <= 65536 {
@@ -446,8 +502,18 @@ fn export_section(lod: &ExpLod, section_index: usize, buffers: &mut Vec<Buffer>,
             }
         }
     }
-    pb.min = Some(format!("[ {}, {}, {} ]", g(mins[0]), g(mins[1]), g(mins[2])));
-    pb.max = Some(format!("[ {}, {}, {} ]", g(maxs[0]), g(maxs[1]), g(maxs[2])));
+    pb.min = Some(format!(
+        "[ {}, {}, {} ]",
+        g(mins[0]),
+        g(mins[1]),
+        g(mins[2])
+    ));
+    pb.max = Some(format!(
+        "[ {}, {}, {} ]",
+        g(maxs[0]),
+        g(maxs[1]),
+        g(maxs[2])
+    ));
     let pos_buf = buffers.len();
     let nrm_buf = pos_buf + 1;
     let tan_buf = pos_buf + 2;
@@ -513,10 +579,17 @@ fn export_section(lod: &ExpLod, section_index: usize, buffers: &mut Vec<Buffer>,
         let _ = write!(out, "            \"COLOR_0\" : {c},\n");
     }
     if let Some((j, w)) = skin_bufs {
-        let _ = write!(out, "            \"JOINTS_0\" : {j},\n            \"WEIGHTS_0\" : {w},\n");
+        let _ = write!(
+            out,
+            "            \"JOINTS_0\" : {j},\n            \"WEIGHTS_0\" : {w},\n"
+        );
     }
     for (i, &u) in uv_bufs.iter().enumerate() {
-        let _ = write!(out, "            \"TEXCOORD_{i}\" : {u}{}\n", if i + 1 < uv_bufs.len() { "," } else { "" });
+        let _ = write!(
+            out,
+            "            \"TEXCOORD_{i}\" : {u}{}\n",
+            if i + 1 < uv_bufs.len() { "," } else { "" }
+        );
     }
     let _ = write!(
         out,
@@ -530,7 +603,9 @@ fn write_skin(out: &mut String, skin: &Skin, mesh_name: &str, matrix_buf: usize)
     let _ = write!(out, "  \"nodes\" : [\n    {{\n      \"name\" : \"{}\",\n      \"mesh\" : 0,\n      \"skin\" : 0,\n      \"children\" : [ 1 ]\n    }},\n", json_str(mesh_name));
     for (i, (name, pos, rot, _parent)) in skin.bone_nodes.iter().enumerate() {
         let _ = write!(out, "    {{\n      \"name\" : \"{}\",\n", json_str(name));
-        let children: Vec<usize> = (0..n).filter(|&j| j != i && skin.bone_nodes[j].3 == i).collect();
+        let children: Vec<usize> = (0..n)
+            .filter(|&j| j != i && skin.bone_nodes[j].3 == i)
+            .collect();
         if !children.is_empty() {
             let list: Vec<String> = children.iter().map(|c| (c + 1).to_string()).collect();
             let _ = write!(out, "      \"children\" : [ {} ],\n", list.join(", "));
@@ -562,21 +637,38 @@ fn write_skin(out: &mut String, skin: &Skin, mesh_name: &str, matrix_buf: usize)
 /// Check that every section's index range exists and refers to existing vertices (the exporter indexes unchecked).
 fn validate(lod: &ExpLod) -> Result<()> {
     let n = lod.positions.len();
-    if lod.tangent_x.len() != n || lod.tangent_z.len() != n || lod.uvs.iter().any(|u| u.len() != n) || (!lod.colors.is_empty() && lod.colors.len() != n) {
-        return Err(Error::Invalid("vertex streams have different lengths".into()));
+    if lod.tangent_x.len() != n
+        || lod.tangent_z.len() != n
+        || lod.uvs.iter().any(|u| u.len() != n)
+        || (!lod.colors.is_empty() && lod.colors.len() != n)
+    {
+        return Err(Error::Invalid(
+            "vertex streams have different lengths".into(),
+        ));
     }
     if let Some(s) = &lod.skin {
         if s.bones.len() != n || s.weights.len() != n {
-            return Err(Error::Invalid("skin weight stream length differs from the vertex count".into()));
+            return Err(Error::Invalid(
+                "skin weight stream length differs from the vertex count".into(),
+            ));
         }
     }
     for (i, s) in lod.sections.iter().enumerate() {
         let end = s.first_index + s.num_faces * 3;
         if end > lod.indices.len() {
-            return Err(Error::Invalid(format!("section {i}: index range {}..{end} exceeds the index buffer ({})", s.first_index, lod.indices.len())));
+            return Err(Error::Invalid(format!(
+                "section {i}: index range {}..{end} exceeds the index buffer ({})",
+                s.first_index,
+                lod.indices.len()
+            )));
         }
-        if lod.indices[s.first_index..end].iter().any(|&v| v as usize >= n) {
-            return Err(Error::Invalid(format!("section {i}: index outside the {n} vertices")));
+        if lod.indices[s.first_index..end]
+            .iter()
+            .any(|&v| v as usize >= n)
+        {
+            return Err(Error::Invalid(format!(
+                "section {i}: index outside the {n} vertices"
+            )));
         }
     }
     Ok(())
@@ -587,7 +679,9 @@ fn write_document(mesh_name: &str, lod: &ExpLod) -> (String, Vec<u8>) {
     let mut buffers: Vec<Buffer> = Vec::new();
     let mut out = String::new();
     out.push_str("{\n  \"asset\" : {\n    \"generator\" : \"fn-mesh (UE4.16 decoder, UEViewer-compatible glTF)\",\n    \"version\" : \"2.0\"\n  },\n");
-    out.push_str("  \"scene\" : 0,\n  \"scenes\" : [\n    {\n      \"nodes\" : [ 0 ]\n    }\n  ],\n");
+    out.push_str(
+        "  \"scene\" : 0,\n  \"scenes\" : [\n    {\n      \"nodes\" : [ 0 ]\n    }\n  ],\n",
+    );
 
     if let Some(skin) = &lod.skin {
         let mut mb = Buffer::new(skin.inverse_bind.len(), "MAT4", 5126, 64, false);
@@ -598,7 +692,11 @@ fn write_document(mesh_name: &str, lod: &ExpLod) -> (String, Vec<u8>) {
         buffers.push(mb);
         write_skin(&mut out, skin, mesh_name, 0);
     } else {
-        let _ = write!(out, "  \"nodes\" : [\n    {{\n      \"name\" : \"{}\",\n      \"mesh\" : 0\n    }}\n  ],\n", json_str(mesh_name));
+        let _ = write!(
+            out,
+            "  \"nodes\" : [\n    {{\n      \"name\" : \"{}\",\n      \"mesh\" : 0\n    }}\n  ],\n",
+            json_str(mesh_name)
+        );
     }
 
     out.push_str("  \"materials\" : [\n");
@@ -611,7 +709,11 @@ fn write_document(mesh_name: &str, lod: &ExpLod) -> (String, Vec<u8>) {
     for i in 0..lod.sections.len() {
         export_section(lod, i, &mut buffers, &mut out);
     }
-    let _ = write!(out, "      ],\n      \"name\" : \"{}\"\n    }}\n  ],\n", json_str(mesh_name));
+    let _ = write!(
+        out,
+        "      ],\n      \"name\" : \"{}\"\n    }}\n  ],\n",
+        json_str(mesh_name)
+    );
 
     let total: usize = buffers.iter().map(|b| b.data.len()).sum();
     let _ = write!(out, "  \"buffers\" : [\n    {{\n      \"uri\" : \"{}.bin\",\n      \"byteLength\" : {total}\n    }}\n  ],\n", json_str(mesh_name));
@@ -664,11 +766,18 @@ fn build_skin(mesh: &SkeletalMesh, lod: &SkeletalLod) -> Result<Skin> {
             rot = [-rot[0], -rot[1], -rot[2], rot[3]];
         }
         let bone_pos = [b.pos[0], b.pos[2], b.pos[1]];
-        let bone_pos = [bone_pos[0] * 0.01f32, bone_pos[1] * 0.01f32, bone_pos[2] * 0.01f32];
+        let bone_pos = [
+            bone_pos[0] * 0.01f32,
+            bone_pos[1] * 0.01f32,
+            bone_pos[2] * 0.01f32,
+        ];
         let rot = [rot[0], rot[2], rot[1], rot[3]]; // swap y/z
         bone_nodes.push((b.name.clone(), bone_pos, rot, b.parent));
         let rot_w = [rot[0], rot[1], rot[2], rot[3] * -1.0];
-        let mut bc = Coords { origin: bone_pos, axis: quat_to_axis(rot_w) };
+        let mut bc = Coords {
+            origin: bone_pos,
+            axis: quat_to_axis(rot_w),
+        };
         if i != 0 {
             bc = coords_untransform(&coords[b.parent], &bc);
         }
@@ -676,7 +785,10 @@ fn build_skin(mesh: &SkeletalMesh, lod: &SkeletalLod) -> Result<Skin> {
         let inv = invert_coords(&bc);
         let a = inv.axis;
         let o = inv.origin;
-        inverse_bind.push([a[0][0], a[0][1], a[0][2], 0.0, a[1][0], a[1][1], a[1][2], 0.0, a[2][0], a[2][1], a[2][2], 0.0, o[0], o[1], o[2], 1.0]);
+        inverse_bind.push([
+            a[0][0], a[0][1], a[0][2], 0.0, a[1][0], a[1][1], a[1][2], 0.0, a[2][0], a[2][1],
+            a[2][2], 0.0, o[0], o[1], o[2], 1.0,
+        ]);
     }
 
     // Vertex influences: CSkelMeshLod conversion + SortBones remap + FinalizeMesh weight fix
@@ -694,7 +806,11 @@ fn build_skin(mesh: &SkeletalMesh, lod: &SkeletalLod) -> Result<Skin> {
                 continue;
             }
             w[i2] = inf.weights[i];
-            bone[i2] = sec.bone_map.get(inf.bones[i] as usize).copied().unwrap_or(0) as i16;
+            bone[i2] = sec
+                .bone_map
+                .get(inf.bones[i] as usize)
+                .copied()
+                .unwrap_or(0) as i16;
             i2 += 1;
         }
         // SortBones remap
@@ -763,11 +879,24 @@ fn build_skin(mesh: &SkeletalMesh, lod: &SkeletalLod) -> Result<Skin> {
         out_bones.push(bone);
         out_weights.push(u32::from_le_bytes(w));
     }
-    Ok(Skin { bones: out_bones, weights: out_weights, bone_nodes, inverse_bind })
+    Ok(Skin {
+        bones: out_bones,
+        weights: out_weights,
+        bone_nodes,
+        inverse_bind,
+    })
 }
 
-fn skeletal_lod_doc(mesh: &SkeletalMesh, lod_index: usize, name: &str, opts: &Options) -> Result<(String, Vec<u8>)> {
-    let lod = mesh.lods.get(lod_index).ok_or_else(|| Error::Invalid(format!("mesh has no LOD {lod_index}")))?;
+fn skeletal_lod_doc(
+    mesh: &SkeletalMesh,
+    lod_index: usize,
+    name: &str,
+    opts: &Options,
+) -> Result<(String, Vec<u8>)> {
+    let lod = mesh
+        .lods
+        .get(lod_index)
+        .ok_or_else(|| Error::Invalid(format!("mesh has no LOD {lod_index}")))?;
     if lod.indices.is_empty() || lod.positions.is_empty() {
         return Err(Error::Invalid(format!("LOD {lod_index} has no geometry")));
     }
@@ -778,7 +907,10 @@ fn skeletal_lod_doc(mesh: &SkeletalMesh, lod_index: usize, name: &str, opts: &Op
         .map(|(i, s)| ExpSection {
             first_index: s.base_index as usize,
             num_faces: s.num_triangles as usize,
-            material: mesh.materials.get(mesh.section_material_index(lod_index, i)).and_then(|m| m.material_name.clone()),
+            material: mesh
+                .materials
+                .get(mesh.section_material_index(lod_index, i))
+                .and_then(|m| m.material_name.clone()),
         })
         .collect();
     let exp = ExpLod {
@@ -804,21 +936,33 @@ pub fn skeletal_mesh_to_gltf(mesh: &SkeletalMesh, name: &str) -> (String, Vec<u8
 }
 
 /// Convert one LOD of a skeletal mesh.
-pub fn skeletal_mesh_lod_to_gltf(mesh: &SkeletalMesh, lod: usize, name: &str) -> Result<(String, Vec<u8>)> {
+pub fn skeletal_mesh_lod_to_gltf(
+    mesh: &SkeletalMesh,
+    lod: usize,
+    name: &str,
+) -> Result<(String, Vec<u8>)> {
     skeletal_lod_doc(mesh, lod, name, &Options::default())
 }
 
 /// Convert one LOD of a skeletal mesh with explicit [`Options`].
-pub fn skeletal_mesh_lod_to_gltf_with(mesh: &SkeletalMesh, lod: usize, name: &str, opts: &Options) -> Result<(String, Vec<u8>)> {
+pub fn skeletal_mesh_lod_to_gltf_with(
+    mesh: &SkeletalMesh,
+    lod: usize,
+    name: &str,
+    opts: &Options,
+) -> Result<(String, Vec<u8>)> {
     skeletal_lod_doc(mesh, lod, name, opts)
 }
 
 fn write_files(dir: &Path, name: &str, doc: (String, Vec<u8>)) -> Result<()> {
-    std::fs::create_dir_all(dir).map_err(|e| Error::Invalid(format!("create {}: {e}", dir.display())))?;
+    std::fs::create_dir_all(dir)
+        .map_err(|e| Error::Invalid(format!("create {}: {e}", dir.display())))?;
     let gltf = dir.join(format!("{name}.gltf"));
     let bin = dir.join(format!("{name}.bin"));
-    std::fs::write(&gltf, doc.0.as_bytes()).map_err(|e| Error::Invalid(format!("write {}: {e}", gltf.display())))?;
-    std::fs::write(&bin, &doc.1).map_err(|e| Error::Invalid(format!("write {}: {e}", bin.display())))?;
+    std::fs::write(&gltf, doc.0.as_bytes())
+        .map_err(|e| Error::Invalid(format!("write {}: {e}", gltf.display())))?;
+    std::fs::write(&bin, &doc.1)
+        .map_err(|e| Error::Invalid(format!("write {}: {e}", bin.display())))?;
     Ok(())
 }
 
@@ -832,8 +976,16 @@ pub fn export_skeletal_mesh(mesh: &SkeletalMesh, dir: &Path, name: &str) -> Resu
 // Static mesh
 // ---------------------------------------------------------------------------------------------------------------
 
-fn static_lod_doc(mesh: &StaticMesh, lod_index: usize, name: &str, opts: &Options) -> Result<(String, Vec<u8>)> {
-    let lod: &StaticLod = mesh.lods.get(lod_index).ok_or_else(|| Error::Invalid(format!("mesh has no LOD {lod_index}")))?;
+fn static_lod_doc(
+    mesh: &StaticMesh,
+    lod_index: usize,
+    name: &str,
+    opts: &Options,
+) -> Result<(String, Vec<u8>)> {
+    let lod: &StaticLod = mesh
+        .lods
+        .get(lod_index)
+        .ok_or_else(|| Error::Invalid(format!("mesh has no LOD {lod_index}")))?;
     if lod.indices.is_empty() || lod.positions.is_empty() {
         return Err(Error::Invalid(format!("LOD {lod_index} has no geometry")));
     }
@@ -843,10 +995,23 @@ fn static_lod_doc(mesh: &StaticMesh, lod_index: usize, name: &str, opts: &Option
         .map(|s| ExpSection {
             first_index: s.first_index as usize,
             num_faces: s.num_triangles as usize,
-            material: mesh.materials.get(s.material_index.max(0) as usize).and_then(|m| m.material_name.clone()),
+            material: mesh
+                .materials
+                .get(s.material_index.max(0) as usize)
+                .and_then(|m| m.material_name.clone()),
         })
         .collect();
-    let exp = ExpLod { legacy_half: opts.legacy_uev_half_uv && !lod.uv_full_precision, positions: &lod.positions, tangent_x: &lod.tangent_x, tangent_z: &lod.tangent_z, uvs: &lod.uvs, colors: &lod.colors, indices: &lod.indices, sections, skin: None };
+    let exp = ExpLod {
+        legacy_half: opts.legacy_uev_half_uv && !lod.uv_full_precision,
+        positions: &lod.positions,
+        tangent_x: &lod.tangent_x,
+        tangent_z: &lod.tangent_z,
+        uvs: &lod.uvs,
+        colors: &lod.colors,
+        indices: &lod.indices,
+        sections,
+        skin: None,
+    };
     validate(&exp)?;
     Ok(write_document(name, &exp))
 }
@@ -857,12 +1022,21 @@ pub fn static_mesh_to_gltf(mesh: &StaticMesh, name: &str) -> (String, Vec<u8>) {
 }
 
 /// Convert one LOD of a static mesh.
-pub fn static_mesh_lod_to_gltf(mesh: &StaticMesh, lod: usize, name: &str) -> Result<(String, Vec<u8>)> {
+pub fn static_mesh_lod_to_gltf(
+    mesh: &StaticMesh,
+    lod: usize,
+    name: &str,
+) -> Result<(String, Vec<u8>)> {
     static_lod_doc(mesh, lod, name, &Options::default())
 }
 
 /// Convert one LOD of a static mesh with explicit [`Options`].
-pub fn static_mesh_lod_to_gltf_with(mesh: &StaticMesh, lod: usize, name: &str, opts: &Options) -> Result<(String, Vec<u8>)> {
+pub fn static_mesh_lod_to_gltf_with(
+    mesh: &StaticMesh,
+    lod: usize,
+    name: &str,
+    opts: &Options,
+) -> Result<(String, Vec<u8>)> {
     static_lod_doc(mesh, lod, name, opts)
 }
 
@@ -908,4 +1082,3 @@ mod tests {
         assert_eq!(remap, vec![0, 1, 3, 2]);
     }
 }
-

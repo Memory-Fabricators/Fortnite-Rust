@@ -28,7 +28,11 @@ pub struct Xf {
     pub t: [f64; 3],
     pub s: [f64; 3],
 }
-pub const IDENT: Xf = Xf { q: [0.0, 0.0, 0.0, 1.0], t: [0.0; 3], s: [1.0; 3] };
+pub const IDENT: Xf = Xf {
+    q: [0.0, 0.0, 0.0, 1.0],
+    t: [0.0; 3],
+    s: [1.0; 3],
+};
 
 fn qmul(a: [f64; 4], b: [f64; 4]) -> [f64; 4] {
     [
@@ -40,11 +44,21 @@ fn qmul(a: [f64; 4], b: [f64; 4]) -> [f64; 4] {
 }
 pub fn qrot(q: [f64; 4], v: [f64; 3]) -> [f64; 3] {
     let u = [q[0], q[1], q[2]];
-    let c = |a: [f64; 3], b: [f64; 3]| [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    let c = |a: [f64; 3], b: [f64; 3]| {
+        [
+            a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0],
+        ]
+    };
     let t = c(u, v);
     let t = [2.0 * t[0], 2.0 * t[1], 2.0 * t[2]];
     let u2 = c(u, t);
-    [v[0] + q[3] * t[0] + u2[0], v[1] + q[3] * t[1] + u2[1], v[2] + q[3] * t[2] + u2[2]]
+    [
+        v[0] + q[3] * t[0] + u2[0],
+        v[1] + q[3] * t[1] + u2[1],
+        v[2] + q[3] * t[2] + u2[2],
+    ]
 }
 /// `FRotator(Pitch, Yaw, Roll)` degrees -> `FQuat`.
 pub fn rot_to_quat(r: [f64; 3]) -> [f64; 4] {
@@ -52,7 +66,12 @@ pub fn rot_to_quat(r: [f64; 3]) -> [f64; 4] {
     let (sp, cp) = h(r[0]);
     let (sy, cy) = h(r[1]);
     let (sr, cr) = h(r[2]);
-    [cr * sp * sy - sr * cp * cy, -cr * sp * cy - sr * cp * sy, cr * cp * sy - sr * sp * cy, cr * cp * cy + sr * sp * sy]
+    [
+        cr * sp * sy - sr * cp * cy,
+        -cr * sp * cy - sr * cp * sy,
+        cr * cp * sy - sr * sp * cy,
+        cr * cp * cy + sr * sp * sy,
+    ]
 }
 /// `FQuat::Rotator`.
 pub fn quat_to_rot(q: [f64; 4]) -> [f64; 3] {
@@ -77,14 +96,32 @@ pub fn quat_to_rot(q: [f64; 4]) -> [f64; 3] {
         let yaw = yaw_y.atan2(yaw_x).to_degrees();
         [90.0, yaw, norm(yaw - 2.0 * x.atan2(w).to_degrees())]
     } else {
-        [(2.0 * st).asin().to_degrees(), yaw_y.atan2(yaw_x).to_degrees(), (-2.0 * (w * x + y * z)).atan2(1.0 - 2.0 * (x * x + y * y)).to_degrees()]
+        [
+            (2.0 * st).asin().to_degrees(),
+            yaw_y.atan2(yaw_x).to_degrees(),
+            (-2.0 * (w * x + y * z))
+                .atan2(1.0 - 2.0 * (x * x + y * y))
+                .to_degrees(),
+        ]
     }
 }
 /// `child * parent` (apply child first, then parent), UE `FTransform` convention.
 pub fn compose(child: Xf, parent: Xf) -> Xf {
-    let sc = [parent.s[0] * child.t[0], parent.s[1] * child.t[1], parent.s[2] * child.t[2]];
+    let sc = [
+        parent.s[0] * child.t[0],
+        parent.s[1] * child.t[1],
+        parent.s[2] * child.t[2],
+    ];
     let r = qrot(parent.q, sc);
-    Xf { q: qmul(parent.q, child.q), t: [r[0] + parent.t[0], r[1] + parent.t[1], r[2] + parent.t[2]], s: [child.s[0] * parent.s[0], child.s[1] * parent.s[1], child.s[2] * parent.s[2]] }
+    Xf {
+        q: qmul(parent.q, child.q),
+        t: [r[0] + parent.t[0], r[1] + parent.t[1], r[2] + parent.t[2]],
+        s: [
+            child.s[0] * parent.s[0],
+            child.s[1] * parent.s[1],
+            child.s[2] * parent.s[2],
+        ],
+    }
 }
 pub fn apply(x: Xf, p: [f64; 3]) -> [f64; 3] {
     let r = qrot(x.q, [p[0] * x.s[0], p[1] * x.s[1], p[2] * x.s[2]]);
@@ -129,8 +166,13 @@ pub fn levels(set: &PakSet) -> Result<Vec<(String, Xf)>, String> {
         }
         let o = pkg.read_export(i).map_err(|e| e.to_string())?;
         let j = o.props.to_json(&pkg);
-        let Some(wa) = j.get("WorldAsset").and_then(|v| v.as_str()) else { continue };
-        out.push((pkg_of(wa).to_string(), j.get("LevelTransform").map(xf_from_json).unwrap_or(IDENT)));
+        let Some(wa) = j.get("WorldAsset").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        out.push((
+            pkg_of(wa).to_string(),
+            j.get("LevelTransform").map(xf_from_json).unwrap_or(IDENT),
+        ));
     }
     Ok(out)
 }
@@ -161,7 +203,9 @@ impl<'a> Cache<'a> {
         let t = pkg.exports[i].template_index;
         match pkg.resolve(t) {
             ObjectRef::Import { package, name, .. } => self.template(&package, &name),
-            ObjectRef::Export { index, .. } => pkg.read_export(index).ok().map(|o| o.props.to_json(pkg)),
+            ObjectRef::Export { index, .. } => {
+                pkg.read_export(index).ok().map(|o| o.props.to_json(pkg))
+            }
             ObjectRef::Null => None,
         }
     }
@@ -178,7 +222,8 @@ impl<'a> Cache<'a> {
 }
 
 fn get<'j>(inst: &'j J, tpl: &'j Option<J>, key: &str) -> Option<&'j J> {
-    inst.get(key).or_else(|| tpl.as_ref().and_then(|t| t.get(key)))
+    inst.get(key)
+        .or_else(|| tpl.as_ref().and_then(|t| t.get(key)))
 }
 
 struct LevelCtx<'a, 'p> {
@@ -194,13 +239,20 @@ impl<'a, 'p> LevelCtx<'a, 'p> {
         if let Some(j) = self.props.get(&i) {
             return j.clone();
         }
-        let j = self.pkg.read_export(i).map(|o| o.props.to_json(self.pkg)).unwrap_or(J::Null);
+        let j = self
+            .pkg
+            .read_export(i)
+            .map(|o| o.props.to_json(self.pkg))
+            .unwrap_or(J::Null);
         self.props.insert(i, j.clone());
         j
     }
     fn parent(&self, i: usize) -> Option<usize> {
         let o = self.pkg.read_export(i).ok()?;
-        o.props.get("AttachParent").and_then(Value::as_object).and_then(|p: PackageIndex| p.export_index())
+        o.props
+            .get("AttachParent")
+            .and_then(Value::as_object)
+            .and_then(|p: PackageIndex| p.export_index())
     }
     /// World transform (level transform included) of component export `i`: relative transforms along `AttachParent`, each merged with its template.
     fn world(&mut self, i: usize, cache: &mut Cache, depth: usize) -> Xf {
@@ -208,7 +260,9 @@ impl<'a, 'p> LevelCtx<'a, 'p> {
             return *x;
         }
         let inst = self.props(i);
-        let tpl = if let Some(t) = self.tpls.get(&i) { t.clone() } else {
+        let tpl = if let Some(t) = self.tpls.get(&i) {
+            t.clone()
+        } else {
             let t = cache.archetype(self.pkg, i);
             self.tpls.insert(i, t.clone());
             t
@@ -216,7 +270,11 @@ impl<'a, 'p> LevelCtx<'a, 'p> {
         let loc = arr(get(&inst, &tpl, "RelativeLocation"), 3).unwrap_or(vec![0.0; 3]);
         let rot = arr(get(&inst, &tpl, "RelativeRotation"), 3).unwrap_or(vec![0.0; 3]);
         let scl = arr(get(&inst, &tpl, "RelativeScale3D"), 3).unwrap_or(vec![1.0; 3]);
-        let rel = Xf { q: rot_to_quat([rot[0], rot[1], rot[2]]), t: [loc[0], loc[1], loc[2]], s: [scl[0], scl[1], scl[2]] };
+        let rel = Xf {
+            q: rot_to_quat([rot[0], rot[1], rot[2]]),
+            t: [loc[0], loc[1], loc[2]],
+            s: [scl[0], scl[1], scl[2]],
+        };
         let parent = if depth < 16 { self.parent(i) } else { None };
         let x = match parent {
             Some(p) => compose(rel, self.world(p, cache, depth + 1)),
@@ -236,13 +294,19 @@ fn r3(v: [f64; 3]) -> J {
 
 /// The `Sound` of a component: instance, then archetype, as a package path (no object suffix).
 fn sound_of(inst: &J, tpl: &Option<J>) -> Option<String> {
-    get(inst, tpl, "Sound").and_then(|v| v.as_str()).filter(|s| !s.is_empty()).map(|s| pkg_of(s).to_string())
+    get(inst, tpl, "Sound")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(|s| pkg_of(s).to_string())
 }
 
 /// Everything the layout file holds.
 pub fn scan(set: &PakSet) -> Result<J, String> {
     let lvls = levels(set)?;
-    let mut cache = Cache { set, tpl: HashMap::new() };
+    let mut cache = Cache {
+        set,
+        tpl: HashMap::new(),
+    };
     let mut emitters: Vec<J> = vec![];
     let mut lakes: Vec<J> = vec![];
     let mut rivers: Vec<J> = vec![];
@@ -252,7 +316,13 @@ pub fn scan(set: &PakSet) -> Result<J, String> {
     for (lp, lxf) in &lvls {
         let pd = PackageData::load(set, lp).map_err(|e| format!("{lp}: {e}"))?;
         let pkg = pd.package().map_err(|e| format!("{lp}: {e}"))?;
-        let mut cx = LevelCtx { pkg: &pkg, props: HashMap::new(), tpls: HashMap::new(), xf: HashMap::new(), level_xf: *lxf };
+        let mut cx = LevelCtx {
+            pkg: &pkg,
+            props: HashMap::new(),
+            tpls: HashMap::new(),
+            xf: HashMap::new(),
+            level_xf: *lxf,
+        };
         let level_name = short(lp).to_string();
         for i in 0..pkg.exports.len() {
             let cn = pkg.export_class_name(i);
@@ -260,8 +330,12 @@ pub fn scan(set: &PakSet) -> Result<J, String> {
             if pkg.exports[i].name.starts_with("Default__") {
                 continue;
             }
-            if lower.contains("audiovolume") || lower.contains("reverb") || lower.contains("ambientzone") {
-                volumes.push(json!({"level": level_name, "class": cn, "name": pkg.exports[i].name}));
+            if lower.contains("audiovolume")
+                || lower.contains("reverb")
+                || lower.contains("ambientzone")
+            {
+                volumes
+                    .push(json!({"level": level_name, "class": cn, "name": pkg.exports[i].name}));
             }
             if lower.contains("ambient") || lower.contains("audio") && !cn.ends_with("Component") {
                 *ambient_classes.entry(cn.clone()).or_default() += 1;
@@ -271,7 +345,9 @@ pub fn scan(set: &PakSet) -> Result<J, String> {
                     let inst = cx.props(i);
                     let tpl = cache.archetype(&pkg, i);
                     let owner_i = pkg.exports[i].outer_index.export_index();
-                    let (owner_class, owner_name) = owner_i.map(|o| (pkg.export_class_name(o), pkg.exports[o].name.clone())).unwrap_or_default();
+                    let (owner_class, owner_name) = owner_i
+                        .map(|o| (pkg.export_class_name(o), pkg.exports[o].name.clone()))
+                        .unwrap_or_default();
                     *class_hist.entry(owner_class.clone()).or_default() += 1;
                     let sound = sound_of(&inst, &tpl);
                     let w = cx.world(i, &mut cache, 0);
@@ -283,12 +359,42 @@ pub fn scan(set: &PakSet) -> Result<J, String> {
                     e.insert("sound".into(), sound.map(J::from).unwrap_or(J::Null));
                     e.insert("pos_cm".into(), r3(w.t));
                     e.insert("rot_deg".into(), r3(quat_to_rot(w.q)));
-                    e.insert("volume".into(), get(&inst, &tpl, "VolumeMultiplier").cloned().unwrap_or(json!(1.0)));
-                    e.insert("pitch".into(), get(&inst, &tpl, "PitchMultiplier").cloned().unwrap_or(json!(1.0)));
-                    e.insert("pitch_min".into(), get(&inst, &tpl, "PitchModulationMin").cloned().unwrap_or(json!(1.0)));
-                    e.insert("pitch_max".into(), get(&inst, &tpl, "PitchModulationMax").cloned().unwrap_or(json!(1.0)));
-                    e.insert("auto_activate".into(), get(&inst, &tpl, "bAutoActivate").cloned().unwrap_or(json!(true)));
-                    e.insert("override_attenuation".into(), get(&inst, &tpl, "bOverrideAttenuation").cloned().unwrap_or(json!(false)));
+                    e.insert(
+                        "volume".into(),
+                        get(&inst, &tpl, "VolumeMultiplier")
+                            .cloned()
+                            .unwrap_or(json!(1.0)),
+                    );
+                    e.insert(
+                        "pitch".into(),
+                        get(&inst, &tpl, "PitchMultiplier")
+                            .cloned()
+                            .unwrap_or(json!(1.0)),
+                    );
+                    e.insert(
+                        "pitch_min".into(),
+                        get(&inst, &tpl, "PitchModulationMin")
+                            .cloned()
+                            .unwrap_or(json!(1.0)),
+                    );
+                    e.insert(
+                        "pitch_max".into(),
+                        get(&inst, &tpl, "PitchModulationMax")
+                            .cloned()
+                            .unwrap_or(json!(1.0)),
+                    );
+                    e.insert(
+                        "auto_activate".into(),
+                        get(&inst, &tpl, "bAutoActivate")
+                            .cloned()
+                            .unwrap_or(json!(true)),
+                    );
+                    e.insert(
+                        "override_attenuation".into(),
+                        get(&inst, &tpl, "bOverrideAttenuation")
+                            .cloned()
+                            .unwrap_or(json!(false)),
+                    );
                     if let Some(a) = get(&inst, &tpl, "AttenuationOverrides") {
                         e.insert("attenuation".into(), a.clone());
                     }
@@ -297,15 +403,29 @@ pub fn scan(set: &PakSet) -> Result<J, String> {
                 c if c.starts_with("BP_AmbientLakeAudioActor") => {
                     let inst = cx.props(i);
                     let cdo = cache.class_defaults(&pkg, i);
-                    let root = pkg.read_export(i).ok().and_then(|o| o.props.get("RootComponent").and_then(Value::as_object)).and_then(|p| p.export_index());
+                    let root = pkg
+                        .read_export(i)
+                        .ok()
+                        .and_then(|o| o.props.get("RootComponent").and_then(Value::as_object))
+                        .and_then(|p| p.export_index());
                     let w = root.map(|r| cx.world(r, &mut cache, 0)).unwrap_or(*lxf);
                     // the WaterLoopAudio component carries the attenuation the construction script applied (and the Sound set by SetSound)
-                    let comp = inst.get("WaterLoopAudio").and_then(|v| v.as_str()).and_then(|p| (0..pkg.exports.len()).find(|&k| pkg.object_path(PackageIndex(k as i32 + 1)) == p));
+                    let comp = inst
+                        .get("WaterLoopAudio")
+                        .and_then(|v| v.as_str())
+                        .and_then(|p| {
+                            (0..pkg.exports.len())
+                                .find(|&k| pkg.object_path(PackageIndex(k as i32 + 1)) == p)
+                        });
                     let (cinst, ctpl) = match comp {
                         Some(k) => (cx.props(k), cache.archetype(&pkg, k)),
                         None => (J::Null, None),
                     };
-                    let sound = sound_of(&cinst, &ctpl).or_else(|| get(&inst, &cdo, "Sound").and_then(|v| v.as_str()).map(|s| pkg_of(s).to_string()));
+                    let sound = sound_of(&cinst, &ctpl).or_else(|| {
+                        get(&inst, &cdo, "Sound")
+                            .and_then(|v| v.as_str())
+                            .map(|s| pkg_of(s).to_string())
+                    });
                     lakes.push(json!({
                         "level": level_name, "name": pkg.exports[i].name, "class": c,
                         "center_cm": r3(w.t), "rot_deg": r3(quat_to_rot(w.q)), "scale": r3(w.s),
@@ -320,23 +440,47 @@ pub fn scan(set: &PakSet) -> Result<J, String> {
                     let inst = cx.props(i);
                     let cdo = cache.class_defaults(&pkg, i);
                     // base-class CDO values come from the parent Blueprint; the River subclass only overrides the three sounds
-                    let base = cache.template("/Game/Athena/Sounds/Ambient/BP_AmbientSplineActor", "Default__BP_AmbientSplineActor_C");
-                    let pick = |k: &str| inst.get(k).or_else(|| cdo.as_ref().and_then(|c| c.get(k))).or_else(|| base.as_ref().and_then(|c| c.get(k))).cloned();
-                    let find = |name: &str| -> Option<usize> { inst.get(name).and_then(|v| v.as_str()).and_then(|p| (0..pkg.exports.len()).find(|&k| pkg.object_path(PackageIndex(k as i32 + 1)) == p)) };
+                    let base = cache.template(
+                        "/Game/Athena/Sounds/Ambient/BP_AmbientSplineActor",
+                        "Default__BP_AmbientSplineActor_C",
+                    );
+                    let pick = |k: &str| {
+                        inst.get(k)
+                            .or_else(|| cdo.as_ref().and_then(|c| c.get(k)))
+                            .or_else(|| base.as_ref().and_then(|c| c.get(k)))
+                            .cloned()
+                    };
+                    let find = |name: &str| -> Option<usize> {
+                        inst.get(name).and_then(|v| v.as_str()).and_then(|p| {
+                            (0..pkg.exports.len())
+                                .find(|&k| pkg.object_path(PackageIndex(k as i32 + 1)) == p)
+                        })
+                    };
                     let mut sounds = Map::new();
-                    for (field, key) in [("AudioClosest", "SoundClosest"), ("AudioNextClosest", "SoundNextClosest"), ("AudioMidpoint", "SoundMidpoint")] {
+                    for (field, key) in [
+                        ("AudioClosest", "SoundClosest"),
+                        ("AudioNextClosest", "SoundNextClosest"),
+                        ("AudioMidpoint", "SoundMidpoint"),
+                    ] {
                         let s = find(field).and_then(|k| {
                             let ci = cx.props(k);
                             let ct = cache.archetype(&pkg, k);
                             sound_of(&ci, &ct)
                         });
-                        let s = s.or_else(|| pick(key).and_then(|v| v.as_str().map(|s| pkg_of(s).to_string())));
+                        let s = s.or_else(|| {
+                            pick(key).and_then(|v| v.as_str().map(|s| pkg_of(s).to_string()))
+                        });
                         sounds.insert(key.to_string(), s.map(J::from).unwrap_or(J::Null));
                     }
                     let samples: Vec<J> = inst
                         .get("SamplePoints")
                         .and_then(|v| v.as_array())
-                        .map(|a| a.iter().filter_map(|p| arr(Some(p), 3)).map(|p| r3(apply(*lxf, [p[0], p[1], p[2]]))).collect())
+                        .map(|a| {
+                            a.iter()
+                                .filter_map(|p| arr(Some(p), 3))
+                                .map(|p| r3(apply(*lxf, [p[0], p[1], p[2]])))
+                                .collect()
+                        })
                         .unwrap_or_default();
                     rivers.push(json!({
                         "level": level_name, "name": pkg.exports[i].name, "class": c,
@@ -399,7 +543,12 @@ fn num(v: Option<&J>) -> Option<f64> {
 fn controller_json(set: &PakSet) -> Result<J, String> {
     let d = PackageData::load(set, CONTROLLER).map_err(|e| e.to_string())?;
     let p = d.package().map_err(|e| e.to_string())?;
-    let cdo = p.read_default_object().ok_or("no CDO")?.map_err(|e| e.to_string())?.props.to_json(&p);
+    let cdo = p
+        .read_default_object()
+        .ok_or("no CDO")?
+        .map_err(|e| e.to_string())?
+        .props
+        .to_json(&p);
     let mut consts = Map::new();
     let mut lines: Vec<String> = vec![];
     for i in 0..p.exports.len() {
@@ -416,10 +565,29 @@ fn controller_json(set: &PakSet) -> Result<J, String> {
             }
         }
     }
-    let find = |pat: &str| lines.iter().filter(|l| l.contains(pat)).cloned().collect::<Vec<_>>();
+    let find = |pat: &str| {
+        lines
+            .iter()
+            .filter(|l| l.contains(pat))
+            .cloned()
+            .collect::<Vec<_>>()
+    };
     // FadeIn(duration, volume, start) / FadeOut(duration, volume) literals, exactly as disassembled
-    consts.insert("crossfade_lines".into(), json!(lines.iter().filter(|l| l.starts_with("Crossfade:") && (l.contains("FadeIn") || l.contains("FadeOut") || l.contains("SpawnSound2D"))).collect::<Vec<_>>()));
-    consts.insert("indoor_lines".into(), json!(lines.iter().filter(|l| l.starts_with("SetIndoorMixEnabled:")).collect::<Vec<_>>()));
+    consts.insert(
+        "crossfade_lines".into(),
+        json!(lines
+            .iter()
+            .filter(|l| l.starts_with("Crossfade:")
+                && (l.contains("FadeIn") || l.contains("FadeOut") || l.contains("SpawnSound2D")))
+            .collect::<Vec<_>>()),
+    );
+    consts.insert(
+        "indoor_lines".into(),
+        json!(lines
+            .iter()
+            .filter(|l| l.starts_with("SetIndoorMixEnabled:"))
+            .collect::<Vec<_>>()),
+    );
     consts.insert("trace_lines".into(), json!(find("LineTraceSingle")));
     consts.insert("mix_lines".into(), json!(find("SoundMixModifier")));
     consts.insert("fadeout_lines".into(), json!(find("FadeOut")));
@@ -439,15 +607,26 @@ fn controller_json(set: &PakSet) -> Result<J, String> {
 /// `TODM_A_Child_Athena` phases (child over parent `TODM_A`) and the start time.
 fn tod_json(set: &PakSet) -> Result<J, String> {
     let mut out = Map::new();
-    for (key, path, cdo) in [("child", TODM, "Default__TODM_A_Child_Athena_C"), ("parent", TODM_PARENT, "Default__TODM_A_C")] {
+    for (key, path, cdo) in [
+        ("child", TODM, "Default__TODM_A_Child_Athena_C"),
+        ("parent", TODM_PARENT, "Default__TODM_A_C"),
+    ] {
         let d = PackageData::load(set, path).map_err(|e| e.to_string())?;
         let p = d.package().map_err(|e| e.to_string())?;
         let i = p.find_export(cdo).ok_or("no CDO")?;
-        let j = p.read_export(i).map_err(|e| e.to_string())?.props.to_json(&p);
+        let j = p
+            .read_export(i)
+            .map_err(|e| e.to_string())?
+            .props
+            .to_json(&p);
         let mut phases = vec![];
         let mut idx = 0;
         loop {
-            let k = if idx == 0 { "LightAndFogPhaseSettings".to_string() } else { format!("LightAndFogPhaseSettings[{idx}]") };
+            let k = if idx == 0 {
+                "LightAndFogPhaseSettings".to_string()
+            } else {
+                format!("LightAndFogPhaseSettings[{idx}]")
+            };
             let Some(ph) = j.get(&k) else { break };
             phases.push(json!({"time_phase_begins_h": ph.get("TimePhaseBegins"), "phase_length_h": ph.get("PhaseLengthInHours"), "transition_in_min": ph.get("TransitionInTimeInMinutes"), "transition_out_min": ph.get("TransitionOutTimeInMinutes")}));
             idx += 1;

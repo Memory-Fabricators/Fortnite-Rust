@@ -125,7 +125,9 @@ fn dxt5_full_image_decode() {
     let mut b = vec![77, 77, 0, 0, 0, 0, 0, 0];
     b.extend_from_slice(&[0x00, 0xF8, 0x00, 0xF8, 0, 0, 0, 0]);
     let img = decode_mip(&PixelFormat::Dxt5, &b, 4, 4, &opts()).unwrap();
-    let Pixels::Rgba8(p) = img.pixels else { panic!() };
+    let Pixels::Rgba8(p) = img.pixels else {
+        panic!()
+    };
     assert_eq!(&p[..4], &[255, 0, 0, 77]);
     assert_eq!(p.len(), 64);
 }
@@ -139,7 +141,9 @@ fn dxt3_alpha_nibbles() {
     }
     b[8..12].copy_from_slice(&[0x00, 0xF8, 0x00, 0xF8]); // solid red
     let img = decode_mip(&PixelFormat::Dxt3, &b, 4, 4, &opts()).unwrap();
-    let Pixels::Rgba8(p) = img.pixels else { panic!() };
+    let Pixels::Rgba8(p) = img.pixels else {
+        panic!()
+    };
     for i in 0..16 {
         assert_eq!(p[i * 4 + 3], (i as u8) * 17, "pixel {i}");
         assert_eq!(p[i * 4], 255);
@@ -154,7 +158,9 @@ fn dxt1_odd_size_is_clipped() {
     }
     let img = decode_mip(&PixelFormat::Dxt1, &blocks, 5, 3, &opts()).unwrap();
     assert_eq!((img.width, img.height), (5, 3));
-    let Pixels::Rgba8(p) = img.pixels else { panic!() };
+    let Pixels::Rgba8(p) = img.pixels else {
+        panic!()
+    };
     assert_eq!(p.len(), 5 * 3 * 4);
     assert!(p.chunks_exact(4).all(|px| px == [255, 0, 0, 255]));
 }
@@ -164,7 +170,9 @@ fn bc4_gray() {
     let mut b = vec![200, 100];
     b.extend_from_slice(&[0; 6]);
     let img = decode_mip(&PixelFormat::Bc4, &b, 4, 4, &opts()).unwrap();
-    let Pixels::Rgba8(p) = img.pixels else { panic!() };
+    let Pixels::Rgba8(p) = img.pixels else {
+        panic!()
+    };
     assert_eq!(&p[..4], &[200, 200, 200, 255]);
 }
 
@@ -178,14 +186,24 @@ fn bc5_normal_reconstruction() {
     assert_eq!(build_normal_z(128, 128), 254);
     let mut b = vec![128, 128, 0, 0, 0, 0, 0, 0, 128, 128, 0, 0, 0, 0, 0, 0];
     let img = decode_mip(&PixelFormat::Bc5, &b, 4, 4, &opts()).unwrap();
-    let Pixels::Rgba8(p) = img.pixels else { panic!() };
+    let Pixels::Rgba8(p) = img.pixels else {
+        panic!()
+    };
     assert_eq!(&p[..4], &[128, 128, 254, 255]);
-    let o = DecodeOptions { bc5_reconstruct_z: false, ..opts() };
+    let o = DecodeOptions {
+        bc5_reconstruct_z: false,
+        ..opts()
+    };
     let img = decode_mip(&PixelFormat::Bc5, &b, 4, 4, &o).unwrap();
-    let Pixels::Rgba8(p) = img.pixels else { panic!() };
+    let Pixels::Rgba8(p) = img.pixels else {
+        panic!()
+    };
     assert_eq!(&p[..4], &[128, 128, 0, 255]);
     b.truncate(8);
-    assert!(decode_mip(&PixelFormat::Bc5, &b, 4, 4, &opts()).is_err(), "short data must be rejected");
+    assert!(
+        decode_mip(&PixelFormat::Bc5, &b, 4, 4, &opts()).is_err(),
+        "short data must be rejected"
+    );
 }
 
 #[test]
@@ -284,14 +302,24 @@ fn bc6h_image_output_is_f16() {
 
 #[test]
 fn raw_formats() {
-    let img = decode_mip(&PixelFormat::B8G8R8A8, &[1, 2, 3, 4, 5, 6, 7, 8], 2, 1, &opts()).unwrap();
+    let img = decode_mip(
+        &PixelFormat::B8G8R8A8,
+        &[1, 2, 3, 4, 5, 6, 7, 8],
+        2,
+        1,
+        &opts(),
+    )
+    .unwrap();
     assert_eq!(img.pixels, Pixels::Rgba8(vec![3, 2, 1, 4, 7, 6, 5, 8]));
     let img = decode_mip(&PixelFormat::A8R8G8B8, &[1, 2, 3, 4], 1, 1, &opts()).unwrap();
     assert_eq!(img.pixels, Pixels::Rgba8(vec![3, 2, 1, 4]));
     let img = decode_mip(&PixelFormat::R8G8B8A8, &[1, 2, 3, 4], 1, 1, &opts()).unwrap();
     assert_eq!(img.pixels, Pixels::Rgba8(vec![1, 2, 3, 4]));
     let img = decode_mip(&PixelFormat::G8, &[9, 200], 2, 1, &opts()).unwrap();
-    assert_eq!(img.pixels, Pixels::Rgba8(vec![9, 9, 9, 255, 200, 200, 200, 255]));
+    assert_eq!(
+        img.pixels,
+        Pixels::Rgba8(vec![9, 9, 9, 255, 200, 200, 200, 255])
+    );
     let img = decode_mip(&PixelFormat::G16, &[0x34, 0x12], 1, 1, &opts()).unwrap();
     assert_eq!(img.pixels, Pixels::Rgba8(vec![0x12, 0x12, 0x12, 255]));
     // RGBA16F: 1.0, 0.5, 0.0, 1.0
@@ -305,19 +333,34 @@ fn raw_formats() {
     assert_eq!(img.pixels, Pixels::RgbaF16(vec![0x3800, 0, 0, 0x3c00]));
     // V8U8: (0,0) -> (128,128), t = 1 -> ... quirky z
     let img = decode_mip(&PixelFormat::V8U8, &[0, 0], 1, 1, &opts()).unwrap();
-    let Pixels::Rgba8(p) = img.pixels else { panic!() };
+    let Pixels::Rgba8(p) = img.pixels else {
+        panic!()
+    };
     assert_eq!(&p[..2], &[128, 128]);
-    assert!(decode_mip(&PixelFormat::Other("PF_ASTC_4x4".into()), &[0; 16], 4, 4, &opts()).is_err());
+    assert!(decode_mip(
+        &PixelFormat::Other("PF_ASTC_4x4".into()),
+        &[0; 16],
+        4,
+        4,
+        &opts()
+    )
+    .is_err());
 }
 
 #[test]
 fn format_sizes() {
-    assert_eq!(PixelFormat::Dxt1.mip_bytes(2048, 2048), Some(2048 * 2048 / 2));
+    assert_eq!(
+        PixelFormat::Dxt1.mip_bytes(2048, 2048),
+        Some(2048 * 2048 / 2)
+    );
     assert_eq!(PixelFormat::Dxt5.mip_bytes(1, 1), Some(16));
     assert_eq!(PixelFormat::Dxt5.mip_bytes(5, 3), Some(2 * 16));
     assert_eq!(PixelFormat::B8G8R8A8.mip_bytes(3, 2), Some(24));
     assert_eq!(PixelFormat::from_name("PF_BC7"), PixelFormat::Bc7);
-    assert_eq!(PixelFormat::from_name("PF_Foo"), PixelFormat::Other("PF_Foo".into()));
+    assert_eq!(
+        PixelFormat::from_name("PF_Foo"),
+        PixelFormat::Other("PF_Foo".into())
+    );
 }
 
 #[test]
@@ -330,24 +373,59 @@ fn threaded_equals_single_threaded() {
         s = s.wrapping_mul(1664525).wrapping_add(1013904223);
         *b = (s >> 24) as u8;
     }
-    let a = decode_mip(&PixelFormat::Dxt5, &data, w, h, &DecodeOptions { threads: 1, ..opts() }).unwrap();
-    let b = decode_mip(&PixelFormat::Dxt5, &data, w, h, &DecodeOptions { threads: 4, ..opts() }).unwrap();
+    let a = decode_mip(
+        &PixelFormat::Dxt5,
+        &data,
+        w,
+        h,
+        &DecodeOptions {
+            threads: 1,
+            ..opts()
+        },
+    )
+    .unwrap();
+    let b = decode_mip(
+        &PixelFormat::Dxt5,
+        &data,
+        w,
+        h,
+        &DecodeOptions {
+            threads: 4,
+            ..opts()
+        },
+    )
+    .unwrap();
     assert_eq!(a, b);
 }
 
 #[test]
 fn png_roundtrip() {
-    let img = DecodedImage { width: 2, height: 1, pixels: Pixels::Rgba8(vec![1, 2, 3, 255, 4, 5, 6, 128]) };
+    let img = DecodedImage {
+        width: 2,
+        height: 1,
+        pixels: Pixels::Rgba8(vec![1, 2, 3, 255, 4, 5, 6, 128]),
+    };
     let dir = std::env::temp_dir().join("fn_texture_png_test");
     std::fs::create_dir_all(&dir).unwrap();
     let p = dir.join("a.png");
     img.write_png(&p).unwrap();
     let back = image::open(&p).unwrap().to_rgba8();
     assert_eq!(back.as_raw(), &vec![1, 2, 3, 255, 4, 5, 6, 128]);
-    let opaque = DecodedImage { width: 1, height: 1, pixels: Pixels::Rgba8(vec![9, 8, 7, 255]) };
+    let opaque = DecodedImage {
+        width: 1,
+        height: 1,
+        pixels: Pixels::Rgba8(vec![9, 8, 7, 255]),
+    };
     opaque.write_png(&p).unwrap();
-    assert!(matches!(image::open(&p).unwrap(), image::DynamicImage::ImageRgb8(_)));
-    let hdr = DecodedImage { width: 1, height: 1, pixels: Pixels::RgbaF16(vec![0x3c00, 0x3800, 0, 0x3c00]) };
+    assert!(matches!(
+        image::open(&p).unwrap(),
+        image::DynamicImage::ImageRgb8(_)
+    ));
+    let hdr = DecodedImage {
+        width: 1,
+        height: 1,
+        pixels: Pixels::RgbaF16(vec![0x3c00, 0x3800, 0, 0x3c00]),
+    };
     hdr.write_png(&p).unwrap();
     let back = image::open(&p).unwrap().to_rgba16();
     assert_eq!(back.as_raw(), &vec![65535, 32768, 0, 65535]);

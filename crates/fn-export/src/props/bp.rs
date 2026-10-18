@@ -56,8 +56,14 @@ pub fn load_bp(set: &PakSet, package: &str) -> Result<Bp, String> {
     for _ in 0..16 {
         let pd = PackageData::load(set, &cur).map_err(|e| format!("{cur}: {e}"))?;
         let pkg = pd.package().map_err(|e| format!("{cur}: {e}"))?;
-        let class = pkg.class_export().map(|i| pkg.exports[i].name.clone()).unwrap_or_default();
-        chain.push(Layer { package: cur.clone(), class });
+        let class = pkg
+            .class_export()
+            .map(|i| pkg.exports[i].name.clone())
+            .unwrap_or_default();
+        chain.push(Layer {
+            package: cur.clone(),
+            class,
+        });
         let mut cdo = Map::new();
         if let Some(i) = pkg.default_object_export() {
             if let Ok(o) = pkg.read_export(i) {
@@ -78,7 +84,10 @@ pub fn load_bp(set: &PakSet, package: &str) -> Result<Bp, String> {
         match pkg.super_class() {
             Some(ObjectRef::Import { package: sp, .. }) if sp.starts_with("/Game/") => cur = sp,
             Some(r) => {
-                chain.push(Layer { package: r.path().to_string(), class: r.name().to_string() });
+                chain.push(Layer {
+                    package: r.path().to_string(),
+                    class: r.name().to_string(),
+                });
                 break;
             }
             None => break,
@@ -88,7 +97,11 @@ pub fn load_bp(set: &PakSet, package: &str) -> Result<Bp, String> {
     for l in cdo_layers.iter().rev() {
         merge(&mut cdo, l);
     }
-    let smc_name = cdo.get("RootComponent").and_then(|v| v.as_str()).map(|p| leaf(p).to_string()).unwrap_or_default();
+    let smc_name = cdo
+        .get("RootComponent")
+        .and_then(|v| v.as_str())
+        .map(|p| leaf(p).to_string())
+        .unwrap_or_default();
     let mut smc = Map::new();
     // layers are leaf-first; apply root-first
     for (n, m) in smc_layers.iter().rev() {
@@ -96,7 +109,13 @@ pub fn load_bp(set: &PakSet, package: &str) -> Result<Bp, String> {
             merge(&mut smc, m);
         }
     }
-    Ok(Bp { package: package_of(package).to_string(), chain, cdo, smc, smc_name })
+    Ok(Bp {
+        package: package_of(package).to_string(),
+        chain,
+        cdo,
+        smc,
+        smc_name,
+    })
 }
 
 impl Bp {
@@ -105,14 +124,27 @@ impl Bp {
     }
     /// The static mesh object path the actor shows (component template first, then the actor's own `StaticMesh` var).
     pub fn static_mesh(&self) -> Option<String> {
-        self.smc.get("StaticMesh").and_then(|v| v.as_str()).or_else(|| self.str_of("StaticMesh")).filter(|s| !s.is_empty()).map(String::from)
+        self.smc
+            .get("StaticMesh")
+            .and_then(|v| v.as_str())
+            .or_else(|| self.str_of("StaticMesh"))
+            .filter(|s| !s.is_empty())
+            .map(String::from)
     }
     pub fn attr_key(&self) -> (String, String) {
         let k = self.cdo.get("AttributeInitKey");
-        let g = |n: &str| k.and_then(|k| k.get(n)).and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let g = |n: &str| {
+            k.and_then(|k| k.get(n))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string()
+        };
         (g("AttributeInitCategory"), g("AttributeInitSubCategory"))
     }
     pub fn resource_type(&self) -> String {
-        self.str_of("ResourceType").unwrap_or("").trim_start_matches("EFortResourceType::").to_string()
+        self.str_of("ResourceType")
+            .unwrap_or("")
+            .trim_start_matches("EFortResourceType::")
+            .to_string()
     }
 }

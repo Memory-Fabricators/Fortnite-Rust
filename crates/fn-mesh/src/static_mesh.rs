@@ -135,7 +135,11 @@ impl StaticMesh {
     /// Decode the first `StaticMesh` export of the package.
     pub fn parse(pkg: &Package) -> Result<StaticMesh> {
         let idx = find_class(pkg, "StaticMesh")?;
-        let ExportBody { props, mut reader, end } = export_body(pkg, idx)?;
+        let ExportBody {
+            props,
+            mut reader,
+            end,
+        } = export_body(pkg, idx)?;
         let names = &pkg.names;
         let r = &mut reader;
 
@@ -195,10 +199,19 @@ impl StaticMesh {
             let mref = r.i32()?;
             let slot_name = fname(r, names)?;
             let uv_channel = UvChannelInfo::read(r)?;
-            materials.push(StaticMaterial { slot_name, material: object_path(pkg, mref), material_name: object_name(pkg, mref), uv_channel });
+            materials.push(StaticMaterial {
+                slot_name,
+                material: object_path(pkg, mref),
+                material_name: object_name(pkg, mref),
+                uv_channel,
+            });
         }
         if r.tell() != end {
-            return invalid(format!("StaticMesh export not fully consumed: stopped at {} of {}", r.tell() - pkg.export_range(idx).0, end - pkg.export_range(idx).0));
+            return invalid(format!(
+                "StaticMesh export not fully consumed: stopped at {} of {}",
+                r.tell() - pkg.export_range(idx).0,
+                end - pkg.export_range(idx).0
+            ));
         }
         Ok(StaticMesh {
             name: pkg.exports[idx].object_name.clone(),
@@ -225,9 +238,15 @@ fn read_raw_index_buffer(r: &mut Reader) -> Result<(Vec<u32>, bool)> {
     }
     let bytes = r.bytes(count)?;
     let idx: Vec<u32> = if is32 {
-        bytes.chunks_exact(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect()
+        bytes
+            .chunks_exact(4)
+            .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+            .collect()
     } else {
-        bytes.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]]) as u32).collect()
+        bytes
+            .chunks_exact(2)
+            .map(|c| u16::from_le_bytes([c[0], c[1]]) as u32)
+            .collect()
     };
     Ok((idx, is32))
 }
@@ -258,7 +277,9 @@ fn read_lod(r: &mut Reader) -> Result<StaticLod> {
     let num_verts = r.i32()?;
     let (esize, count) = bulk_header(r)?;
     if esize != 12 || count != num_verts.max(0) as usize {
-        return invalid(format!("position buffer {count}x{esize} (header {num_verts})"));
+        return invalid(format!(
+            "position buffer {count}x{esize} (header {num_verts})"
+        ));
     }
     lod.positions.reserve(count);
     for _ in 0..count {
@@ -284,7 +305,10 @@ fn read_lod(r: &mut Reader) -> Result<StaticLod> {
         let tan = if high { 16 } else { 8 };
         let uv = if full { 8 } else { 4 } * num_tex;
         if esize != tan + uv || count != vnum.max(0) as usize {
-            return invalid(format!("static vertex buffer {count}x{esize} (header {vnum}); expected stride {}", tan + uv));
+            return invalid(format!(
+                "static vertex buffer {count}x{esize} (header {vnum}); expected stride {}",
+                tan + uv
+            ));
         }
         lod.uvs = vec![Vec::with_capacity(count); num_tex];
         for _ in 0..count {
@@ -350,7 +374,6 @@ fn read_lod(r: &mut Reader) -> Result<StaticLod> {
     Ok(lod)
 }
 
-
 /// Result of [`StaticMesh::validate`] for one LOD: the numbers the cooked metadata promises vs. what the buffers hold.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LodCheck {
@@ -405,32 +428,58 @@ impl StaticMesh {
         let mut out = vec![];
         for (li, l) in self.lods.iter().enumerate() {
             let n = l.positions.len();
-            let mut c = LodCheck { vertices: n, section_triangles: l.section_triangles(), index_triangles: l.indices.len() / 3, section_ranges_exact: true, problems: vec![] };
+            let mut c = LodCheck {
+                vertices: n,
+                section_triangles: l.section_triangles(),
+                index_triangles: l.indices.len() / 3,
+                section_ranges_exact: true,
+                problems: vec![],
+            };
             if l.indices.len() % 3 != 0 {
-                c.problems.push(format!("LOD{li}: index count {} is not a multiple of 3", l.indices.len()));
+                c.problems.push(format!(
+                    "LOD{li}: index count {} is not a multiple of 3",
+                    l.indices.len()
+                ));
             }
             if c.section_triangles != c.index_triangles {
-                c.problems.push(format!("LOD{li}: sections hold {} triangles, index buffer {}", c.section_triangles, c.index_triangles));
+                c.problems.push(format!(
+                    "LOD{li}: sections hold {} triangles, index buffer {}",
+                    c.section_triangles, c.index_triangles
+                ));
             }
-            if l.tangent_x.len() != n || l.tangent_z.len() != n || l.uvs.iter().any(|u| u.len() != n) || (!l.colors.is_empty() && l.colors.len() != n) {
-                c.problems.push(format!("LOD{li}: vertex streams differ in length (positions {n})"));
+            if l.tangent_x.len() != n
+                || l.tangent_z.len() != n
+                || l.uvs.iter().any(|u| u.len() != n)
+                || (!l.colors.is_empty() && l.colors.len() != n)
+            {
+                c.problems.push(format!(
+                    "LOD{li}: vertex streams differ in length (positions {n})"
+                ));
             }
             if l.uvs.len() != l.num_tex_coords {
-                c.problems.push(format!("LOD{li}: {} UV sets decoded, header says {}", l.uvs.len(), l.num_tex_coords));
+                c.problems.push(format!(
+                    "LOD{li}: {} UV sets decoded, header says {}",
+                    l.uvs.len(),
+                    l.num_tex_coords
+                ));
             }
             let mut covered = 0usize;
             for (si, s) in l.sections.iter().enumerate() {
                 let a = s.first_index as usize;
                 let b = a + 3 * s.num_triangles as usize;
                 if b > l.indices.len() {
-                    c.problems.push(format!("LOD{li} section {si}: index range {a}..{b} exceeds {}", l.indices.len()));
+                    c.problems.push(format!(
+                        "LOD{li} section {si}: index range {a}..{b} exceeds {}",
+                        l.indices.len()
+                    ));
                     continue;
                 }
                 covered += b - a;
                 let idx = &l.indices[a..b];
                 if let (Some(&mn), Some(&mx)) = (idx.iter().min(), idx.iter().max()) {
                     if mx as usize >= n {
-                        c.problems.push(format!("LOD{li} section {si}: index {mx} >= {n} vertices"));
+                        c.problems
+                            .push(format!("LOD{li} section {si}: index {mx} >= {n} vertices"));
                     }
                     if mn != s.min_vertex_index || mx != s.max_vertex_index {
                         c.section_ranges_exact = false;
@@ -438,11 +487,18 @@ impl StaticMesh {
                     }
                 }
                 if s.material_index < 0 || s.material_index as usize >= self.materials.len() {
-                    c.problems.push(format!("LOD{li} section {si}: material index {} outside the {} slots", s.material_index, self.materials.len()));
+                    c.problems.push(format!(
+                        "LOD{li} section {si}: material index {} outside the {} slots",
+                        s.material_index,
+                        self.materials.len()
+                    ));
                 }
             }
             if covered != l.indices.len() {
-                c.problems.push(format!("LOD{li}: sections cover {covered} of {} indices", l.indices.len()));
+                c.problems.push(format!(
+                    "LOD{li}: sections cover {covered} of {} indices",
+                    l.indices.len()
+                ));
             }
             out.push(c);
         }

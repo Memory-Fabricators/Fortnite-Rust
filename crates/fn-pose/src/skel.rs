@@ -20,48 +20,86 @@ pub struct BoneTree {
 }
 
 impl BoneTree {
-    pub fn new(names: Vec<String>, parents: Vec<Option<usize>>, local: Vec<(Vec3, Quat, Vec3)>) -> BoneTree {
-        let mut t = BoneTree { names, parents, local, index: HashMap::new() };
+    pub fn new(
+        names: Vec<String>,
+        parents: Vec<Option<usize>>,
+        local: Vec<(Vec3, Quat, Vec3)>,
+    ) -> BoneTree {
+        let mut t = BoneTree {
+            names,
+            parents,
+            local,
+            index: HashMap::new(),
+        };
         t.reindex();
         t
     }
     /// From the fn-animgraph skeleton type (same fields).
-    pub fn from_animgraph(s: &fn_animgraph::Skeleton) -> BoneTree { BoneTree::new(s.names.clone(), s.parents.clone(), s.local.clone()) }
+    pub fn from_animgraph(s: &fn_animgraph::Skeleton) -> BoneTree {
+        BoneTree::new(s.names.clone(), s.parents.clone(), s.local.clone())
+    }
     fn reindex(&mut self) {
         self.index.clear();
-        for (i, n) in self.names.iter().enumerate() { self.index.entry(n.clone()).or_insert(i); }
+        for (i, n) in self.names.iter().enumerate() {
+            self.index.entry(n.clone()).or_insert(i);
+        }
     }
-    pub fn len(&self) -> usize { self.names.len() }
-    pub fn is_empty(&self) -> bool { self.names.is_empty() }
+    pub fn len(&self) -> usize {
+        self.names.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.names.is_empty()
+    }
     /// Index of a bone by (case-insensitive) name; the first bone of that name (the old `position` lookup).
     pub fn bone_index(&self, name: &str) -> Option<usize> {
-        if let Some(i) = self.index.get(name) { return Some(*i); }
+        if let Some(i) = self.index.get(name) {
+            return Some(*i);
+        }
         self.index.get(&name.to_lowercase()).copied()
     }
     /// Local bind pose (the reference pose of the mesh skeleton).
-    pub fn bind_pose(&self) -> Pose { self.local.iter().map(|l| (l.0, l.1)).collect() }
-    pub fn identity_pose(&self) -> Pose { vec![(Vec3::ZERO, Quat::IDENTITY); self.names.len()] }
+    pub fn bind_pose(&self) -> Pose {
+        self.local.iter().map(|l| (l.0, l.1)).collect()
+    }
+    pub fn identity_pose(&self) -> Pose {
+        vec![(Vec3::ZERO, Quat::IDENTITY); self.names.len()]
+    }
 
     /// Component-space (position, rotation) of every bone (the model has unit scales). Parents precede children.
     pub fn component(&self, pose: &[BoneXform]) -> Pose {
         let mut c: Pose = Vec::with_capacity(pose.len());
         for i in 0..pose.len() {
             let (p, q) = pose[i];
-            c.push(match self.parents[i] { Some(j) => { let (pp, pq) = c[j]; (pp + pq * p, (pq * q).normalize()) } None => (p, q) });
+            c.push(match self.parents[i] {
+                Some(j) => {
+                    let (pp, pq) = c[j];
+                    (pp + pq * p, (pq * q).normalize())
+                }
+                None => (p, q),
+            });
         }
         c
     }
     /// Local transform of bone `i` for a component-space transform, given the component transform of its parent.
     pub fn local_of(&self, i: usize, comp: &[BoneXform], world: BoneXform) -> BoneXform {
         match self.parents[i] {
-            Some(j) => { let (pp, pq) = comp[j]; let inv = pq.conjugate(); (inv * (world.0 - pp), (inv * world.1).normalize()) }
+            Some(j) => {
+                let (pp, pq) = comp[j];
+                let inv = pq.conjugate();
+                (inv * (world.0 - pp), (inv * world.1).normalize())
+            }
             None => world,
         }
     }
     /// Mesh-space rotation of every bone.
     pub fn mesh_rotations(&self, pose: &[BoneXform]) -> Vec<Quat> {
         let mut m: Vec<Quat> = Vec::with_capacity(pose.len());
-        for i in 0..pose.len() { m.push(match self.parents[i] { Some(j) => (m[j] * pose[i].1).normalize(), None => pose[i].1 }); }
+        for i in 0..pose.len() {
+            m.push(match self.parents[i] {
+                Some(j) => (m[j] * pose[i].1).normalize(),
+                None => pose[i].1,
+            });
+        }
         m
     }
     /// BlendDepth mask (`FAnimationRuntime::CreateMaskWeights`): for a filter bone with depth d the bone at k levels below it gets
@@ -71,18 +109,28 @@ impl BoneTree {
         let n = self.names.len();
         let mut w = vec![0f32; n];
         for (bone, depth) in filters {
-            let Some(root) = self.bone_index(bone) else { continue };
+            let Some(root) = self.bone_index(bone) else {
+                continue;
+            };
             let mut level: Vec<Option<usize>> = vec![None; n];
             level[root] = Some(0);
             for i in 0..n {
                 if i != root {
-                    if let Some(j) = self.parents[i] { if let Some(l) = level[j] { level[i] = Some(l + 1); } }
+                    if let Some(j) = self.parents[i] {
+                        if let Some(l) = level[j] {
+                            level[i] = Some(l + 1);
+                        }
+                    }
                 }
             }
             for i in 0..n {
                 if let Some(k) = level[i] {
                     let k1 = (k + 1) as f32;
-                    w[i] = match *depth { 0 => 1., d if d > 0 => (k1 / d as f32).min(1.), d => (1. - k1 / (-d) as f32).max(0.) };
+                    w[i] = match *depth {
+                        0 => 1.,
+                        d if d > 0 => (k1 / d as f32).min(1.),
+                        d => (1. - k1 / (-d) as f32).max(0.),
+                    };
                 }
             }
         }
@@ -100,8 +148,12 @@ impl BoneTree {
         out.clear();
         out.reserve(n);
         for i in 0..n {
-            let local = Mat4::from_scale_rotation_translation(self.local[i].2, pose[i].1, pose[i].0);
-            let g = match self.parents[i] { Some(j) => out[j] * local, None => local };
+            let local =
+                Mat4::from_scale_rotation_translation(self.local[i].2, pose[i].1, pose[i].0);
+            let g = match self.parents[i] {
+                Some(j) => out[j] * local,
+                None => local,
+            };
             out.push(g);
         }
     }
@@ -115,16 +167,24 @@ impl BoneTree {
             let mut added = false;
             for i in 0..master.names.len() {
                 let name = &master.names[i];
-                if name.is_empty() || self.index.contains_key(name) { continue; }
-                let Some(pi) = master.parents[i] else { continue };
-                let Some(parent) = self.bone_index(&master.names[pi]) else { continue };
+                if name.is_empty() || self.index.contains_key(name) {
+                    continue;
+                }
+                let Some(pi) = master.parents[i] else {
+                    continue;
+                };
+                let Some(parent) = self.bone_index(&master.names[pi]) else {
+                    continue;
+                };
                 self.names.push(name.clone());
                 self.parents.push(Some(parent));
                 self.local.push(master.local[i]);
                 self.index.insert(name.clone(), self.names.len() - 1);
                 added = true;
             }
-            if !added { break; }
+            if !added {
+                break;
+            }
         }
         self.names.len() - before
     }

@@ -70,7 +70,10 @@ pub use blendspace::{BlendAxis, BlendSample, BlendSpace, BlendSpaceKind};
 pub use codec::{CompressionFormat, KeyFormat};
 pub use fnanim::{FnAnim, Precision};
 pub use montage::{AnimComposite, AnimMontage};
-pub use sequence::{AdditiveAnimType, AdditiveInfo, AnimSequence, CurveKey, FloatCurve, Interpolation, Notify, RefPoseType, RotationBlend, SyncMarker, Track, TrackSample};
+pub use sequence::{
+    AdditiveAnimType, AdditiveInfo, AnimSequence, CurveKey, FloatCurve, Interpolation, Notify,
+    RefPoseType, RotationBlend, SyncMarker, Track, TrackSample,
+};
 pub use skeleton::{BoneTransform, RetargetSource, SkeletonInfo, TranslationRetarget};
 
 use std::fmt;

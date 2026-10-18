@@ -17,20 +17,35 @@ pub struct Report<'a> {
     pub new_exe_info: String,
 }
 
-pub fn esc(s: &str) -> String { s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;") }
+pub fn esc(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
 
-fn grade_css(g: Grade) -> &'static str { g.css() }
-fn fmt_score(s: Option<f64>) -> String { s.map_or("n/a".to_owned(), |v| format!("{v:.1}")) }
+fn grade_css(g: Grade) -> &'static str {
+    g.css()
+}
+fn fmt_score(s: Option<f64>) -> String {
+    s.map_or("n/a".to_owned(), |v| format!("{v:.1}"))
+}
 
 pub fn summary_json(r: &Report) -> serde_json::Value {
     let areas = area_scores(r.items, r.cfg);
-    let item_json = |i: &Item| json!({
-        "id": i.id, "area": i.area.name(), "group": i.group, "label": i.label, "score": i.score, "grade": i.grade.name(), "weight": i.weight,
-        "headline": i.headline, "note": i.note, "evidence": i.evidence,
-        "metrics": i.metrics.iter().map(|m| json!({"name": m.name, "value": m.value, "grade": m.grade.name()})).collect::<Vec<_>>(),
-    });
+    let item_json = |i: &Item| {
+        json!({
+            "id": i.id, "area": i.area.name(), "group": i.group, "label": i.label, "score": i.score, "grade": i.grade.name(), "weight": i.weight,
+            "headline": i.headline, "note": i.note, "evidence": i.evidence,
+            "metrics": i.metrics.iter().map(|m| json!({"name": m.name, "value": m.value, "grade": m.grade.name()})).collect::<Vec<_>>(),
+        })
+    };
     let scored: Vec<f64> = areas.iter().filter_map(|a| a.score).collect();
-    let overall = if scored.is_empty() { None } else { Some(scored.iter().sum::<f64>() / scored.len() as f64) };
+    let overall = if scored.is_empty() {
+        None
+    } else {
+        Some(scored.iter().sum::<f64>() / scored.len() as f64)
+    };
     json!({
         "generated": r.generated,
         "overall_score": overall,
@@ -72,21 +87,40 @@ pub fn html(r: &Report) -> String {
     h.push_str(CSS);
     h.push_str("</style></head><body><main>");
     let scored: Vec<f64> = areas.iter().filter_map(|a| a.score).collect();
-    let overall = if scored.is_empty() { None } else { Some(scored.iter().sum::<f64>() / scored.len() as f64) };
+    let overall = if scored.is_empty() {
+        None
+    } else {
+        Some(scored.iter().sum::<f64>() / scored.len() as f64)
+    };
     h.push_str(&format!("<h1>Parity dashboard: pure-Rust game vs old prototype</h1><p class=sub>Generated {} &middot; old exe {} &middot; new exe {} &middot; overall (mean of scored areas) <span class='s {}'>{}</span></p>",
         esc(&r.generated), esc(&r.old_exe_info), esc(&r.new_exe_info), overall.map_or("n", |s| grade_css(grade_of(s, r.cfg))), fmt_score(overall)));
     h.push_str(&format!("<div class=legend><span><i style=background:var(--g)></i>green &ge; {:.0} (item: within the green limit)</span><span><i style=background:var(--a)></i>amber &ge; {:.0}</span><span><i style=background:var(--r)></i>red below</span><span><i style=background:var(--n)></i>n/a, not compared</span><span>Thumbnails: <b>old | new | difference heatmap</b> (blue / green / red top bars); click for the full-size sheet.</span></div>", r.cfg.f("grade.area_green", 90.), r.cfg.f("grade.area_amber", 70.)));
-    if !r.warnings.is_empty() { h.push_str("<div class=warn><b>Harness warnings</b><ul>"); for w in r.warnings { h.push_str(&format!("<li>{}</li>", esc(w))); } h.push_str("</ul></div>"); }
+    if !r.warnings.is_empty() {
+        h.push_str("<div class=warn><b>Harness warnings</b><ul>");
+        for w in r.warnings {
+            h.push_str(&format!("<li>{}</li>", esc(w)));
+        }
+        h.push_str("</ul></div>");
+    }
 
     // summary
     h.push_str("<h2>Summary per area</h2><table><tr><th>Area</th><th>Score</th><th>Items</th><th>Worst offenders</th></tr>");
     for a in &areas {
         h.push_str(&format!("<tr><td><a href=#a-{}><b>{}</b></a></td><td><span class='s {}'>{}</span></td><td>{} scored / {}</td><td>", a.area.id(), a.area.name(), grade_css(a.grade), fmt_score(a.score), a.scored, a.items));
-        if a.worst.is_empty() { h.push_str(&format!("<span class=note>{}</span>", esc(&a.note))); }
+        if a.worst.is_empty() {
+            h.push_str(&format!("<span class=note>{}</span>", esc(&a.note)));
+        }
         for &k in &a.worst.iter().take(3).copied().collect::<Vec<_>>() {
             let i = &r.items[k];
             let label = format!("{} ({:.0}): {}", i.label, i.score.unwrap_or(0.), i.headline);
-            match &i.evidence { Some(e) => h.push_str(&format!("<div><a href=\"{}\">{}</a></div>", esc(e), esc(&label))), None => h.push_str(&format!("<div>{}</div>", esc(&label))) }
+            match &i.evidence {
+                Some(e) => h.push_str(&format!(
+                    "<div><a href=\"{}\">{}</a></div>",
+                    esc(e),
+                    esc(&label)
+                )),
+                None => h.push_str(&format!("<div>{}</div>", esc(&label))),
+            }
         }
         h.push_str("</td></tr>");
     }
@@ -94,48 +128,114 @@ pub fn html(r: &Report) -> String {
 
     // per area
     for a in &areas {
-        let mut idx: Vec<usize> = r.items.iter().enumerate().filter(|(_, i)| i.area == a.area).map(|(k, _)| k).collect();
-        idx.sort_by(|&x, &y| r.items[x].score.unwrap_or(1000.).partial_cmp(&r.items[y].score.unwrap_or(1000.)).unwrap_or(std::cmp::Ordering::Equal));
+        let mut idx: Vec<usize> = r
+            .items
+            .iter()
+            .enumerate()
+            .filter(|(_, i)| i.area == a.area)
+            .map(|(k, _)| k)
+            .collect();
+        idx.sort_by(|&x, &y| {
+            r.items[x]
+                .score
+                .unwrap_or(1000.)
+                .partial_cmp(&r.items[y].score.unwrap_or(1000.))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         h.push_str(&format!("<details id=a-{} {}><summary><h3>{}</h3><span class='s {}'>{}</span><span class=note>{} items, {} scored{}</span></summary>", a.area.id(), if a.grade == Grade::Green { "" } else { "open" }, a.area.name(), grade_css(a.grade), fmt_score(a.score), a.items, a.scored, if a.note.is_empty() { String::new() } else { format!(" &middot; {}", esc(&a.note)) }));
-        if idx.is_empty() { h.push_str("</details>"); continue; }
+        if idx.is_empty() {
+            h.push_str("</details>");
+            continue;
+        }
         h.push_str("<table><tr><th>Evidence</th><th>Item</th><th>Measured</th><th>Score</th></tr>");
         for k in idx {
             let i = &r.items[k];
             h.push_str("<tr><td style=width:310px>");
-            if let Some(t) = &i.thumb { match &i.evidence { Some(e) => h.push_str(&format!("<a href=\"{}\"><img class=thumb alt=\"{}\" src=\"{}\"></a>", esc(e), esc(&i.label), t)), None => h.push_str(&format!("<img class=thumb alt=\"\" src=\"{t}\">")) } }
-            if i.thumb.is_none() { if let Some(e) = &i.evidence { h.push_str(&format!("<a href=\"{}\">log excerpt</a>", esc(e))); } }
-            h.push_str(&format!("</td><td><b>{}</b><div class=note>{} &middot; {}</div>", esc(&i.label), esc(&i.group), esc(&i.id)));
-            if !i.note.is_empty() { h.push_str(&format!("<div class=note>{}</div>", esc(&i.note))); }
+            if let Some(t) = &i.thumb {
+                match &i.evidence {
+                    Some(e) => h.push_str(&format!(
+                        "<a href=\"{}\"><img class=thumb alt=\"{}\" src=\"{}\"></a>",
+                        esc(e),
+                        esc(&i.label),
+                        t
+                    )),
+                    None => h.push_str(&format!("<img class=thumb alt=\"\" src=\"{t}\">")),
+                }
+            }
+            if i.thumb.is_none() {
+                if let Some(e) = &i.evidence {
+                    h.push_str(&format!("<a href=\"{}\">log excerpt</a>", esc(e)));
+                }
+            }
+            h.push_str(&format!(
+                "</td><td><b>{}</b><div class=note>{} &middot; {}</div>",
+                esc(&i.label),
+                esc(&i.group),
+                esc(&i.id)
+            ));
+            if !i.note.is_empty() {
+                h.push_str(&format!("<div class=note>{}</div>", esc(&i.note)));
+            }
             h.push_str("</td><td>");
             h.push_str(&format!("<div>{}</div>", esc(&i.headline)));
-            for m in &i.metrics { h.push_str(&format!("<span class='chip {}'>{}: {}</span>", grade_css(m.grade), esc(&m.name), esc(&m.value))); }
-            h.push_str(&format!("</td><td><span class='s {}'>{}</span>{}</td></tr>", grade_css(i.grade), fmt_score(i.score), if (i.weight - 1.).abs() > 1e-9 { format!("<div class=note>weight {}</div>", i.weight) } else { String::new() }));
+            for m in &i.metrics {
+                h.push_str(&format!(
+                    "<span class='chip {}'>{}: {}</span>",
+                    grade_css(m.grade),
+                    esc(&m.name),
+                    esc(&m.value)
+                ));
+            }
+            h.push_str(&format!(
+                "</td><td><span class='s {}'>{}</span>{}</td></tr>",
+                grade_css(i.grade),
+                fmt_score(i.score),
+                if (i.weight - 1.).abs() > 1e-9 {
+                    format!("<div class=note>weight {}</div>", i.weight)
+                } else {
+                    String::new()
+                }
+            ));
         }
         h.push_str("</table></details>");
     }
 
     // constants
-    let drift: Vec<&ConstRow> = r.consts.iter().filter(|c| c.verdict == "DRIFT" || c.verdict == "assumption-changed").collect();
+    let drift: Vec<&ConstRow> = r
+        .consts
+        .iter()
+        .filter(|c| c.verdict == "DRIFT" || c.verdict == "assumption-changed")
+        .collect();
     h.push_str("<h2>Recovered 1.8 constants (reports/verify-1.8.json) re-evaluated against the Rust crates</h2>");
     let cnt = |v: &str| r.consts.iter().filter(|c| c.verdict == v).count();
     h.push_str(&format!("<p class=note>{} rows: {} ok, {} DRIFT, {} assumptions kept, {} assumptions changed, {} not exposed by a Rust crate yet (not counted as passing).</p>", r.consts.len(), cnt("ok"), cnt("DRIFT"), cnt("same-assumption"), cnt("assumption-changed"), cnt("not-exposed")));
     if !drift.is_empty() {
         h.push_str("<table><tr><th>Group</th><th>Constant</th><th>Verdict</th><th>Rust value</th><th>Expected</th></tr>");
-        for c in drift { h.push_str(&format!("<tr><td>{}</td><td><code>{}</code></td><td><span class='s {}'>{}</span></td><td>{:?}</td><td>{:?}</td></tr>", esc(&c.group), esc(&c.constant), if c.verdict == "DRIFT" { "r" } else { "a" }, c.verdict, c.new, c.expected)); }
+        for c in drift {
+            h.push_str(&format!("<tr><td>{}</td><td><code>{}</code></td><td><span class='s {}'>{}</span></td><td>{:?}</td><td>{:?}</td></tr>", esc(&c.group), esc(&c.constant), if c.verdict == "DRIFT" { "r" } else { "a" }, c.verdict, c.new, c.expected));
+        }
         h.push_str("</table>");
     }
 
     // runs
     h.push_str("<h2>Runs</h2><table><tr><th>Side</th><th>Run</th><th>Result</th><th>Wall</th><th>CPU</th><th>Peak WS</th><th>Notes</th></tr>");
     for x in r.runs {
-        let (cls, txt) = if x.timed_out { ("r", "timeout".to_owned()) } else if x.ok { ("g", "ok".to_owned()) } else { ("a", format!("exit {:?}", x.exit)) };
+        let (cls, txt) = if x.timed_out {
+            ("r", "timeout".to_owned())
+        } else if x.ok {
+            ("g", "ok".to_owned())
+        } else {
+            ("a", format!("exit {:?}", x.exit))
+        };
         h.push_str(&format!("<tr><td>{}</td><td><code>{}</code><div class=note>{}</div></td><td><span class='s {cls}'>{txt}</span></td><td>{:.1}s</td><td>{:.1}s</td><td>{:.0} MB</td><td class=note>{}{}{}</td></tr>", esc(&x.side), esc(&x.id), esc(&x.cmd), x.wall_s, x.cpu_s, x.peak_ws_mb, esc(&x.note), if x.stragglers_killed > 0 { " stragglers killed;" } else { "" }, if x.cursor_released { " cursor clip released;" } else { "" }));
     }
     h.push_str("</table>");
 
     // gaps
     h.push_str("<h2>What the scenarios could not cover</h2><ul>");
-    for g in r.gaps { h.push_str(&format!("<li>{}</li>", esc(g))); }
+    for g in r.gaps {
+        h.push_str(&format!("<li>{}</li>", esc(g)));
+    }
     h.push_str("</ul>");
     h.push_str(&format!("<h2>Thresholds in use</h2><details><summary>thresholds ({})</summary><pre><code>{}</code></pre></details>", esc(&r.cfg.source), esc(&r.thresholds_toml)));
     h.push_str("</main></body></html>");
@@ -145,12 +245,33 @@ pub fn html(r: &Report) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn report_renders_and_escapes() {
+    #[test]
+    fn report_renders_and_escapes() {
         let cfg = Config::defaults();
-        let mut it = Item::new("img:a<b", Area::Hud, "g", "label & co").scored(100.); it.headline = "x".into();
+        let mut it = Item::new("img:a<b", Area::Hud, "g", "label & co").scored(100.);
+        it.headline = "x".into();
         let items = vec![it];
-        let rep = Report { generated: "now".into(), items: &items, runs: &[], warnings: &["w <1>".to_owned()], gaps: &["gap".to_owned()], consts: &[], cfg: &cfg, thresholds_toml: "t".into(), old_exe_info: "o".into(), new_exe_info: "n".into() };
-        let h = html(&rep); assert!(h.contains("label &amp; co") && h.contains("w &lt;1&gt;") && h.contains("Audio") && !h.contains("<1>"));
-        let j = summary_json(&rep); assert_eq!(j["areas"].as_array().unwrap().len(), 9); assert_eq!(j["items"][0]["grade"], "green");
+        let rep = Report {
+            generated: "now".into(),
+            items: &items,
+            runs: &[],
+            warnings: &["w <1>".to_owned()],
+            gaps: &["gap".to_owned()],
+            consts: &[],
+            cfg: &cfg,
+            thresholds_toml: "t".into(),
+            old_exe_info: "o".into(),
+            new_exe_info: "n".into(),
+        };
+        let h = html(&rep);
+        assert!(
+            h.contains("label &amp; co")
+                && h.contains("w &lt;1&gt;")
+                && h.contains("Audio")
+                && !h.contains("<1>")
+        );
+        let j = summary_json(&rep);
+        assert_eq!(j["areas"].as_array().unwrap().len(), 9);
+        assert_eq!(j["items"][0]["grade"], "green");
     }
 }

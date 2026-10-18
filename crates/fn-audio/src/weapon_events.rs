@@ -74,15 +74,37 @@ pub struct WeaponCue {
 }
 impl WeaponCue {
     pub fn as_event_cue(&self) -> EventCue {
-        EventCue { event: self.event, cue: self.cue, source: self.source, provenance: self.provenance }
+        EventCue {
+            event: self.event,
+            cue: self.cue,
+            source: self.source,
+            provenance: self.provenance,
+        }
     }
 }
 
 const fn row(event: &'static str, cue: &'static str, provenance: &'static str) -> WeaponCue {
-    WeaponCue { event, cue, source: Recovered, provenance, pitch: 1.0 }
+    WeaponCue {
+        event,
+        cue,
+        source: Recovered,
+        provenance,
+        pitch: 1.0,
+    }
 }
-const fn row_pitch(event: &'static str, cue: &'static str, provenance: &'static str, pitch: f32) -> WeaponCue {
-    WeaponCue { event, cue, source: Recovered, provenance, pitch }
+const fn row_pitch(
+    event: &'static str,
+    cue: &'static str,
+    provenance: &'static str,
+    pitch: f32,
+) -> WeaponCue {
+    WeaponCue {
+        event,
+        cue,
+        source: Recovered,
+        provenance,
+        pitch,
+    }
 }
 
 const FIRE_AR: &str = "B_Assault_Auto_Athena_C CDO .PrimaryFireSound[0] (played on its `Normal` AudioComponent, attached to WeaponMesh0 = at the weapon). Close / medium / distant layers (the fire tail / echo) are inside the cue.";
@@ -104,7 +126,8 @@ const PICKUP: &str = "WID .PickupSound (FortWorldItemDefinition) - played when t
 const DROP: &str = "WID .DropSound.";
 const IMPACT_AR: &str = "B_Assault_Auto_Athena_C CDO (+ B_Assault_Generic / B_Ranged_Generic) .ImpactPhysicalSurfaceSounds[N], N = EPhysicalSurface index (1 wood, 2 stone, 3 metal, 4 player, 5 opponent, 6 husk, 7 smasher, 8 water by the cue names; the project's surface enum names were not read).";
 const IMPACT_SHOTGUN: &str = "B_Shotgun_Standard_Athena_C CDO (+ B_Shotgun_Generic / B_Ranged_Generic) .ImpactPhysicalSurfaceSounds[N], N = EPhysicalSurface index.";
-const IMPACT_SNIPER: &str = "B_Rifle_Sniper_Athena_C CDO: nulls [0..10]; only [19] is inherited from B_Ranged_Generic.";
+const IMPACT_SNIPER: &str =
+    "B_Rifle_Sniper_Athena_C CDO: nulls [0..10]; only [19] is inherited from B_Ranged_Generic.";
 
 /// Every weapon / consumable event -> cue row (the canonical table; `fn-audio-pack` exports the closure of all of them).
 pub const TABLE: &[WeaponCue] = &[
@@ -191,13 +214,21 @@ pub const UNRECOVERED: &[&str] = &[
 
 pub fn lookup(event: &str) -> Option<&'static WeaponCue> {
     // WEAPON BP TABLE: the generated per-Blueprint rows (`bp.<Blueprint>.<kind>`) and montage-notify rows (`notify.<Cue>`) follow the hand-written starter-loadout rows
-    TABLE.iter().chain(BP_TABLE).chain(NOTIFY_TABLE).find(|e| e.event == event)
+    TABLE
+        .iter()
+        .chain(BP_TABLE)
+        .chain(NOTIFY_TABLE)
+        .find(|e| e.event == event)
 }
 
 /// Row whose cue is the package `path` (an object path `/Game/X/Y.Y` is accepted); the first such row wins (starter table, then montage-notify rows, then Blueprint rows).
 pub fn by_cue_path(path: &str) -> Option<&'static WeaponCue> {
     let p = path.split('.').next().unwrap_or(path);
-    TABLE.iter().chain(NOTIFY_TABLE).chain(BP_TABLE).find(|e| e.cue.eq_ignore_ascii_case(p))
+    TABLE
+        .iter()
+        .chain(NOTIFY_TABLE)
+        .chain(BP_TABLE)
+        .find(|e| e.cue.eq_ignore_ascii_case(p))
 }
 
 /// Whether `bp` (a weapon Blueprint class name such as `B_Pistol_Vigilante_Athena`, or its `WeaponActorClass` object path) is one of the generated BR weapons.
@@ -219,18 +250,32 @@ pub fn bp_event(bp: &str, kind: &str) -> Option<&'static str> {
 /// `(bPersistentFireFX, PrimaryFireSoundFadeOutTime, per-channel "cue loops indefinitely")` of a generated BR weapon Blueprint (exe `PlayWeaponFireFX` rules, see `BP_FIRE_FX`).
 pub fn bp_fire_fx(bp: &str) -> Option<(bool, f32, [bool; 3])> {
     let n = bp_name(bp);
-    BP_FIRE_FX.iter().find(|r| r.0 == n).map(|r| (r.1, r.2, r.3))
+    BP_FIRE_FX
+        .iter()
+        .find(|r| r.0 == n)
+        .map(|r| (r.1, r.2, r.3))
 }
 /// Persistent-fire weapons start ONE fire sound per trigger hold / burst and stop it (with stop sounds) when firing ends; all others play per shot and never stop sounds.
 pub fn bp_persistent_fire(bp: &str) -> bool {
     bp_fire_fx(bp).is_some_and(|f| f.0)
 }
 pub fn bp_reload_event(bp: &str, s: ReloadStage) -> Option<&'static str> {
-    bp_event(bp, match s { ReloadStage::Start => "reload.start", ReloadStage::Cartridge => "reload.cartridge", ReloadStage::End => "reload.end" })
+    bp_event(
+        bp,
+        match s {
+            ReloadStage::Start => "reload.start",
+            ReloadStage::Cartridge => "reload.cartridge",
+            ReloadStage::End => "reload.end",
+        },
+    )
 }
 /// Every generated cue the front-end can reach (for the sink's up-front decode): the played Blueprint rows and all montage-notify cues.
 pub fn bp_played_cues() -> impl Iterator<Item = &'static str> {
-    BP_TABLE.iter().filter(|w| is_played(w)).map(|w| w.cue).chain(NOTIFY_TABLE.iter().map(|w| w.cue))
+    BP_TABLE
+        .iter()
+        .filter(|w| is_played(w))
+        .map(|w| w.cue)
+        .chain(NOTIFY_TABLE.iter().map(|w| w.cue))
 }
 
 pub fn fire_event(g: Gun) -> &'static str {
@@ -271,7 +316,14 @@ pub fn impact_event(g: Gun, surface: u8) -> Option<&'static str> {
 pub fn is_played(w: &WeaponCue) -> bool {
     let e = w.event;
     // low-ammo layer and fire-stop sounds are played now (exe vfunc_285 / vfunc_202); the degraded variants need item durability, which no sandbox weapon has
-    !(e.ends_with(".fire.degraded") || e.ends_with(".fire.stop.degraded") || e.contains(".scope.") || e.ends_with(".drop") || e.ends_with(".pickup") || e.starts_with("pickup.") || e.ends_with(".s6") || e.ends_with(".s7"))
+    !(e.ends_with(".fire.degraded")
+        || e.ends_with(".fire.stop.degraded")
+        || e.contains(".scope.")
+        || e.ends_with(".drop")
+        || e.ends_with(".pickup")
+        || e.starts_with("pickup.")
+        || e.ends_with(".s6")
+        || e.ends_with(".s7"))
 }
 
 #[cfg(test)]
@@ -282,10 +334,17 @@ mod tests {
         let mut seen = std::collections::HashSet::new();
         for e in TABLE {
             assert!(seen.insert(e.event), "duplicate {}", e.event);
-            assert!(e.cue.starts_with("/Game/") && !e.cue.contains('.'), "{}", e.cue);
+            assert!(
+                e.cue.starts_with("/Game/") && !e.cue.contains('.'),
+                "{}",
+                e.cue
+            );
             assert!(e.pitch > 0.);
         }
-        assert_eq!(lookup("weapon.equip").unwrap().cue, "/Game/Sounds/Fort_GamePlay_Sounds/Player/Player_Equip_Projectile_Equip_Cue");
+        assert_eq!(
+            lookup("weapon.equip").unwrap().cue,
+            "/Game/Sounds/Fort_GamePlay_Sounds/Player/Player_Equip_Projectile_Equip_Cue"
+        );
         assert_eq!(lookup("heal.restore.health").unwrap().pitch, 1.5);
     }
     #[test]
@@ -301,32 +360,73 @@ mod tests {
     }
     #[test]
     fn impacts_follow_the_cdo_arrays() {
-        assert_eq!(lookup(impact_event(Gun::Assault, 1).unwrap()).unwrap().cue, "/Game/Sounds/Fort_Weapons/Impacts/WOOD_Bullet_Impact_Ricochet_Light_Cue");
-        assert_eq!(lookup(impact_event(Gun::Shotgun, 1).unwrap()).unwrap().cue, "/Game/Sounds/Fort_Weapons/Impacts/WOOD_Bullet_Impact_Ricochet_Heavy_Cue");
-        assert!(impact_event(Gun::Sniper, 1).is_none(), "the sniper CDO nulls the surface sounds");
+        assert_eq!(
+            lookup(impact_event(Gun::Assault, 1).unwrap()).unwrap().cue,
+            "/Game/Sounds/Fort_Weapons/Impacts/WOOD_Bullet_Impact_Ricochet_Light_Cue"
+        );
+        assert_eq!(
+            lookup(impact_event(Gun::Shotgun, 1).unwrap()).unwrap().cue,
+            "/Game/Sounds/Fort_Weapons/Impacts/WOOD_Bullet_Impact_Ricochet_Heavy_Cue"
+        );
+        assert!(
+            impact_event(Gun::Sniper, 1).is_none(),
+            "the sniper CDO nulls the surface sounds"
+        );
         assert!(impact_event(Gun::Sniper, 19).is_some());
     }
     /// The generated per-Blueprint rows agree with the hand-read starter table (fire / empty / reload cues, the sniper's nulled impacts) and cover every BR weapon Blueprint.
     #[test]
     fn generated_blueprint_rows_agree_with_the_starter_table() {
         assert!(BPS.len() >= 20, "{}", BPS.len());
-        for (g, bp) in [(Gun::Assault, "B_Assault_Auto_Athena"), (Gun::Shotgun, "B_Shotgun_Standard_Athena"), (Gun::Sniper, "B_Rifle_Sniper_Athena")] {
+        for (g, bp) in [
+            (Gun::Assault, "B_Assault_Auto_Athena"),
+            (Gun::Shotgun, "B_Shotgun_Standard_Athena"),
+            (Gun::Sniper, "B_Rifle_Sniper_Athena"),
+        ] {
             assert!(bp_known(bp), "{bp}");
-            assert_eq!(lookup(bp_event(bp, "fire").unwrap()).unwrap().cue, lookup(fire_event(g)).unwrap().cue, "{bp} fire");
-            assert_eq!(lookup(bp_event(bp, "empty").unwrap()).unwrap().cue, lookup(empty_event(g)).unwrap().cue, "{bp} empty");
+            assert_eq!(
+                lookup(bp_event(bp, "fire").unwrap()).unwrap().cue,
+                lookup(fire_event(g)).unwrap().cue,
+                "{bp} fire"
+            );
+            assert_eq!(
+                lookup(bp_event(bp, "empty").unwrap()).unwrap().cue,
+                lookup(empty_event(g)).unwrap().cue,
+                "{bp} empty"
+            );
             for s in [ReloadStage::Start, ReloadStage::Cartridge, ReloadStage::End] {
-                assert_eq!(lookup(bp_reload_event(bp, s).unwrap()).unwrap().cue, lookup(reload_event(g, s)).unwrap().cue, "{bp} {s:?}");
+                assert_eq!(
+                    lookup(bp_reload_event(bp, s).unwrap()).unwrap().cue,
+                    lookup(reload_event(g, s)).unwrap().cue,
+                    "{bp} {s:?}"
+                );
             }
         }
         assert!(bp_event("/Game/Weapons/FORT_Rifles/Blueprints/B_Rifle_Sniper_Athena.B_Rifle_Sniper_Athena_C", "impact.s1").is_none(), "the sniper CDO nulls the surface sounds");
-        assert!(bp_event("B_Assault_Auto_Athena", "fire.stop").is_none(), "the Assault Rifle CDO nulls PrimaryFireStopSound");
-        for (bp, _) in BPS { assert!(bp_event(bp, "fire").is_some() && bp_event(bp, "reload.end").is_some() || *bp == "B_Launcher_Pumpkin_RPG_Athena", "{bp} lacks fire / reload rows"); }
+        assert!(
+            bp_event("B_Assault_Auto_Athena", "fire.stop").is_none(),
+            "the Assault Rifle CDO nulls PrimaryFireStopSound"
+        );
+        for (bp, _) in BPS {
+            assert!(
+                bp_event(bp, "fire").is_some() && bp_event(bp, "reload.end").is_some()
+                    || *bp == "B_Launcher_Pumpkin_RPG_Athena",
+                "{bp} lacks fire / reload rows"
+            );
+        }
         assert_eq!(by_cue_path("/Game/Sounds/Fort_GamePlay_Sounds/Player/Player_Equip_LargeWeapon_Cue.Player_Equip_LargeWeapon_Cue").unwrap().event, "notify.Player_Equip_LargeWeapon_Cue");
-        for w in BP_TABLE.iter().chain(NOTIFY_TABLE) { assert!(w.cue.starts_with("/Game/") && !w.cue.contains('.') && lookup(w.event).is_some()); }
+        for w in BP_TABLE.iter().chain(NOTIFY_TABLE) {
+            assert!(
+                w.cue.starts_with("/Game/") && !w.cue.contains('.') && lookup(w.event).is_some()
+            );
+        }
     }
     #[test]
     fn notify_cue_paths_resolve_to_rows() {
         assert_eq!(by_cue_path("/Game/Sounds/Fort_GamePlay_Sounds/Player/Bandage_Apply_Athena_Cue.Bandage_Apply_Athena_Cue").unwrap().event, "heal.apply");
-        assert_eq!(ReloadStage::from_enum_text("EFortReloadFXState::ReloadCartridge"), Some(ReloadStage::Cartridge));
+        assert_eq!(
+            ReloadStage::from_enum_text("EFortReloadFXState::ReloadCartridge"),
+            Some(ReloadStage::Cartridge)
+        );
     }
 }

@@ -15,8 +15,15 @@ pub enum ProcStyle {
     PrimaryM,
 }
 impl ProcStyle {
-    pub fn left_shade(self) -> bool { matches!(self, ProcStyle::OutlineLeftShade | ProcStyle::OutlineLeftShadeRed) }
-    pub fn red(self) -> bool { matches!(self, ProcStyle::OutlineRed | ProcStyle::OutlineLeftShadeRed) }
+    pub fn left_shade(self) -> bool {
+        matches!(
+            self,
+            ProcStyle::OutlineLeftShade | ProcStyle::OutlineLeftShadeRed
+        )
+    }
+    pub fn red(self) -> bool {
+        matches!(self, ProcStyle::OutlineRed | ProcStyle::OutlineLeftShadeRed)
+    }
 }
 
 /// Which gradient panel material a `Cmd::Panel` draws.
@@ -31,4 +38,10 @@ pub enum PanelKind {
 }
 
 /// Button/brush visual state of a procedural widget.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)] pub enum Vis { Normal, Hover, Pressed, Disabled }
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Vis {
+    Normal,
+    Hover,
+    Pressed,
+    Disabled,
+}

@@ -11,8 +11,16 @@ use std::time::Instant;
 
 type SkelCache = Mutex<HashMap<String, Result<Arc<SkeletonInfo>, String>>>;
 
-fn skeleton_for(src: &Source, pkg: &fn_ueio::Package, cache: &SkelCache) -> Result<Arc<SkeletonInfo>, String> {
-    let idx = pkg.imports.iter().position(|i| i.class_name == "Skeleton").ok_or("animation has no Skeleton import")?;
+fn skeleton_for(
+    src: &Source,
+    pkg: &fn_ueio::Package,
+    cache: &SkelCache,
+) -> Result<Arc<SkeletonInfo>, String> {
+    let idx = pkg
+        .imports
+        .iter()
+        .position(|i| i.class_name == "Skeleton")
+        .ok_or("animation has no Skeleton import")?;
     let long = pkg.import_path(-(idx as i32) - 1);
     let pkg_path = long.split('.').next().unwrap_or(&long).to_string();
     if let Some(r) = cache.lock().unwrap().get(&pkg_path) {
@@ -20,13 +28,21 @@ fn skeleton_for(src: &Source, pkg: &fn_ueio::Package, cache: &SkelCache) -> Resu
     }
     let r = (|| {
         let sp = src.package(&pkg_path)?;
-        SkeletonInfo::from_package(&sp).map(Arc::new).map_err(|e| format!("{pkg_path}: {e}"))
+        SkeletonInfo::from_package(&sp)
+            .map(Arc::new)
+            .map_err(|e| format!("{pkg_path}: {e}"))
     })();
     cache.lock().unwrap().insert(pkg_path, r.clone());
     r
 }
 
-fn export_one(src: &Source, cache: &SkelCache, pkg_name: &str, out: &str, args: &Args) -> Result<Value, String> {
+fn export_one(
+    src: &Source,
+    cache: &SkelCache,
+    pkg_name: &str,
+    out: &str,
+    args: &Args,
+) -> Result<Value, String> {
     let pkg = src.package(pkg_name)?;
     let skel = skeleton_for(src, &pkg, cache)?;
     let seq = AnimSequence::parse(&pkg).map_err(|e| e.to_string())?;
@@ -34,7 +50,8 @@ fn export_one(src: &Source, cache: &SkelCache, pkg_name: &str, out: &str, args: 
     seq.write_fnanim(&skel, Precision::F32, &mut bytes);
     let fnanim_rel = std::path::Path::new(out).with_extension("fnanim");
     write_file(&args.out.join(&fnanim_rel), &bytes)?;
-    let mut d = json!({"frames": seq.num_frames, "bones": skel.num_bones(), "fnanim_bytes": bytes.len()});
+    let mut d =
+        json!({"frames": seq.num_frames, "bones": skel.num_bones(), "fnanim_bytes": bytes.len()});
     // round trip
     let back = AnimSequence::read_fnanim(&bytes).map_err(|e| e.to_string())?;
     // what a consumer substitutes for channels the file has no data for: reference pose, or identity for additive clips
@@ -46,8 +63,13 @@ fn export_one(src: &Source, cache: &SkelCache, pkg_name: &str, out: &str, args: 
         &skel.ref_pose
     };
     // compare at an integer frame (the .fnanim stores one key per frame)
-    let frame = (seq.num_frames as f32 * 0.37).floor().min(seq.num_frames.saturating_sub(1) as f32);
-    let (a, b) = (seq.pose_at_frame(frame, &skel), back.pose_at_frame(frame, defaults));
+    let frame = (seq.num_frames as f32 * 0.37)
+        .floor()
+        .min(seq.num_frames.saturating_sub(1) as f32);
+    let (a, b) = (
+        seq.pose_at_frame(frame, &skel),
+        back.pose_at_frame(frame, defaults),
+    );
     let mut max_pos = 0f32;
     let mut worst = (0usize, [0f32; 3], [0f32; 3]);
     for (bi, (x, y)) in a.iter().zip(&b).enumerate() {
@@ -82,7 +104,12 @@ pub fn run(src: &Source, manifest: &Value, args: &Args) -> Stage {
         .as_array()
         .into_iter()
         .flatten()
-        .map(|a| (a["pkg"].as_str().unwrap_or("").to_string(), a["out"].as_str().unwrap_or("").to_string()))
+        .map(|a| {
+            (
+                a["pkg"].as_str().unwrap_or("").to_string(),
+                a["out"].as_str().unwrap_or("").to_string(),
+            )
+        })
         .collect();
     if let Some(f) = &args.only {
         items.retain(|(p, _)| p.to_lowercase().contains(f.as_str()));
@@ -94,7 +121,8 @@ pub fn run(src: &Source, manifest: &Value, args: &Args) -> Stage {
         let r = export_one(src, &cache, p, o, args);
         (r, t.elapsed().as_millis())
     });
-    let (mut entries, mut failures, mut identical, mut different, mut total_bytes) = (vec![], 0, 0, 0, 0u64);
+    let (mut entries, mut failures, mut identical, mut different, mut total_bytes) =
+        (vec![], 0, 0, 0, 0u64);
     for ((p, o), (r, ms)) in items.iter().zip(results) {
         match &r {
             Err(_) => failures += 1,
@@ -107,11 +135,23 @@ pub fn run(src: &Source, manifest: &Value, args: &Args) -> Stage {
                 }
             }
         }
-        entries.push(entry("animation", p, &std::path::Path::new(o).with_extension("fnanim").to_string_lossy(), &r, ms));
+        entries.push(entry(
+            "animation",
+            p,
+            &std::path::Path::new(o)
+                .with_extension("fnanim")
+                .to_string_lossy(),
+            &r,
+            ms,
+        ));
     }
     if args.verify.is_some() {
         println!("animation verify: md5 text byte-identical to old export {identical}, different/unreadable {different}");
     }
-    println!("animations: {} ok, {failures} failed, {:.2} MB of .fnanim", items.len() - failures, total_bytes as f64 / 1e6);
+    println!(
+        "animations: {} ok, {failures} failed, {:.2} MB of .fnanim",
+        items.len() - failures,
+        total_bytes as f64 / 1e6
+    );
     Stage { entries, failures }
 }

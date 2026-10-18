@@ -37,8 +37,14 @@ pub static UIMAT_PS_WGSL: [&str; 30] = [
     include_str!("shaders/gen/uimat_ps_29.wgsl"),
 ];
 
-pub static UIMAT_PS_TEXSLOTS: [u32; 30] = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1];
-pub static UIMAT_PS_VIEW: [bool; 30] = [false, false, false, false, false, false, true, true, true, true, true, true, false, false, false, false, false, false, true, true, true, true, true, true, false, false, false, false, false, false];
+pub static UIMAT_PS_TEXSLOTS: [u32; 30] = [
+    0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1,
+];
+pub static UIMAT_PS_VIEW: [bool; 30] = [
+    false, false, false, false, false, false, true, true, true, true, true, true, false, false,
+    false, false, false, false, true, true, true, true, true, true, false, false, false, false,
+    false, false,
+];
 
 pub static HUD_WGSL: [&str; 5] = [
     include_str!("shaders/gen/hud_item_card.wgsl"),

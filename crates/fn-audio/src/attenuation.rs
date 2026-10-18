@@ -1,4 +1,4 @@
-﻿//! `FSoundAttenuationSettings` (UE 4.16): recovered per-asset values + the distance curve.
+//! `FSoundAttenuationSettings` (UE 4.16): recovered per-asset values + the distance curve.
 //!
 //! What is **recovered** (read from the cooked `SoundAttenuation` assets / `SoundNodeAttenuation` overrides):
 //! shape, shape extents (the inner "no falloff" radius), `FalloffDistance`, `DistanceAlgorithm`, `OmniRadius`,
@@ -200,9 +200,13 @@ impl Attenuation {
             // 1/x style: 0.02 / a (clamped), forced to 0 at the cull distance
             DistanceModel::Inverse => (0.02 / a.max(1e-4)).min(1.0) * (1.0 - a),
             // mirror of Logarithmic: slow start, steep end
-            DistanceModel::LogReverse => 1.0 - ((-((1.0 - a).max(1e-3)).ln()) / (1000f32).ln()).clamp(0.0, 1.0),
+            DistanceModel::LogReverse => {
+                1.0 - ((-((1.0 - a).max(1e-3)).ln()) / (1000f32).ln()).clamp(0.0, 1.0)
+            }
             // dB falls linearly with normalised distance to dBAttenuationAtMax, then forced to 0 at the cull distance
-            DistanceModel::NaturalSound => 10f32.powf(self.db_attenuation_at_max * a / 20.0) * (1.0 - a),
+            DistanceModel::NaturalSound => {
+                10f32.powf(self.db_attenuation_at_max * a / 20.0) * (1.0 - a)
+            }
             DistanceModel::Custom => {
                 if self.custom_curve.is_empty() {
                     return 1.0 - a; // asset stored no keys (external curve unresolved): linear
@@ -229,7 +233,12 @@ impl Attenuation {
         if !self.lpf_enabled {
             return None;
         }
-        let t = if self.lpf_radius_max > self.lpf_radius_min { ((distance - self.lpf_radius_min) / (self.lpf_radius_max - self.lpf_radius_min)).clamp(0.0, 1.0) } else { (distance >= self.lpf_radius_max) as u8 as f32 };
+        let t = if self.lpf_radius_max > self.lpf_radius_min {
+            ((distance - self.lpf_radius_min) / (self.lpf_radius_max - self.lpf_radius_min))
+                .clamp(0.0, 1.0)
+        } else {
+            (distance >= self.lpf_radius_max) as u8 as f32
+        };
         let f = self.lpf_freq_at_min + (self.lpf_freq_at_max - self.lpf_freq_at_min) * t;
         (f < 19999.0).then_some(f.max(20.0))
     }
@@ -253,7 +262,11 @@ mod tests {
 
     #[test]
     fn linear_endpoints_and_inner_radius() {
-        let a = Attenuation { extents: [300.0, 0.0, 0.0], falloff_distance: 800.0, ..Default::default() };
+        let a = Attenuation {
+            extents: [300.0, 0.0, 0.0],
+            falloff_distance: 800.0,
+            ..Default::default()
+        };
         assert_eq!(a.gain(0.0), 1.0);
         assert_eq!(a.gain(300.0), 1.0);
         assert!((a.gain(700.0) - 0.5).abs() < 1e-6);
@@ -263,14 +276,30 @@ mod tests {
 
     #[test]
     fn every_model_is_monotonic_with_unit_ends() {
-        for m in [DistanceModel::Linear, DistanceModel::Logarithmic, DistanceModel::Inverse, DistanceModel::LogReverse, DistanceModel::NaturalSound, DistanceModel::Custom] {
-            let a = Attenuation { algorithm: m, ..Default::default() };
-            assert!((a.curve(0.0) - 1.0).abs() < 1e-4 || m == DistanceModel::Inverse, "{m:?}");
+        for m in [
+            DistanceModel::Linear,
+            DistanceModel::Logarithmic,
+            DistanceModel::Inverse,
+            DistanceModel::LogReverse,
+            DistanceModel::NaturalSound,
+            DistanceModel::Custom,
+        ] {
+            let a = Attenuation {
+                algorithm: m,
+                ..Default::default()
+            };
+            assert!(
+                (a.curve(0.0) - 1.0).abs() < 1e-4 || m == DistanceModel::Inverse,
+                "{m:?}"
+            );
             assert_eq!(a.curve(1.0), 0.0, "{m:?}");
             let mut last = f32::INFINITY;
             for i in 0..=100 {
                 let g = a.curve(i as f32 / 100.0);
-                assert!(g <= last + 1e-5 && (0.0..=1.0).contains(&g), "{m:?} at {i}: {g} vs {last}");
+                assert!(
+                    g <= last + 1e-5 && (0.0..=1.0).contains(&g),
+                    "{m:?} at {i}: {g} vs {last}"
+                );
                 last = g;
             }
         }
@@ -279,18 +308,35 @@ mod tests {
     #[test]
     fn custom_curve_interpolates() {
         use crate::curve::Key;
-        let key = |t: f32, v: f32| Key { time: t, value: v, interp: 0, arrive_tangent: 0.0, leave_tangent: 0.0 };
-        let a = Attenuation { algorithm: DistanceModel::Custom, custom_curve: Curve(vec![key(0.0, 1.0), key(0.5, 0.2), key(1.0, 0.0)]), ..Default::default() };
+        let key = |t: f32, v: f32| Key {
+            time: t,
+            value: v,
+            interp: 0,
+            arrive_tangent: 0.0,
+            leave_tangent: 0.0,
+        };
+        let a = Attenuation {
+            algorithm: DistanceModel::Custom,
+            custom_curve: Curve(vec![key(0.0, 1.0), key(0.5, 0.2), key(1.0, 0.0)]),
+            ..Default::default()
+        };
         assert!((a.curve(0.25) - 0.6).abs() < 1e-5);
     }
 
     #[test]
     fn lpf_and_omni() {
-        let a = Attenuation { lpf_enabled: true, lpf_radius_min: 300.0, lpf_radius_max: 500.0, lpf_freq_at_min: 20000.0, lpf_freq_at_max: 500.0, omni_radius: 200.0, ..Default::default() };
+        let a = Attenuation {
+            lpf_enabled: true,
+            lpf_radius_min: 300.0,
+            lpf_radius_max: 500.0,
+            lpf_freq_at_min: 20000.0,
+            lpf_freq_at_max: 500.0,
+            omni_radius: 200.0,
+            ..Default::default()
+        };
         assert_eq!(a.lpf_cutoff(100.0), None);
         assert!((a.lpf_cutoff(500.0).unwrap() - 500.0).abs() < 1.0);
         assert_eq!(a.spatial_blend(100.0), 0.5);
         assert_eq!(a.spatial_blend(1000.0), 1.0);
     }
 }
-

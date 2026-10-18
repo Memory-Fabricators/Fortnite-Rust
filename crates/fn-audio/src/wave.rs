@@ -1,4 +1,4 @@
-﻿//! Decoded PCM and WAV output.
+//! Decoded PCM and WAV output.
 
 use crate::error::{AudioError, Result};
 use std::io::Write;
@@ -17,7 +17,13 @@ pub struct DecodedWave {
 
 impl DecodedWave {
     pub fn new(samples: Vec<f32>, sample_rate: u32, channels: u16) -> Self {
-        DecodedWave { samples, sample_rate, channels, loop_start: None, loop_end: None }
+        DecodedWave {
+            samples,
+            sample_rate,
+            channels,
+            loop_start: None,
+            loop_end: None,
+        }
     }
     pub fn frames(&self) -> usize {
         if self.channels == 0 {
@@ -36,7 +42,10 @@ impl DecodedWave {
     /// Interleaved frame `i` channel `c` (silence beyond the end).
     #[inline]
     pub fn sample(&self, frame: usize, ch: usize) -> f32 {
-        self.samples.get(frame * self.channels as usize + ch).copied().unwrap_or(0.0)
+        self.samples
+            .get(frame * self.channels as usize + ch)
+            .copied()
+            .unwrap_or(0.0)
     }
     /// Peak absolute sample, RMS over all samples, and the count of non-finite samples.
     pub fn stats(&self) -> WaveStats {
@@ -60,7 +69,12 @@ impl DecodedWave {
             }
         }
         let n = self.samples.len().max(1) as f64;
-        WaveStats { peak, rms: (sum / n).sqrt() as f32, non_finite: bad, max_clip_run }
+        WaveStats {
+            peak,
+            rms: (sum / n).sqrt() as f32,
+            non_finite: bad,
+            max_clip_run,
+        }
     }
 }
 
@@ -75,7 +89,15 @@ pub struct WaveStats {
 
 /// Canonical 16-bit PCM RIFF/WAVE bytes.
 pub fn wav_bytes(wave: &DecodedWave) -> Result<Vec<u8>> {
-    let data = wave.samples.len().checked_mul(2).filter(|&n| n < u32::MAX as usize - 44).ok_or_else(|| AudioError::Decode { codec: "wav", detail: "too large".into() })? as u32;
+    let data = wave
+        .samples
+        .len()
+        .checked_mul(2)
+        .filter(|&n| n < u32::MAX as usize - 44)
+        .ok_or_else(|| AudioError::Decode {
+            codec: "wav",
+            detail: "too large".into(),
+        })? as u32;
     let mut f = Vec::with_capacity(44 + data as usize);
     f.extend_from_slice(b"RIFF");
     f.extend_from_slice(&(36 + data).to_le_bytes());
@@ -90,7 +112,11 @@ pub fn wav_bytes(wave: &DecodedWave) -> Result<Vec<u8>> {
     f.extend_from_slice(b"data");
     f.extend_from_slice(&data.to_le_bytes());
     for &s in &wave.samples {
-        let v = if s.is_finite() { (s.clamp(-1.0, 1.0) * 32767.0).round() as i16 } else { 0 };
+        let v = if s.is_finite() {
+            (s.clamp(-1.0, 1.0) * 32767.0).round() as i16
+        } else {
+            0
+        };
         f.extend_from_slice(&v.to_le_bytes());
     }
     Ok(f)
@@ -106,7 +132,10 @@ pub fn write_wav(path: impl AsRef<Path>, wave: &DecodedWave) -> Result<()> {
 
 /// Parse a 16-bit PCM WAV produced by [`wav_bytes`] (used by tests and the CLI analysis).
 pub fn read_wav(bytes: &[u8]) -> Result<DecodedWave> {
-    let bad = |d: &str| AudioError::Decode { codec: "wav", detail: d.to_string() };
+    let bad = |d: &str| AudioError::Decode {
+        codec: "wav",
+        detail: d.to_string(),
+    };
     if bytes.len() < 44 || &bytes[0..4] != b"RIFF" || &bytes[8..12] != b"WAVE" {
         return Err(bad("not a RIFF/WAVE file"));
     }
@@ -125,7 +154,10 @@ pub fn read_wav(bytes: &[u8]) -> Result<DecodedWave> {
                 return Err(bad("only 16-bit PCM supported"));
             }
             let end = (body + sz).min(bytes.len());
-            let s = bytes[body..end].chunks_exact(2).map(|b| i16::from_le_bytes([b[0], b[1]]) as f32 / 32768.0).collect();
+            let s = bytes[body..end]
+                .chunks_exact(2)
+                .map(|b| i16::from_le_bytes([b[0], b[1]]) as f32 / 32768.0)
+                .collect();
             return Ok(DecodedWave::new(s, rate, ch));
         }
         p = body + sz + (sz & 1);

@@ -23,7 +23,8 @@ impl std::error::Error for Error {}
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub(crate) fn read_json(path: &std::path::Path) -> Result<Value> {
-    let s = std::fs::read_to_string(path).map_err(|e| Error::Io(format!("{}: {e}", path.display())))?;
+    let s =
+        std::fs::read_to_string(path).map_err(|e| Error::Io(format!("{}: {e}", path.display())))?;
     serde_json::from_str(&s).map_err(|e| Error::Json(format!("{}: {e}", path.display())))
 }
 

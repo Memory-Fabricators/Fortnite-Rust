@@ -110,19 +110,61 @@ impl Material {
         }
         let s = j.get("slots");
         let slot = |k: &str| s.and_then(|s| str_of(s, k));
-        let map_f = |k: &str| -> BTreeMap<String, f32> { j.get(k).and_then(|x| x.as_object()).map(|o| o.iter().filter_map(|(k, v)| v.as_f64().map(|f| (k.clone(), f as f32))).collect()).unwrap_or_default() };
+        let map_f = |k: &str| -> BTreeMap<String, f32> {
+            j.get(k)
+                .and_then(|x| x.as_object())
+                .map(|o| {
+                    o.iter()
+                        .filter_map(|(k, v)| v.as_f64().map(|f| (k.clone(), f as f32)))
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
         Ok(Material {
             ue_path: str_of(j, "ue_path").unwrap_or_default(),
             alpha_cutoff: f32_of(j, "opacity_mask_clip_value").unwrap_or(0.3333),
             two_sided: bool_of(j, "two_sided").unwrap_or(false),
             shading_model: str_of(j, "shading_model").unwrap_or_default(),
             textures,
-            slots: Slots { base_color: slot("base_color"), normal: slot("normal"), mask: slot("mask"), opacity_from: slot("opacity_from") },
+            slots: Slots {
+                base_color: slot("base_color"),
+                normal: slot("normal"),
+                mask: slot("mask"),
+                opacity_from: slot("opacity_from"),
+            },
             scalars: map_f("scalars"),
-            vectors: j.get("vectors").and_then(|x| x.as_object()).map(|o| o.iter().filter_map(|(k, v)| arr_f32::<4>(Some(v)).map(|a| (k.clone(), a))).collect()).unwrap_or_default(),
-            static_switches: j.get("static_switches").and_then(|x| x.as_object()).map(|o| o.iter().filter_map(|(k, v)| v.as_bool().map(|b| (k.clone(), b))).collect()).unwrap_or_default(),
-            uses_world_position_offset: j.get("wind").and_then(|w| bool_of(w, "uses_world_position_offset")).unwrap_or(false),
-            wind_params: j.get("wind").and_then(|w| w.get("parameters")).and_then(|x| x.as_object()).map(|o| o.iter().filter_map(|(k, v)| v.as_f64().map(|f| (k.clone(), f as f32))).collect()).unwrap_or_default(),
+            vectors: j
+                .get("vectors")
+                .and_then(|x| x.as_object())
+                .map(|o| {
+                    o.iter()
+                        .filter_map(|(k, v)| arr_f32::<4>(Some(v)).map(|a| (k.clone(), a)))
+                        .collect()
+                })
+                .unwrap_or_default(),
+            static_switches: j
+                .get("static_switches")
+                .and_then(|x| x.as_object())
+                .map(|o| {
+                    o.iter()
+                        .filter_map(|(k, v)| v.as_bool().map(|b| (k.clone(), b)))
+                        .collect()
+                })
+                .unwrap_or_default(),
+            uses_world_position_offset: j
+                .get("wind")
+                .and_then(|w| bool_of(w, "uses_world_position_offset"))
+                .unwrap_or(false),
+            wind_params: j
+                .get("wind")
+                .and_then(|w| w.get("parameters"))
+                .and_then(|x| x.as_object())
+                .map(|o| {
+                    o.iter()
+                        .filter_map(|(k, v)| v.as_f64().map(|f| (k.clone(), f as f32)))
+                        .collect()
+                })
+                .unwrap_or_default(),
             tint_guess: arr_f32::<3>(j.get("tint_guess")),
             name,
             blend_mode,
@@ -131,10 +173,16 @@ impl Material {
     }
 
     pub fn base_color_texture(&self) -> Option<&TextureRef> {
-        self.slots.base_color.as_ref().and_then(|p| self.textures.get(p))
+        self.slots
+            .base_color
+            .as_ref()
+            .and_then(|p| self.textures.get(p))
     }
     pub fn normal_texture(&self) -> Option<&TextureRef> {
-        self.slots.normal.as_ref().and_then(|p| self.textures.get(p))
+        self.slots
+            .normal
+            .as_ref()
+            .and_then(|p| self.textures.get(p))
     }
     pub fn mask_texture(&self) -> Option<&TextureRef> {
         self.slots.mask.as_ref().and_then(|p| self.textures.get(p))
@@ -152,12 +200,23 @@ pub struct Image {
 
 impl Image {
     pub fn load(path: &Path) -> Result<Image> {
-        let im = image::open(path).map_err(|e| Error::Io(format!("{}: {e}", path.display())))?.to_rgba8();
-        Ok(Image { width: im.width(), height: im.height(), rgba: im.into_raw() })
+        let im = image::open(path)
+            .map_err(|e| Error::Io(format!("{}: {e}", path.display())))?
+            .to_rgba8();
+        Ok(Image {
+            width: im.width(),
+            height: im.height(),
+            rgba: im.into_raw(),
+        })
     }
     pub fn pixel(&self, x: u32, y: u32) -> [u8; 4] {
         let i = ((y.min(self.height - 1) * self.width + x.min(self.width - 1)) * 4) as usize;
-        [self.rgba[i], self.rgba[i + 1], self.rgba[i + 2], self.rgba[i + 3]]
+        [
+            self.rgba[i],
+            self.rgba[i + 1],
+            self.rgba[i + 2],
+            self.rgba[i + 3],
+        ]
     }
 }
 

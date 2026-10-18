@@ -1,4 +1,4 @@
-﻿//! Raw PCM16.
+//! Raw PCM16.
 
 use crate::error::{AudioError, Result};
 use crate::wave::DecodedWave;
@@ -6,10 +6,16 @@ use crate::wave::DecodedWave;
 /// Little-endian interleaved signed 16-bit PCM.
 pub fn decode_pcm16(bytes: &[u8], sample_rate: u32, channels: u16) -> Result<DecodedWave> {
     if channels == 0 || sample_rate == 0 {
-        return Err(AudioError::Decode { codec: "pcm", detail: "zero channels or rate".into() });
+        return Err(AudioError::Decode {
+            codec: "pcm",
+            detail: "zero channels or rate".into(),
+        });
     }
     let usable = bytes.len() - bytes.len() % (2 * channels as usize);
-    let s = bytes[..usable].chunks_exact(2).map(|b| i16::from_le_bytes([b[0], b[1]]) as f32 / 32768.0).collect();
+    let s = bytes[..usable]
+        .chunks_exact(2)
+        .map(|b| i16::from_le_bytes([b[0], b[1]]) as f32 / 32768.0)
+        .collect();
     Ok(DecodedWave::new(s, sample_rate, channels))
 }
 

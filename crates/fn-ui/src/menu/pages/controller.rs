@@ -21,28 +21,86 @@ use crate::settings;
 pub fn pad_readout(s: &inputdev::pad::State) -> String {
     use inputdev::pad::*;
     let mut b: Vec<&str> = Vec::new();
-    for (m, n) in [(A, "A"), (B, "B"), (X, "X"), (Y, "Y"), (LB, "LB"), (RB, "RB"), (L3, "L3"), (R3, "R3"), (START, "Start"), (BACK, "Back")] { if s.buttons & m != 0 { b.push(n); } }
+    for (m, n) in [
+        (A, "A"),
+        (B, "B"),
+        (X, "X"),
+        (Y, "Y"),
+        (LB, "LB"),
+        (RB, "RB"),
+        (L3, "L3"),
+        (R3, "R3"),
+        (START, "Start"),
+        (BACK, "Back"),
+    ] {
+        if s.buttons & m != 0 {
+            b.push(n);
+        }
+    }
     let (lx, ly) = radial_deadzone(s.lx, s.ly, LEFT_DEADZONE);
     let (rx, ry) = radial_deadzone(s.rx, s.ry, RIGHT_DEADZONE);
-    format!("LS {lx:+.2} {ly:+.2}   RS {rx:+.2} {ry:+.2}   LT {}  RT {}   {}", s.lt, s.rt, if b.is_empty() { "no buttons".to_owned() } else { b.join(" ") })
+    format!(
+        "LS {lx:+.2} {ly:+.2}   RS {rx:+.2} {ry:+.2}   LT {}  RT {}   {}",
+        s.lt,
+        s.rt,
+        if b.is_empty() {
+            "no buttons".to_owned()
+        } else {
+            b.join(" ")
+        }
+    )
 }
 
-pub struct ControllerPage { desc: Option<()>, platform: usize, combat: bool }
+pub struct ControllerPage {
+    desc: Option<()>,
+    platform: usize,
+    combat: bool,
+}
 impl ControllerPage {
-    pub fn new() -> Self { Self { desc: None, platform: 0, combat: true } }
+    pub fn new() -> Self {
+        Self {
+            desc: None,
+            platform: 0,
+            combat: true,
+        }
+    }
 }
 
 /// Ids restored by the footer "Reset To Default" on this tab (Invert View is shared with the Input tab and is left alone).
-pub fn tab_reset_ids() -> Vec<&'static str> { settings::entries().iter().filter(|e| e.tab == "Controller").map(|e| e.id).collect() }
+pub fn tab_reset_ids() -> Vec<&'static str> {
+    settings::entries()
+        .iter()
+        .filter(|e| e.tab == "Controller")
+        .map(|e| e.id)
+        .collect()
+}
 
 impl SettingsPage for ControllerPage {
-    fn id(&self) -> &str { "controller" }
-    fn title(&self) -> &str { "Controller" }
-    fn order(&self) -> i32 { super::ORDER_CONTROLLER }
-    fn on_show(&mut self) { self.desc = None; }
-    fn reset_prompt(&self) -> Option<Option<String>> { Some(Some("Reset controller options to default?".to_owned())) }
-    fn reset_to_default(&mut self, sx: &mut bridge::Session) { sx.with_settings(|s| for id in tab_reset_ids() { let _ = s.reset(id); }); }
-    fn toggle_mode(&mut self) { self.combat = !self.combat; }
+    fn id(&self) -> &str {
+        "controller"
+    }
+    fn title(&self) -> &str {
+        "Controller"
+    }
+    fn order(&self) -> i32 {
+        super::ORDER_CONTROLLER
+    }
+    fn on_show(&mut self) {
+        self.desc = None;
+    }
+    fn reset_prompt(&self) -> Option<Option<String>> {
+        Some(Some("Reset controller options to default?".to_owned()))
+    }
+    fn reset_to_default(&mut self, sx: &mut bridge::Session) {
+        sx.with_settings(|s| {
+            for id in tab_reset_ids() {
+                let _ = s.reset(id);
+            }
+        });
+    }
+    fn toggle_mode(&mut self) {
+        self.combat = !self.combat;
+    }
     fn ui(&mut self, ui: &mut Ui, area: Rect) {
         use super::slate;
         let s = ui.vp.scale;
@@ -57,24 +115,57 @@ impl SettingsPage for ControllerPage {
         // Controller Platform: "XBox One" / "PlayStation(R)4" selects the button pictures (UI state only, nothing is stored)
         let r2 = col.slot(slate::ROTATOR_H, [0.; 4]);
         let names = ["XBox One", "PlayStation\u{00AE}4"];
-        let a2 = slate::rotator_row(ui, "plat", r2, "Controller Platform", &sanitize_label(names[self.platform]), true);
-        if a2.delta != 0 { self.platform = (self.platform as i32 + a2.delta).rem_euclid(2) as usize; }
+        let a2 = slate::rotator_row(
+            ui,
+            "plat",
+            r2,
+            "Controller Platform",
+            &sanitize_label(names[self.platform]),
+            true,
+        );
+        if a2.delta != 0 {
+            self.platform = (self.platform as i32 + a2.delta).rem_euclid(2) as usize;
+        }
         // GamepadMappingInfo: 1024x672 picture + line overlay, centred, 30 below the rows
         let top = col.y + 30. * s;
-        let pic = Rect::new(area.x + (area.w - 1024. * s) * 0.5, top, 1024. * s, 672. * s);
-        let (img, lines) = if self.platform == 0 { (TexId::Xb1Config, TexId::Xb1Lines) } else { (TexId::Ps4Config, TexId::Ps4Lines) };
+        let pic = Rect::new(
+            area.x + (area.w - 1024. * s) * 0.5,
+            top,
+            1024. * s,
+            672. * s,
+        );
+        let (img, lines) = if self.platform == 0 {
+            (TexId::Xb1Config, TexId::Xb1Lines)
+        } else {
+            (TexId::Ps4Config, TexId::Ps4Lines)
+        };
         ui.sprite(BrushId::Tex(img), pic, false, [1., 1., 1., 1.]);
         ui.sprite(BrushId::Tex(lines), pic, false, [1., 1., 1., 1.]);
         // mode (Image_Mode 32? + Text_Mode TextStyle ...): "Combat Controls" / "Build Controls"
-        let (mt, mi) = if self.combat { ("Combat Controls", TexId::ModeCombat) } else { ("Build Controls", TexId::ModeBuild) };
+        let (mt, mi) = if self.combat {
+            ("Combat Controls", TexId::ModeCombat)
+        } else {
+            ("Build Controls", TexId::ModeBuild)
+        };
         let tw = ui.fonts.measure(FontId::Bold, mt, ui.text_px(24.) as f32);
-        let ir = Rect::new(pic.x + (pic.w - tw) * 0.5 - 40. * s, pic.y + 4. * s, 32. * s, 32. * s);
+        let ir = Rect::new(
+            pic.x + (pic.w - tw) * 0.5 - 40. * s,
+            pic.y + 4. * s,
+            32. * s,
+            32. * s,
+        );
         ui.sprite(BrushId::Tex(mi), ir, false, slate::label_color());
-        ui.text(Rect::new(ir.x + 40. * s, pic.y + 4. * s, tw + 8. * s, 32. * s), mt, TextStyle::new(FontId::Bold, 24., slate::label_color()), HAlign::Left);
+        ui.text(
+            Rect::new(ir.x + 40. * s, pic.y + 4. * s, tw + 8. * s, 32. * s),
+            mt,
+            TextStyle::new(FontId::Bold, 24., slate::label_color()),
+            HAlign::Left,
+        );
         let _ = (a1, mx, my);
     }
 }
-fn sanitize_label(s: &str) -> String { s.replace('\u{00AE}', "(R)") }
+fn sanitize_label(s: &str) -> String {
+    s.replace('\u{00AE}', "(R)")
+}
 #[cfg(test)]
 mod tests;
-

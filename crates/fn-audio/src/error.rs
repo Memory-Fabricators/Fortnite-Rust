@@ -29,5 +29,8 @@ pub enum AudioError {
 pub type Result<T> = std::result::Result<T, AudioError>;
 
 pub(crate) fn malformed<T>(what: &'static str, detail: impl Into<String>) -> Result<T> {
-    Err(AudioError::Malformed { what, detail: detail.into() })
+    Err(AudioError::Malformed {
+        what,
+        detail: detail.into(),
+    })
 }

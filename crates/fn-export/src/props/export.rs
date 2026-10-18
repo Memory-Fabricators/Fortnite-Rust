@@ -33,14 +33,34 @@ pub struct Opts {
 }
 
 fn parse_opts(rest: &[String]) -> Result<Opts, String> {
-    let mut o = Opts { min_count: 25, only: None, classes: None, max_tex: 2048, sheet: true, report: None };
+    let mut o = Opts {
+        min_count: 25,
+        only: None,
+        classes: None,
+        max_tex: 2048,
+        sheet: true,
+        report: None,
+    };
     let mut it = rest.iter();
     while let Some(x) = it.next() {
-        let mut val = |n: &str| it.next().cloned().ok_or_else(|| format!("{n} needs a value"));
+        let mut val = |n: &str| {
+            it.next()
+                .cloned()
+                .ok_or_else(|| format!("{n} needs a value"))
+        };
         match x.as_str() {
-            "--min-count" => o.min_count = val("--min-count")?.parse().map_err(|_| "bad --min-count")?,
+            "--min-count" => {
+                o.min_count = val("--min-count")?.parse().map_err(|_| "bad --min-count")?
+            }
             "--only" => o.only = Some(val("--only")?.to_lowercase()),
-            "--classes" => o.classes = Some(val("--classes")?.split(',').map(|s| s.trim().to_string()).collect()),
+            "--classes" => {
+                o.classes = Some(
+                    val("--classes")?
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .collect(),
+                )
+            }
             "--max-tex" => o.max_tex = val("--max-tex")?.parse().map_err(|_| "bad --max-tex")?,
             "--report" => o.report = Some(PathBuf::from(val("--report")?)),
             "--no-sheet" => o.sheet = false,
@@ -71,7 +91,10 @@ pub fn category_of(id: &str, cat: &str, rt: &str, mesh: &str) -> &'static str {
         "hedge"
     } else if l.contains("log") && l.contains("tree") {
         "log"
-    } else if rt == "Wood" && resource && (l.contains("tree") || m.contains("/trees/") || m.contains("tree")) {
+    } else if rt == "Wood"
+        && resource
+        && (l.contains("tree") || m.contains("/trees/") || m.contains("tree"))
+    {
         "tree"
     } else if rt == "Stone" && (resource || l.contains("rock") || m.contains("rock")) {
         "rock"
@@ -87,7 +110,10 @@ pub fn category_of(id: &str, cat: &str, rt: &str, mesh: &str) -> &'static str {
         "pallet"
     } else if l.contains("crate") {
         "crate"
-    } else if ["bench", "chair", "table", "shelves", "bunk", "picnic"].iter().any(|k| l.contains(k)) {
+    } else if ["bench", "chair", "table", "shelves", "bunk", "picnic"]
+        .iter()
+        .any(|k| l.contains(k))
+    {
         "furniture"
     } else {
         "other"
@@ -95,7 +121,10 @@ pub fn category_of(id: &str, cat: &str, rt: &str, mesh: &str) -> &'static str {
 }
 
 fn display_of(id: &str) -> String {
-    let words: Vec<&str> = id.split('_').filter(|w| !w.is_empty() && !matches!(*w, "Athena" | "Prop" | "Props" | "C")).collect();
+    let words: Vec<&str> = id
+        .split('_')
+        .filter(|w| !w.is_empty() && !matches!(*w, "Athena" | "Prop" | "Props" | "C"))
+        .collect();
     if words.is_empty() {
         id.to_string()
     } else {
@@ -104,16 +133,31 @@ fn display_of(id: &str) -> String {
 }
 
 fn curve_keys(row: &Value) -> Vec<(f64, f64)> {
-    row.get("Keys").and_then(|k| k.as_array()).map(|a| a.iter().filter_map(|k| Some((k.get("Time")?.as_f64()?, k.get("Value")?.as_f64()?))).collect()).unwrap_or_default()
+    row.get("Keys")
+        .and_then(|k| k.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|k| Some((k.get("Time")?.as_f64()?, k.get("Value")?.as_f64()?)))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Rows of a `CurveTable` as `name -> keys`.
-fn load_curve_table(src: &Source, pkg_path: &str) -> Result<BTreeMap<String, Vec<(f64, f64)>>, String> {
+fn load_curve_table(
+    src: &Source,
+    pkg_path: &str,
+) -> Result<BTreeMap<String, Vec<(f64, f64)>>, String> {
     let pd = PackageData::load(&src.set, pkg_path).map_err(|e| e.to_string())?;
     let pkg = pd.package().map_err(|e| e.to_string())?;
-    let i = (0..pkg.exports.len()).find(|&i| pkg.export_class_name(i) == "CurveTable").ok_or("no CurveTable export")?;
+    let i = (0..pkg.exports.len())
+        .find(|&i| pkg.export_class_name(i) == "CurveTable")
+        .ok_or("no CurveTable export")?;
     let t = fn_uasset::classes::read_table(&pkg, i).map_err(|e| e.to_string())?;
-    Ok(t.rows.iter().map(|(n, p)| (n.clone(), curve_keys(&p.to_json(&pkg)))).collect())
+    Ok(t.rows
+        .iter()
+        .map(|(n, p)| (n.clone(), curve_keys(&p.to_json(&pkg))))
+        .collect())
 }
 
 struct MeshData {
@@ -130,37 +174,63 @@ fn load_mesh(src: &Source, mesh_obj_path: &str) -> Result<MeshData, String> {
     let (mut ext, mut nmat) = (None, 0);
     if let Ok(pd) = PackageData::load(&src.set, &pkg_path) {
         if let Ok(p) = pd.package() {
-            if let Some(i) = (0..p.exports.len()).find(|&i| p.export_class_name(i) == "StaticMesh") {
+            if let Some(i) = (0..p.exports.len()).find(|&i| p.export_class_name(i) == "StaticMesh")
+            {
                 if let Ok(o) = p.read_export(i) {
                     let j = o.props.to_json(&p);
                     ext = j.get("ExtendedBounds").cloned();
-                    nmat = j.get("StaticMaterials").and_then(|v| v.as_array()).map_or(0, |a| a.len());
+                    nmat = j
+                        .get("StaticMaterials")
+                        .and_then(|v| v.as_array())
+                        .map_or(0, |a| a.len());
                 }
             }
         }
     }
-    Ok(MeshData { mesh, pkg: pkg_path, ext_bounds: ext, static_materials_prop: nmat })
+    Ok(MeshData {
+        mesh,
+        pkg: pkg_path,
+        ext_bounds: ext,
+        static_materials_prop: nmat,
+    })
 }
 
 struct TexOut {
     meta: TexMeta,
 }
 
-fn export_texture(src: &Source, path: &str, png_name: &str, dir: &Path, max_dim: usize) -> Result<TexOut, String> {
+fn export_texture(
+    src: &Source,
+    path: &str,
+    png_name: &str,
+    dir: &Path,
+    max_dim: usize,
+) -> Result<TexOut, String> {
     let pkg = package_of(path);
     let raw = src.load_raw(pkg)?;
-    let tex = Texture2D::from_files(&raw.uasset, &raw.uexp, &raw.ubulk).map_err(|e| format!("{path}: {e}"))?;
-    let mip = tex.mip_for_max_dimension(max_dim).ok_or_else(|| format!("{path}: no mip with data"))?;
-    let img = tex.decode(mip, DecodeOptions::default()).map_err(|e| format!("{path}: {e}"))?;
+    let tex = Texture2D::from_files(&raw.uasset, &raw.uexp, &raw.ubulk)
+        .map_err(|e| format!("{path}: {e}"))?;
+    let mip = tex
+        .mip_for_max_dimension(max_dim)
+        .ok_or_else(|| format!("{path}: no mip with data"))?;
+    let img = tex
+        .decode(mip, DecodeOptions::default())
+        .map_err(|e| format!("{path}: {e}"))?;
     let has_alpha = !img.is_opaque();
     let grey = tex.compression_settings == "TC_Default" && {
         let px = img.to_rgba8();
         let n = (px.len() / 4).max(1);
-        let chroma: f64 = px.chunks_exact(4).step_by(7).map(|p| (p[0].max(p[1]).max(p[2]) - p[0].min(p[1]).min(p[2])) as f64 / 255.0).sum::<f64>() / (n / 7 + 1) as f64;
+        let chroma: f64 = px
+            .chunks_exact(4)
+            .step_by(7)
+            .map(|p| (p[0].max(p[1]).max(p[2]) - p[0].min(p[1]).min(p[2])) as f64 / 255.0)
+            .sum::<f64>()
+            / (n / 7 + 1) as f64;
         chroma < 0.06
     };
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-    img.write_png(dir.join(png_name)).map_err(|e| format!("{path}: {e}"))?;
+    img.write_png(dir.join(png_name))
+        .map_err(|e| format!("{path}: {e}"))?;
     Ok(TexOut {
         meta: TexMeta {
             name: tex.name.clone(),
@@ -218,7 +288,18 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
     for p in &g.all {
         if let Some((cat, sub, rt, mesh)) = g.kind_of(&p.bp) {
             let s = (p.xf.s[0] + p.xf.s[1] + p.xf.s[2]) / 3.0;
-            let e = cls.entry(p.class.clone()).or_insert(ClassInfo { class: p.class.clone(), bp: p.bp.clone(), count: 0, cat, sub, rt, mesh, scale_min: f64::MAX, scale_max: f64::MIN, scale_sum: 0.0 });
+            let e = cls.entry(p.class.clone()).or_insert(ClassInfo {
+                class: p.class.clone(),
+                bp: p.bp.clone(),
+                count: 0,
+                cat,
+                sub,
+                rt,
+                mesh,
+                scale_min: f64::MAX,
+                scale_max: f64::MIN,
+                scale_sum: 0.0,
+            });
             e.count += 1;
             e.scale_min = e.scale_min.min(s);
             e.scale_max = e.scale_max.max(s);
@@ -230,21 +311,46 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
         let want = match (&o.classes, &o.only) {
             (Some(l), _) => l.iter().any(|x| x == id),
             (None, Some(f)) => id.to_lowercase().contains(f),
-            _ => c.count >= o.min_count || matches!(category_of(id, &c.cat, &c.rt, &c.mesh), "tree" | "rock"),
+            _ => {
+                c.count >= o.min_count
+                    || matches!(category_of(id, &c.cat, &c.rt, &c.mesh), "tree" | "rock")
+            }
         };
         if !want {
             continue;
         }
-        let Some(Some(bp)) = g.bps.get(&c.bp) else { continue };
-        let Some(mesh_obj) = bp.static_mesh() else { continue };
-        plans.push(KindPlan { id: id.clone(), info: ClassInfoLite { bp: c.bp.clone(), count: c.count, cat: c.cat.clone(), sub: c.sub.clone(), rt: c.rt.clone(), mesh: c.mesh.clone(), scale: (c.scale_min, c.scale_max, c.scale_sum / c.count as f64) }, bp: bp.clone(), mesh_obj });
+        let Some(Some(bp)) = g.bps.get(&c.bp) else {
+            continue;
+        };
+        let Some(mesh_obj) = bp.static_mesh() else {
+            continue;
+        };
+        plans.push(KindPlan {
+            id: id.clone(),
+            info: ClassInfoLite {
+                bp: c.bp.clone(),
+                count: c.count,
+                cat: c.cat.clone(),
+                sub: c.sub.clone(),
+                rt: c.rt.clone(),
+                mesh: c.mesh.clone(),
+                scale: (c.scale_min, c.scale_max, c.scale_sum / c.count as f64),
+            },
+            bp: bp.clone(),
+            mesh_obj,
+        });
     }
-    println!("{} harvestable classes in the map, exporting {}", cls.len(), plans.len());
+    println!(
+        "{} harvestable classes in the map, exporting {}",
+        cls.len(),
+        plans.len()
+    );
 
     // ---- data tables ----
     let health_tbl = load_curve_table(src, "/Game/Balance/DataTables/AttributesBuildingProps")?;
     let rates = load_curve_table(src, "/Game/Balance/DataTables/ResourceRates")?;
-    let athena_rates = load_curve_table(src, "/Game/Athena/Balance/DataTables/AthenaResourceRates")?;
+    let athena_rates =
+        load_curve_table(src, "/Game/Athena/Balance/DataTables/AthenaResourceRates")?;
 
     // ---- meshes ----
     let meshes = parallel(&plans, a.jobs, |p| load_mesh(src, &p.mesh_obj));
@@ -255,7 +361,16 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
     for (p, m) in plans.iter().zip(&meshes) {
         let mut slots = vec![];
         if let Ok(md) = m {
-            let ov: Vec<Option<String>> = p.bp.smc.get("OverrideMaterials").and_then(|v| v.as_array()).map(|a| a.iter().map(|x| x.as_str().filter(|s| !s.is_empty()).map(String::from)).collect()).unwrap_or_default();
+            let ov: Vec<Option<String>> =
+                p.bp.smc
+                    .get("OverrideMaterials")
+                    .and_then(|v| v.as_array())
+                    .map(|a| {
+                        a.iter()
+                            .map(|x| x.as_str().filter(|s| !s.is_empty()).map(String::from))
+                            .collect()
+                    })
+                    .unwrap_or_default();
             for (i, sm) in md.mesh.materials.iter().enumerate() {
                 match ov.get(i).cloned().flatten() {
                     Some(o) => slots.push((Some(o), "component_override")),
@@ -272,7 +387,13 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
     }
     let mat_list: Vec<String> = mat_paths.into_iter().collect();
     println!("{} distinct materials", mat_list.len());
-    let resolved: HashMap<String, Result<Resolved, String>> = mat_list.iter().cloned().zip(parallel(&mat_list, a.jobs, |p| material::resolve(&src.set, p))).collect();
+    let resolved: HashMap<String, Result<Resolved, String>> = mat_list
+        .iter()
+        .cloned()
+        .zip(parallel(&mat_list, a.jobs, |p| {
+            material::resolve(&src.set, p)
+        }))
+        .collect();
 
     // ---- textures ----
     let mut tex_paths: BTreeSet<String> = BTreeSet::new();
@@ -300,7 +421,9 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
     }
     println!("{} distinct textures", tex_list.len());
     let tex_dir = a.out.join("textures");
-    let tex_res = parallel(&tex_list, a.jobs, |t| export_texture(src, t, &png_names[t], &tex_dir, o.max_tex));
+    let tex_res = parallel(&tex_list, a.jobs, |t| {
+        export_texture(src, t, &png_names[t], &tex_dir, o.max_tex)
+    });
     let mut tex_meta: BTreeMap<String, TexMeta> = BTreeMap::new();
     let mut tex_errors: Vec<Value> = vec![];
     for (t, r) in tex_list.iter().zip(tex_res) {
@@ -315,17 +438,44 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
         .iter()
         .map(|(p, m)| (m.png.clone(), json!({"ue_path": p, "srgb": m.srgb, "compression": m.compression, "format": m.format, "width": m.width, "height": m.height, "source_width": m.source_width, "source_height": m.source_height, "has_alpha": m.has_alpha, "grey": m.grey})))
         .collect();
-    write_file(&tex_dir.join("index.json"), serde_json::to_string_pretty(&Value::Object(tex_index)).unwrap().as_bytes())?;
+    write_file(
+        &tex_dir.join("index.json"),
+        serde_json::to_string_pretty(&Value::Object(tex_index))
+            .unwrap()
+            .as_bytes(),
+    )?;
 
     // ---- per kind ----
     let mut results: Vec<KindResult> = vec![];
     for ((p, m), slots) in plans.iter().zip(meshes).zip(&slot_paths) {
-        let r = write_kind(src, a, &o, p, m, slots, &resolved, &tex_meta, &health_tbl, &rates, &athena_rates);
+        let r = write_kind(
+            src,
+            a,
+            &o,
+            p,
+            m,
+            slots,
+            &resolved,
+            &tex_meta,
+            &health_tbl,
+            &rates,
+            &athena_rates,
+        );
         results.push(match r {
-            Ok(props) => KindResult { id: p.id.clone(), ok: true, err: None, props },
+            Ok(props) => KindResult {
+                id: p.id.clone(),
+                ok: true,
+                err: None,
+                props,
+            },
             Err(e) => {
                 eprintln!("FAIL {}: {e}", p.id);
-                KindResult { id: p.id.clone(), ok: false, err: Some(e), props: Value::Null }
+                KindResult {
+                    id: p.id.clone(),
+                    ok: false,
+                    err: Some(e),
+                    props: Value::Null,
+                }
             }
         });
     }
@@ -345,7 +495,16 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
         "bush" | "hedge" | "log" => 2,
         _ => 3,
     };
-    cat_kinds.sort_by(|x, y| (order(x["category"].as_str().unwrap_or("")), std::cmp::Reverse(x["placed_in_map"].as_u64().unwrap_or(0))).cmp(&(order(y["category"].as_str().unwrap_or("")), std::cmp::Reverse(y["placed_in_map"].as_u64().unwrap_or(0)))));
+    cat_kinds.sort_by(|x, y| {
+        (
+            order(x["category"].as_str().unwrap_or("")),
+            std::cmp::Reverse(x["placed_in_map"].as_u64().unwrap_or(0)),
+        )
+            .cmp(&(
+                order(y["category"].as_str().unwrap_or("")),
+                std::cmp::Reverse(y["placed_in_map"].as_u64().unwrap_or(0)),
+            ))
+    });
     let catalog = json!({
         "schema": 1,
         "game": "Fortnite 1.8 (UE 4.16, CL 3724489)",
@@ -354,11 +513,17 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
         "textures_dir": "textures",
         "kinds": cat_kinds,
     });
-    write_file(&a.out.join("catalog.json"), serde_json::to_string_pretty(&catalog).unwrap().as_bytes())?;
+    write_file(
+        &a.out.join("catalog.json"),
+        serde_json::to_string_pretty(&catalog).unwrap().as_bytes(),
+    )?;
 
     // ---- layout ----
     run_with(&g, a)?;
-    let layout_stats: Value = std::fs::read_to_string(a.out.join("layout/stats.json")).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or(Value::Null);
+    let layout_stats: Value = std::fs::read_to_string(a.out.join("layout/stats.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or(Value::Null);
 
     // ---- sheet ----
     let mut sheet_files: Vec<String> = vec![];
@@ -370,12 +535,40 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
     }
 
     // ---- report ----
-    let report_path = o.report.clone().unwrap_or_else(|| PathBuf::from("reports/props-1.8.json"));
-    let report = build_report(&g, &results, &tex_errors, &tex_meta, &mat_list, &resolved, &layout_stats, &sheet_files, &a.out, t0.elapsed().as_secs_f64());
-    write_file(&report_path, serde_json::to_string_pretty(&report).unwrap().as_bytes())?;
-    println!("exported {} / {} kinds, {} textures, {} materials; report {} ({:.1}s)", ok.len(), results.len(), tex_meta.len(), mat_list.len(), report_path.display(), t0.elapsed().as_secs_f64());
+    let report_path = o
+        .report
+        .clone()
+        .unwrap_or_else(|| PathBuf::from("reports/props-1.8.json"));
+    let report = build_report(
+        &g,
+        &results,
+        &tex_errors,
+        &tex_meta,
+        &mat_list,
+        &resolved,
+        &layout_stats,
+        &sheet_files,
+        &a.out,
+        t0.elapsed().as_secs_f64(),
+    );
+    write_file(
+        &report_path,
+        serde_json::to_string_pretty(&report).unwrap().as_bytes(),
+    )?;
+    println!(
+        "exported {} / {} kinds, {} textures, {} materials; report {} ({:.1}s)",
+        ok.len(),
+        results.len(),
+        tex_meta.len(),
+        mat_list.len(),
+        report_path.display(),
+        t0.elapsed().as_secs_f64()
+    );
     if results.iter().any(|r| !r.ok) {
-        return Err(format!("{} kinds failed", results.iter().filter(|r| !r.ok).count()));
+        return Err(format!(
+            "{} kinds failed",
+            results.iter().filter(|r| !r.ok).count()
+        ));
     }
     Ok(())
 }
@@ -406,7 +599,12 @@ fn write_kind(
     for (i, (path, source)) in slots.iter().enumerate() {
         let sm = &mesh.materials[i];
         let Some(path) = path else {
-            prop_mats.push(PropMaterial { name: format!("{}_missing", sm.slot_name), slot_name: sm.slot_name.clone(), base_color_factor: [0.6, 0.6, 0.6, 1.0], ..Default::default() });
+            prop_mats.push(PropMaterial {
+                name: format!("{}_missing", sm.slot_name),
+                slot_name: sm.slot_name.clone(),
+                base_color_factor: [0.6, 0.6, 0.6, 1.0],
+                ..Default::default()
+            });
             mat_entries.push(json!({"slot": i, "slot_name": sm.slot_name, "name": null, "mat_json": null, "source": "missing"}));
             continue;
         };
@@ -419,11 +617,26 @@ fn write_kind(
         let rel = format!("materials/{file}");
         if written.insert(rel.clone()) {
             let j = mat_json(r, tex_meta, "../../textures");
-            write_file(&kind_dir.join(&rel), serde_json::to_string_pretty(&j).unwrap().as_bytes())?;
+            write_file(
+                &kind_dir.join(&rel),
+                serde_json::to_string_pretty(&j).unwrap().as_bytes(),
+            )?;
         }
         let slots_c = material::choose_slots(r, tex_meta);
-        let uri = |param: &Option<String>| param.as_ref().and_then(|pn| r.textures.get(pn)).and_then(|t| tex_meta.get(t)).map(|m| format!("../textures/{}", m.png));
-        let alpha_mode = if r.blend_mode.contains("Masked") { "MASK" } else if r.blend_mode.contains("Translucent") || r.blend_mode.contains("Additive") { "BLEND" } else { "OPAQUE" };
+        let uri = |param: &Option<String>| {
+            param
+                .as_ref()
+                .and_then(|pn| r.textures.get(pn))
+                .and_then(|t| tex_meta.get(t))
+                .map(|m| format!("../textures/{}", m.png))
+        };
+        let alpha_mode = if r.blend_mode.contains("Masked") {
+            "MASK"
+        } else if r.blend_mode.contains("Translucent") || r.blend_mode.contains("Additive") {
+            "BLEND"
+        } else {
+            "OPAQUE"
+        };
         prop_mats.push(PropMaterial {
             name: r.name.clone(),
             slot_name: sm.slot_name.clone(),
@@ -439,11 +652,15 @@ fn write_kind(
         mat_entries.push(json!({"slot": i, "slot_name": sm.slot_name, "name": r.name, "ue_path": path, "mat_json": rel, "source": source}));
     }
 
-    fn_mesh::export_static_mesh_lods(mesh, &kind_dir, &mesh_name, &prop_mats).map_err(|e| e.to_string())?;
+    fn_mesh::export_static_mesh_lods(mesh, &kind_dir, &mesh_name, &prop_mats)
+        .map_err(|e| e.to_string())?;
 
     // collision
     let col = collision_json(&src.set, &md.pkg, mesh.body_setup.as_deref())?;
-    write_file(&kind_dir.join("collision.json"), serde_json::to_string_pretty(&col).unwrap().as_bytes())?;
+    write_file(
+        &kind_dir.join("collision.json"),
+        serde_json::to_string_pretty(&col).unwrap().as_bytes(),
+    )?;
 
     // verification against the uasset's own metadata
     let checks = mesh.validate();
@@ -451,20 +668,48 @@ fn write_kind(
     let ext = md.ext_bounds.as_ref();
     let get3 = |k: &str| -> Option<[f64; 3]> {
         let a = ext?.get(k)?.as_array()?;
-        Some([a.first()?.as_f64()?, a.get(1)?.as_f64()?, a.get(2)?.as_f64()?])
+        Some([
+            a.first()?.as_f64()?,
+            a.get(1)?.as_f64()?,
+            a.get(2)?.as_f64()?,
+        ])
     };
     let mut bounds_err = f64::NAN;
     let mut bounds_vs_prop = f64::NAN;
     if let (Some(o), Some(e)) = (get3("Origin"), get3("BoxExtent")) {
-        bounds_vs_prop = (0..3).map(|c| (o[c] - mesh.bounds.origin[c] as f64).abs().max((e[c] - mesh.bounds.extent[c] as f64).abs())).fold(0.0, f64::max);
+        bounds_vs_prop = (0..3)
+            .map(|c| {
+                (o[c] - mesh.bounds.origin[c] as f64)
+                    .abs()
+                    .max((e[c] - mesh.bounds.extent[c] as f64).abs())
+            })
+            .fold(0.0, f64::max);
         // decoded vertex box against the stored box (the stored box may be larger than the LOD0 hull; report the overshoot)
-        bounds_err = (0..3).map(|c| (pmin[c] as f64 - (o[c] - e[c])).abs().max((pmax[c] as f64 - (o[c] + e[c])).abs())).fold(0.0, f64::max);
+        bounds_err = (0..3)
+            .map(|c| {
+                (pmin[c] as f64 - (o[c] - e[c]))
+                    .abs()
+                    .max((pmax[c] as f64 - (o[c] + e[c])).abs())
+            })
+            .fold(0.0, f64::max);
     }
     let roundtrip = fn_propdata::load_lods(&kind_dir.join(format!("{mesh_name}.gltf")));
     let (rt_ok, rt_note) = match &roundtrip {
         Ok(l) => {
-            let same = l.len() == mesh.lods.len() && l.iter().zip(&mesh.lods).all(|(a, b)| a.positions.len() == b.positions.len() && a.triangle_count() == b.indices.len() / 3 && a.sections.len() == b.sections.len());
-            (same, if same { "ok".to_string() } else { "LOD / vertex / triangle counts differ".to_string() })
+            let same = l.len() == mesh.lods.len()
+                && l.iter().zip(&mesh.lods).all(|(a, b)| {
+                    a.positions.len() == b.positions.len()
+                        && a.triangle_count() == b.indices.len() / 3
+                        && a.sections.len() == b.sections.len()
+                });
+            (
+                same,
+                if same {
+                    "ok".to_string()
+                } else {
+                    "LOD / vertex / triangle counts differ".to_string()
+                },
+            )
         }
         Err(e) => (false, e.to_string()),
     };
@@ -493,10 +738,21 @@ fn write_kind(
 
     // health / resource
     let health_row = format!("{}.{}.FortHealthSet.MaxHealth", p.info.cat, p.info.sub);
-    let health = health_tbl.get(&health_row).and_then(|k| k.first()).map(|k| k.1);
+    let health = health_tbl
+        .get(&health_row)
+        .and_then(|k| k.first())
+        .map(|k| k.1);
     let amount = p.bp.cdo.get("BuildingResourceAmountOverride");
-    let amount_row = amount.and_then(|a| a.get("RowName")).and_then(|v| v.as_str()).unwrap_or("").to_string();
-    let amount_table = amount.and_then(|a| a.get("CurveTable")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let amount_row = amount
+        .and_then(|a| a.get("RowName"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let amount_table = amount
+        .and_then(|a| a.get("CurveTable"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
     let pair = |t: &BTreeMap<String, Vec<(f64, f64)>>| -> (Value, Value) {
         match t.get(&amount_row) {
             Some(k) if k.len() >= 2 => (json!(k[0].1), json!(k[1].1)),
@@ -506,11 +762,39 @@ fn write_kind(
     };
     let (r0, r1) = pair(rates);
     let (ar0, ar1) = pair(athena_rates);
-    let str_of = |k: &str| p.bp.cdo.get(k).and_then(|v| v.as_str()).filter(|s| !s.is_empty()).map(String::from);
+    let str_of = |k: &str| {
+        p.bp.cdo
+            .get(k)
+            .and_then(|v| v.as_str())
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+    };
     // other destruction / replacement hints present in the class
-    let hints: Map<String, Value> = p.bp.cdo.iter().filter(|(k, _)| ["Replace", "Ruin", "Stump", "Destroy", "Broken", "Fractur", "Debris", "Death", "Shake", "Wobble", "Hit"].iter().any(|h| k.contains(h))).map(|(k, v)| (k.clone(), v.clone())).collect();
-    let cull = p.bp.smc.get("CachedMaxDrawDistance").or_else(|| p.bp.smc.get("LDMaxDrawDistance")).and_then(|v| v.as_f64()).unwrap_or(0.0);
-    let rscale = p.bp.cdo.get("RandomScaleRange").and_then(|v| v.as_array()).filter(|a| a.len() == 2).map(|a| json!([a[0], a[1]]));
+    let hints: Map<String, Value> =
+        p.bp.cdo
+            .iter()
+            .filter(|(k, _)| {
+                [
+                    "Replace", "Ruin", "Stump", "Destroy", "Broken", "Fractur", "Debris", "Death",
+                    "Shake", "Wobble", "Hit",
+                ]
+                .iter()
+                .any(|h| k.contains(h))
+            })
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+    let cull =
+        p.bp.smc
+            .get("CachedMaxDrawDistance")
+            .or_else(|| p.bp.smc.get("LDMaxDrawDistance"))
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0);
+    let rscale =
+        p.bp.cdo
+            .get("RandomScaleRange")
+            .and_then(|v| v.as_array())
+            .filter(|a| a.len() == 2)
+            .map(|a| json!([a[0], a[1]]));
     let mut wind = Map::new();
     for (k, v) in &p.bp.cdo {
         if k.contains("Wind") || k.contains("Leaf") || k.contains("Emit") {
@@ -561,7 +845,10 @@ fn write_kind(
         "verification": verification,
         "ue_properties": {"class_default_object": ue_props, "static_mesh_component": p.bp.smc},
     });
-    write_file(&kind_dir.join("props.json"), serde_json::to_string_pretty(&props).unwrap().as_bytes())?;
+    write_file(
+        &kind_dir.join("props.json"),
+        serde_json::to_string_pretty(&props).unwrap().as_bytes(),
+    )?;
     Ok(props)
 }
 
@@ -609,7 +896,15 @@ fn build_report(
             })
         })
         .collect();
-    let mat_errors: Vec<Value> = mats.iter().filter_map(|m| resolved.get(m).and_then(|r| r.as_ref().err()).map(|e| json!({"material": m, "error": e}))).collect();
+    let mat_errors: Vec<Value> = mats
+        .iter()
+        .filter_map(|m| {
+            resolved
+                .get(m)
+                .and_then(|r| r.as_ref().err())
+                .map(|e| json!({"material": m, "error": e}))
+        })
+        .collect();
     json!({
         "tool": "fn-export props", "game": "Fortnite 1.8 (UE 4.16)", "seconds": secs,
         "totals": {"kinds_exported": results.iter().filter(|r| r.ok).count(), "kinds_failed": results.iter().filter(|r| !r.ok).count(), "textures": tex_meta.len(), "materials": mats.len(), "blueprint_actor_placements_in_map": g.all.len()},

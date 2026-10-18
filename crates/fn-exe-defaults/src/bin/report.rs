@@ -1,18 +1,28 @@
-﻿//! Writes `reports/exe-defaults.json`: every native default recovered from the 1.8 exe (read-only static analysis).
+//! Writes `reports/exe-defaults.json`: every native default recovered from the 1.8 exe (read-only static analysis).
 //! Usage: `report [out.json]` (default `<crate>/reports/exe-defaults.json`). `FN_EXE` overrides the exe path.
 use fn_exe_defaults::classes::*;
-use fn_exe_defaults::cvar::*;
 use fn_exe_defaults::ctor::*;
+use fn_exe_defaults::cvar::*;
 use fn_exe_defaults::known::*;
 use fn_exe_defaults::pps;
 use fn_exe_slate::*;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
-const INT_NAMES: &[&str] = &["DynamicShadowCascades", "FarShadowCascadeCount", "CubemapResolution", "ShadowMapChannel", "LPVSize"];
+const INT_NAMES: &[&str] = &[
+    "DynamicShadowCascades",
+    "FarShadowCascadeCount",
+    "CubemapResolution",
+    "ShadowMapChannel",
+    "LPVSize",
+];
 
-fn r(x: f32) -> Value { json!((x as f64 * 1e6).round() / 1e6) }
-fn hx(x: u32) -> String { format!("0x{x:x}") }
+fn r(x: f32) -> Value {
+    json!((x as f64 * 1e6).round() / 1e6)
+}
+fn hx(x: u32) -> String {
+    format!("0x{x:x}")
+}
 
 fn field_json(f: &pps::FieldValue, pe: &Pe) -> Value {
     let is_int = INT_NAMES.contains(&f.name.as_str());
@@ -40,29 +50,53 @@ fn chain(pe: &Pe, xi: &XrefIndex, spec: &[(&str, &str)]) -> Value {
     let mut all_stores: Vec<Store> = vec![];
     let mut bit_ops: Vec<Value> = vec![];
     for (cn, hint) in spec {
-        let Some(mut ci) = find_class(pe, xi, cn) else { per_class.push(json!({"class": cn, "error": "class not found"})); continue };
-        if let Some((rg, p)) = props_by_hint_max(pe, xi, hint, ci.sizeof_class) { ci.z_construct = Some(rg); ci.props = p; }
-        let (b, e) = pe.func_containing(ci.ctor).unwrap_or((ci.ctor, ci.ctor + 0x200));
+        let Some(mut ci) = find_class(pe, xi, cn) else {
+            per_class.push(json!({"class": cn, "error": "class not found"}));
+            continue;
+        };
+        if let Some((rg, p)) = props_by_hint_max(pe, xi, hint, ci.sizeof_class) {
+            ci.z_construct = Some(rg);
+            ci.props = p;
+        }
+        let (b, e) = pe
+            .func_containing(ci.ctor)
+            .unwrap_or((ci.ctor, ci.ctor + 0x200));
         let stores = collect_stores(pe, b, e);
-        for (o, v) in pps::final_dwords(&stores) { eff_dw.insert(o, v); }
-        for p in &ci.props { eff_props.insert(p.offset, p.clone()); }
+        for (o, v) in pps::final_dwords(&stores) {
+            eff_dw.insert(o, v);
+        }
+        for p in &ci.props {
+            eff_props.insert(p.offset, p.clone());
+        }
         per_class.push(json!({
             "class": cn, "sizeof": hx(ci.sizeof_class), "get_private_static_class_rva": hx(ci.get_private_static_class),
             "class_constructor_thunk_rva": hx(ci.default_ctor_thunk), "ctor_rva": hx(ci.ctor), "ctor_bytes": e - b,
             "z_construct_rva": ci.z_construct.map(|z| hx(z.0)), "reflected_properties": ci.props.len(),
         }));
-        for bo in collect_bit_ops(pe, b, e) { bit_ops.push(json!({"class": cn, "rva": hx(bo.rva), "disp": hx(bo.disp as u32), "size": bo.size, "op": if bo.is_or { "or" } else { "and" }, "imm": hx(bo.imm as u32)})); }
+        for bo in collect_bit_ops(pe, b, e) {
+            bit_ops.push(json!({"class": cn, "rva": hx(bo.rva), "disp": hx(bo.disp as u32), "size": bo.size, "op": if bo.is_or { "or" } else { "and" }, "imm": hx(bo.imm as u32)}));
+        }
         all_stores.extend(stores);
     }
     let props: Vec<_> = eff_props.values().cloned().collect();
     let fields = pps::field_values(&props, &eff_dw, &all_stores);
-    let named: Vec<Value> = fields.iter().filter(|f| f.explicit).map(|f| field_json(f, pe)).collect();
+    let named: Vec<Value> = fields
+        .iter()
+        .filter(|f| f.explicit)
+        .map(|f| field_json(f, pe))
+        .collect();
     // stores that hit no reflected float/struct property (bool bitfields, padding, FColor, UObject ptrs)
-    let covered: Vec<(i64, i64)> = fields.iter().map(|f| (f.offset as i64, f.offset as i64 + 4 * f.raw.len() as i64)).collect();
+    let covered: Vec<(i64, i64)> = fields
+        .iter()
+        .map(|f| (f.offset as i64, f.offset as i64 + 4 * f.raw.len() as i64))
+        .collect();
     let mut unnamed = vec![];
     for (o, (v, rva)) in &eff_dw {
         if !covered.iter().any(|(a, b)| o >= a && o < b) {
-            let near = eff_props.range(..=(*o as u32)).next_back().map(|(_, p)| p.name.clone());
+            let near = eff_props
+                .range(..=(*o as u32))
+                .next_back()
+                .map(|(_, p)| p.name.clone());
             unnamed.push(json!({"offset": hx(*o as u32), "raw_u32": hx(*v), "as_f32": r(f32::from_bits(*v)), "store_rva": hx(*rva), "preceding_property": near}));
         }
     }
@@ -70,7 +104,9 @@ fn chain(pe: &Pe, xi: &XrefIndex, spec: &[(&str, &str)]) -> Value {
 }
 
 fn main() {
-    let out = std::env::args().nth(1).unwrap_or_else(|| concat!(env!("CARGO_MANIFEST_DIR"), "/reports/exe-defaults.json").to_string());
+    let out = std::env::args().nth(1).unwrap_or_else(|| {
+        concat!(env!("CARGO_MANIFEST_DIR"), "/reports/exe-defaults.json").to_string()
+    });
     let exe = exe_path();
     let pe = Pe::open(&exe).expect("open exe");
     let xi = XrefIndex::build(&pe);
@@ -79,8 +115,12 @@ fn main() {
     let regs = scan(&pe, &xi);
     let mut cv: BTreeMap<String, Vec<&CvarReg>> = BTreeMap::new();
     for c in &regs {
-        if !matches!(c.vtable_slot, 0x00 | 0x08 | 0x10 | 0x18 | 0x20 | 0x28) { continue; }
-        if c.value == CvarValue::Unknown { continue; }
+        if !matches!(c.vtable_slot, 0x00 | 0x08 | 0x10 | 0x18 | 0x20 | 0x28) {
+            continue;
+        }
+        if c.value == CvarValue::Unknown {
+            continue;
+        }
         cv.entry(c.name.clone()).or_default().push(c);
     }
     let mut cvars = vec![];
@@ -101,16 +141,42 @@ fn main() {
             }
             CvarValue::Unknown => unreachable!(),
         };
-        let distinct: Vec<String> = { let mut v: Vec<String> = regs.iter().map(|c| format!("{:?}", c.value)).collect(); v.sort(); v.dedup(); v };
+        let distinct: Vec<String> = {
+            let mut v: Vec<String> = regs.iter().map(|c| format!("{:?}", c.value)).collect();
+            v.sort();
+            v.dedup();
+            v
+        };
         let mut rec = json!({
             "name": name, "type": ty, "kind": kind, "default": val, "flags": c0.flags.map(hx), "help": c0.help,
             "thunk_rva": hx(c0.func_rva), "call_rva": hx(c0.call_rva), "derived": how, "confidence": conf,
         });
-        if distinct.len() > 1 { rec["conflict"] = json!(distinct); }
+        if distinct.len() > 1 {
+            rec["conflict"] = json!(distinct);
+        }
         // known-value cross-check
-        let kv = KNOWN_INT_CVARS.iter().find(|k| k.0 == name).map(|k| (k.1 as f64, cvar_i64(&c0.value) == Some(k.1)))
-            .or_else(|| KNOWN_FLOAT_CVARS.iter().find(|k| k.0 == name).map(|k| (k.1 as f64, cvar_f32(&c0.value).map(|f| (f - k.1).abs() < 1e-4).unwrap_or(false))));
-        if let Some((want, ok)) = kv { rec["ue416_known"] = json!({"expected": want, "match": ok}); if ok { known_ok += 1 } else { known_bad.push(name.clone()) } }
+        let kv = KNOWN_INT_CVARS
+            .iter()
+            .find(|k| k.0 == name)
+            .map(|k| (k.1 as f64, cvar_i64(&c0.value) == Some(k.1)))
+            .or_else(|| {
+                KNOWN_FLOAT_CVARS.iter().find(|k| k.0 == name).map(|k| {
+                    (
+                        k.1 as f64,
+                        cvar_f32(&c0.value)
+                            .map(|f| (f - k.1).abs() < 1e-4)
+                            .unwrap_or(false),
+                    )
+                })
+            });
+        if let Some((want, ok)) = kv {
+            rec["ue416_known"] = json!({"expected": want, "match": ok});
+            if ok {
+                known_ok += 1
+            } else {
+                known_bad.push(name.clone())
+            }
+        }
         cvars.push(rec);
     }
 
@@ -122,9 +188,28 @@ fn main() {
     let pps_fields: Vec<Value> = fv.iter().map(|f| field_json(f, &pe)).collect();
 
     // ---- classes ----
-    let dir = chain(&pe, &xi, &[("ULightComponentBase", "LightColor"), ("ULightComponent", "ShadowSharpen"), ("UDirectionalLightComponent", "DynamicShadowCascades")]);
-    let sky = chain(&pe, &xi, &[("ULightComponentBase", "LightColor"), ("USkyLightComponent", "LowerHemisphereColor")]);
-    let fog = chain(&pe, &xi, &[("UExponentialHeightFogComponent", "FogDensity")]);
+    let dir = chain(
+        &pe,
+        &xi,
+        &[
+            ("ULightComponentBase", "LightColor"),
+            ("ULightComponent", "ShadowSharpen"),
+            ("UDirectionalLightComponent", "DynamicShadowCascades"),
+        ],
+    );
+    let sky = chain(
+        &pe,
+        &xi,
+        &[
+            ("ULightComponentBase", "LightColor"),
+            ("USkyLightComponent", "LowerHemisphereColor"),
+        ],
+    );
+    let fog = chain(
+        &pe,
+        &xi,
+        &[("UExponentialHeightFogComponent", "FogDensity")],
+    );
     let ppc = chain(&pe, &xi, &[("UPostProcessComponent", "BlendRadius")]);
     let ppv = chain(&pe, &xi, &[("APostProcessVolume", "BlendRadius")]);
 
@@ -132,24 +217,56 @@ fn main() {
     let mut cmp = vec![];
     for a in ASSUMED_PPS {
         let rec = fv.iter().find(|f| f.name == a.name);
-        let (rv, status) = match rec { Some(f) => (f.components[0], if (f.components[0] - a.value).abs() <= 1e-4 * a.value.abs().max(1.0) { "match" } else { "DIFFERENT" }), None => (f32::NAN, "not-recovered") };
+        let (rv, status) = match rec {
+            Some(f) => (
+                f.components[0],
+                if (f.components[0] - a.value).abs() <= 1e-4 * a.value.abs().max(1.0) {
+                    "match"
+                } else {
+                    "DIFFERENT"
+                },
+            ),
+            None => (f32::NAN, "not-recovered"),
+        };
         cmp.push(json!({"name": a.name, "struct": "FPostProcessSettings", "assumed": r(a.value), "recovered": if rv.is_nan() { Value::Null } else { r(rv) }, "status": status, "used_in": a.used_in, "assumed_note": a.note}));
     }
     // bloom tints
     for (i, want) in [0.3465f32, 0.138, 0.5, 0.066, 0.066].iter().enumerate() {
         let n = format!("Bloom{}Tint", i + 1);
         if let Some(f) = fv.iter().find(|f| f.name == n) {
-            let st = if i == 2 { "match-with-caveat" } else if (f.components[0] - want).abs() < 1e-3 { "match" } else { "DIFFERENT" };
+            let st = if i == 2 {
+                "match-with-caveat"
+            } else if (f.components[0] - want).abs() < 1e-3 {
+                "match"
+            } else {
+                "DIFFERENT"
+            };
             cmp.push(json!({"name": n, "struct": "FPostProcessSettings", "assumed": r(*want), "recovered": f.components.iter().map(|c| r(*c)).collect::<Vec<_>>(), "status": st, "used_in": ["crates/fn-postfx/src/params.rs:132 tints"], "assumed_note": if i == 2 { "Day volume serializes 0.5; engine default is 0.1176 (only matters if the serialized override is dropped)" } else { "ENGINE_DEFAULT" }}));
         }
     }
     let class_val = |section: &Value, name: &str| -> Option<f32> {
-        section["defaults"].as_array()?.iter().find(|d| d["name"] == name).and_then(|d| d["value"].as_f64()).map(|v| v as f32)
+        section["defaults"]
+            .as_array()?
+            .iter()
+            .find(|d| d["name"] == name)
+            .and_then(|d| d["value"].as_f64())
+            .map(|v| v as f32)
     };
     for (cls, prop, want, used, note) in ASSUMED_CLASS {
-        let sec = match *cls { "UDirectionalLightComponent" => &dir, "USkyLightComponent" => &sky, _ => &dir };
+        let sec = match *cls {
+            "UDirectionalLightComponent" => &dir,
+            "USkyLightComponent" => &sky,
+            _ => &dir,
+        };
         let rv = class_val(sec, prop);
-        let status = match rv { Some(v) if (v - want).abs() <= 1e-4 * want.abs().max(1.0) => "match", Some(_) if *prop == "CascadeDistributionExponent" => "default-differs-serialized-2-wins", Some(_) => "DIFFERENT", None => "not-recovered" };
+        let status = match rv {
+            Some(v) if (v - want).abs() <= 1e-4 * want.abs().max(1.0) => "match",
+            Some(_) if *prop == "CascadeDistributionExponent" => {
+                "default-differs-serialized-2-wins"
+            }
+            Some(_) => "DIFFERENT",
+            None => "not-recovered",
+        };
         cmp.push(json!({"name": format!("{cls}.{prop}"), "assumed": r(*want), "recovered": rv.map(r), "status": status, "used_in": used, "assumed_note": note}));
     }
 
@@ -181,12 +298,43 @@ fn main() {
     });
     std::fs::create_dir_all(std::path::Path::new(&out).parent().unwrap()).ok();
     std::fs::write(&out, serde_json::to_string_pretty(&doc).unwrap()).unwrap();
-    println!("wrote {out}: {} cvars ({} known ok, bad {:?}), {} pps fields, {} comparisons", cvars_len(&doc), known_ok, known_bad, doc["post_process_settings"]["fields"].as_array().unwrap().len(), cmp_len(&doc));
+    println!(
+        "wrote {out}: {} cvars ({} known ok, bad {:?}), {} pps fields, {} comparisons",
+        cvars_len(&doc),
+        known_ok,
+        known_bad,
+        doc["post_process_settings"]["fields"]
+            .as_array()
+            .unwrap()
+            .len(),
+        cmp_len(&doc)
+    );
 }
-fn cvars_len(d: &Value) -> usize { d["cvars"].as_array().map(|a| a.len()).unwrap_or(0) }
-fn cmp_len(d: &Value) -> usize { d["comparison_with_rust_assumptions"].as_array().map(|a| a.len()).unwrap_or(0) }
+fn cvars_len(d: &Value) -> usize {
+    d["cvars"].as_array().map(|a| a.len()).unwrap_or(0)
+}
+fn cmp_len(d: &Value) -> usize {
+    d["comparison_with_rust_assumptions"]
+        .as_array()
+        .map(|a| a.len())
+        .unwrap_or(0)
+}
 
-fn cvar_i64(v: &CvarValue) -> Option<i64> { match v { CvarValue::Int(i) => Some(*i), CvarValue::RefInit { init, float: false, .. } => Some(init.unwrap_or(0) as i32 as i64), _ => None } }
-fn cvar_f32(v: &CvarValue) -> Option<f32> { match v { CvarValue::Float(f) => Some(*f), CvarValue::RefInit { init, float: true, .. } => Some(f32::from_bits(init.unwrap_or(0))), _ => None } }
-
-
+fn cvar_i64(v: &CvarValue) -> Option<i64> {
+    match v {
+        CvarValue::Int(i) => Some(*i),
+        CvarValue::RefInit {
+            init, float: false, ..
+        } => Some(init.unwrap_or(0) as i32 as i64),
+        _ => None,
+    }
+}
+fn cvar_f32(v: &CvarValue) -> Option<f32> {
+    match v {
+        CvarValue::Float(f) => Some(*f),
+        CvarValue::RefInit {
+            init, float: true, ..
+        } => Some(f32::from_bits(init.unwrap_or(0))),
+        _ => None,
+    }
+}

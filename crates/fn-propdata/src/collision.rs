@@ -8,14 +8,30 @@ use std::path::Path;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Shape {
     /// `FKBoxElem`: `half_extent` = half of the stored X/Y/Z lengths.
-    Box { center: [f32; 3], rotation: [f32; 4], half_extent: [f32; 3] },
+    Box {
+        center: [f32; 3],
+        rotation: [f32; 4],
+        half_extent: [f32; 3],
+    },
     /// `FKSphereElem`
     Sphere { center: [f32; 3], radius: f32 },
     /// `FKSphylElem` (capsule along local Z): `half_length` = half of the *cylinder* section; total half height = `half_length + radius`.
-    Capsule { center: [f32; 3], rotation: [f32; 4], radius: f32, half_length: f32 },
+    Capsule {
+        center: [f32; 3],
+        rotation: [f32; 4],
+        radius: f32,
+        half_length: f32,
+    },
     /// `FKConvexElem`: hull vertices (local space of the element, then `transform` applies). Faces are not stored by the
     /// cooked data we decode (they live in the PhysX blob): rebuild the hull from the points.
-    Convex { vertices: Vec<[f32; 3]>, transform_translation: [f32; 3], transform_rotation: [f32; 4], transform_scale: [f32; 3], bounds_min: [f32; 3], bounds_max: [f32; 3] },
+    Convex {
+        vertices: Vec<[f32; 3]>,
+        transform_translation: [f32; 3],
+        transform_rotation: [f32; 4],
+        transform_scale: [f32; 3],
+        bounds_min: [f32; 3],
+        bounds_max: [f32; 3],
+    },
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -56,28 +72,53 @@ impl Collision {
                 }
             }
         }
-        for s in j.get("shapes").and_then(|x| x.as_array()).map(|a| a.as_slice()).unwrap_or(&[]) {
+        for s in j
+            .get("shapes")
+            .and_then(|x| x.as_array())
+            .map(|a| a.as_slice())
+            .unwrap_or(&[])
+        {
             let ty = req_str(s, "type", "collision shape")?;
             let center = || arr_f32::<3>(s.get("center")).unwrap_or([0.0; 3]);
             let rot = || arr_f32::<4>(s.get("rotation")).unwrap_or([0.0, 0.0, 0.0, 1.0]);
             let shape = match ty.as_str() {
-                "box" => Shape::Box { center: center(), rotation: rot(), half_extent: arr_f32::<3>(s.get("half_extent")).ok_or_else(|| Error::Schema("box without half_extent".into()))? },
-                "sphere" => Shape::Sphere { center: center(), radius: f32_of(s, "radius").ok_or_else(|| Error::Schema("sphere without radius".into()))? },
+                "box" => Shape::Box {
+                    center: center(),
+                    rotation: rot(),
+                    half_extent: arr_f32::<3>(s.get("half_extent"))
+                        .ok_or_else(|| Error::Schema("box without half_extent".into()))?,
+                },
+                "sphere" => Shape::Sphere {
+                    center: center(),
+                    radius: f32_of(s, "radius")
+                        .ok_or_else(|| Error::Schema("sphere without radius".into()))?,
+                },
                 "capsule" => Shape::Capsule {
                     center: center(),
                     rotation: rot(),
-                    radius: f32_of(s, "radius").ok_or_else(|| Error::Schema("capsule without radius".into()))?,
+                    radius: f32_of(s, "radius")
+                        .ok_or_else(|| Error::Schema("capsule without radius".into()))?,
                     half_length: f32_of(s, "half_length").unwrap_or(0.0),
                 },
                 "convex" => {
-                    let vs = s.get("vertices").and_then(|x| x.as_array()).ok_or_else(|| Error::Schema("convex without vertices".into()))?;
-                    let vertices: Vec<[f32; 3]> = vs.iter().filter_map(|v| arr_f32::<3>(Some(v))).collect();
+                    let vs = s
+                        .get("vertices")
+                        .and_then(|x| x.as_array())
+                        .ok_or_else(|| Error::Schema("convex without vertices".into()))?;
+                    let vertices: Vec<[f32; 3]> =
+                        vs.iter().filter_map(|v| arr_f32::<3>(Some(v))).collect();
                     let t = s.get("transform");
                     Shape::Convex {
                         vertices,
-                        transform_translation: t.and_then(|t| arr_f32::<3>(t.get("translation"))).unwrap_or([0.0; 3]),
-                        transform_rotation: t.and_then(|t| arr_f32::<4>(t.get("rotation"))).unwrap_or([0.0, 0.0, 0.0, 1.0]),
-                        transform_scale: t.and_then(|t| arr_f32::<3>(t.get("scale"))).unwrap_or([1.0; 3]),
+                        transform_translation: t
+                            .and_then(|t| arr_f32::<3>(t.get("translation")))
+                            .unwrap_or([0.0; 3]),
+                        transform_rotation: t
+                            .and_then(|t| arr_f32::<4>(t.get("rotation")))
+                            .unwrap_or([0.0, 0.0, 0.0, 1.0]),
+                        transform_scale: t
+                            .and_then(|t| arr_f32::<3>(t.get("scale")))
+                            .unwrap_or([1.0; 3]),
                         bounds_min: arr_f32::<3>(s.get("bounds_min")).unwrap_or([0.0; 3]),
                         bounds_max: arr_f32::<3>(s.get("bounds_max")).unwrap_or([0.0; 3]),
                     }
@@ -102,6 +143,9 @@ impl Collision {
         if self.enabled.contains("NoCollision") {
             return false;
         }
-        self.responses.iter().any(|(c, r)| c.contains("Weapon") && r.contains("Block")) || self.profile == "BlockAll"
+        self.responses
+            .iter()
+            .any(|(c, r)| c.contains("Weapon") && r.contains("Block"))
+            || self.profile == "BlockAll"
     }
 }

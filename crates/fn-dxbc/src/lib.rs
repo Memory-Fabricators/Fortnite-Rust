@@ -1,4 +1,4 @@
-﻿//! fn-dxbc: pure-Rust DXBC (Shader Model 4/5) toolkit.
+//! fn-dxbc: pure-Rust DXBC (Shader Model 4/5) toolkit.
 //!
 //! * [`container`]: DXBC container, checksum, ISGN/OSGN/PCSG signatures, RDEF constant buffers / bindings
 //! * [`decode`] + [`ir`] + [`opcode`]: instruction stream decoder and typed IR
@@ -11,14 +11,13 @@ pub mod container;
 pub mod decode;
 pub mod disasm;
 pub mod extract;
-pub mod unreal_packet;
-pub mod unreal_entry;
 pub mod interp;
 pub mod ir;
 pub mod opcode;
+pub mod unreal_entry;
+pub mod unreal_packet;
 
 pub use container::{checksum, resign, Chunk, Container, DxbcError, Rdef, SigElement, Signature};
 pub use disasm::{disassemble, disassemble_container, disassemble_hex, DisasmOptions};
 pub use ir::*;
 pub use opcode::Opcode;
-

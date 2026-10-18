@@ -29,48 +29,87 @@ fn parse_vec(s: &str) -> Result<[f32; 4], String> {
     let v: Result<Vec<f32>, _> = s.split(',').map(|x| x.trim().parse::<f32>()).collect();
     let v = v.map_err(|e| format!("bad vector '{s}': {e}"))?;
     let mut o = [0.0f32; 4];
-    for (i, x) in v.iter().take(4).enumerate() { o[i] = *x; }
-    if v.len() == 1 { o = [v[0]; 4]; }
+    for (i, x) in v.iter().take(4).enumerate() {
+        o[i] = *x;
+    }
+    if v.len() == 1 {
+        o = [v[0]; 4];
+    }
     Ok(o)
 }
 
-struct CliEnv { tex: Vec<(u32, [f32; 4])> }
+struct CliEnv {
+    tex: Vec<(u32, [f32; 4])>,
+}
 impl Env for CliEnv {
     fn texture(&mut self, r: &TexReq) -> [f32; 4] {
-        if matches!(r.op, TexOp::Resinfo) { return [1.0, 1.0, 1.0, 1.0]; }
-        self.tex.iter().find(|(s, _)| *s == r.texture).map(|(_, c)| *c).unwrap_or([0.5, 0.5, 0.5, 1.0])
+        if matches!(r.op, TexOp::Resinfo) {
+            return [1.0, 1.0, 1.0, 1.0];
+        }
+        self.tex
+            .iter()
+            .find(|(s, _)| *s == r.texture)
+            .map(|(_, c)| *c)
+            .unwrap_or([0.5, 0.5, 0.5, 1.0])
     }
 }
 
 fn run() -> Result<(), String> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let Some(cmd) = args.first().map(|s| s.as_str()) else { println!("{USAGE}"); return Ok(()) };
+    let Some(cmd) = args.first().map(|s| s.as_str()) else {
+        println!("{USAGE}");
+        return Ok(());
+    };
     let rest = &args[1..];
     let flag = |n: &str| rest.iter().any(|a| a == n);
-    let value = |n: &str| rest.iter().position(|a| a == n).and_then(|i| rest.get(i + 1)).cloned();
-    let values = |n: &str| -> Vec<String> { rest.iter().enumerate().filter(|(_, a)| *a == n).filter_map(|(i, _)| rest.get(i + 1).cloned()).collect() };
+    let value = |n: &str| {
+        rest.iter()
+            .position(|a| a == n)
+            .and_then(|i| rest.get(i + 1))
+            .cloned()
+    };
+    let values = |n: &str| -> Vec<String> {
+        rest.iter()
+            .enumerate()
+            .filter(|(_, a)| *a == n)
+            .filter_map(|(i, _)| rest.get(i + 1).cloned())
+            .collect()
+    };
     let positional: Vec<&String> = {
         let mut v = vec![];
         let mut skip = false;
         for a in rest {
-            if skip { skip = false; continue; }
-            if matches!(a.as_str(), "--cb" | "--in" | "--tex" | "--name" | "--filter" | "--limit" | "--widgets") { skip = true; continue; }
-            if a.starts_with("--") { continue; }
+            if skip {
+                skip = false;
+                continue;
+            }
+            if matches!(
+                a.as_str(),
+                "--cb" | "--in" | "--tex" | "--name" | "--filter" | "--limit" | "--widgets"
+            ) {
+                skip = true;
+                continue;
+            }
+            if a.starts_with("--") {
+                continue;
+            }
             v.push(a);
         }
         v
     };
     let install = default_install();
     match cmd {
-        "record-windows"=>{
-            let p=positional.first().ok_or("record-windows needs package")?;
-            let set=fn_pak::PakSet::open_install(&install).map_err(|e|e.to_string())?;
-            let bytes=fn_dxbc_cli::spec::package_bytes(&set,p)?;
-            let ua=set.read_game(p,"uasset").map_err(|e|e.to_string())?;
-            let names=fn_dxbc_cli::uniform::package_names(&ua,&bytes)?;
-            let package=fn_uasset::package::Package::parse(&ua,&bytes).map_err(|e|e.to_string())?;
-            let header_size=usize::try_from(package.summary.total_header_size).map_err(|_|"negative package header size")?;
-            let blobs=fn_dxbc::extract::scan_blobs(&bytes);
+        "record-windows" => {
+            let p = positional.first().ok_or("record-windows needs package")?;
+            let set = fn_pak::PakSet::open_install(&install).map_err(|e| e.to_string())?;
+            let bytes = fn_dxbc_cli::spec::package_bytes(&set, p)?;
+            let ua = set.read_game(p, "uasset").map_err(|e| e.to_string())?;
+            let names = fn_dxbc_cli::uniform::package_names(&ua, &bytes)?;
+            let package =
+                fn_uasset::package::Package::parse(&ua, &bytes).map_err(|e| e.to_string())?;
+            let header_size = usize::try_from(package.summary.total_header_size)
+                .map_err(|_| "negative package header size")?;
+            let blobs = fn_dxbc::extract::scan_blobs(&bytes);
             let docs=blobs.iter().map(|b|{
                 let start=b.id.saturating_sub(2048);
                 let f=fn_dxbc_cli::record::fname_candidates(&bytes,&names,start,b.id).unwrap();
@@ -91,13 +130,15 @@ fn run() -> Result<(), String> {
             }).collect::<Vec<_>>();
             println!("{}",serde_json::to_string_pretty(&serde_json::json!({"package":p,"package_header_size":header_size,"note":"Nearby byte-pattern candidates only, not shader record ownership.","windows":docs})).unwrap());
         }
-        "uniform-candidates"=>{
-            let p=positional.first().ok_or("uniform-candidates needs package")?;
-            let set=fn_pak::PakSet::open_install(&install).map_err(|e|e.to_string())?;
-            let bytes=fn_dxbc_cli::spec::package_bytes(&set,p)?;
-            let ua=set.read_game(p,"uasset").map_err(|e|e.to_string())?;
-            let names=fn_dxbc_cli::uniform::package_names(&ua,&bytes)?;
-            let candidates=fn_dxbc_cli::uniform::set_candidates(&bytes,&names);
+        "uniform-candidates" => {
+            let p = positional
+                .first()
+                .ok_or("uniform-candidates needs package")?;
+            let set = fn_pak::PakSet::open_install(&install).map_err(|e| e.to_string())?;
+            let bytes = fn_dxbc_cli::spec::package_bytes(&set, p)?;
+            let ua = set.read_game(p, "uasset").map_err(|e| e.to_string())?;
+            let names = fn_dxbc_cli::uniform::package_names(&ua, &bytes)?;
+            let candidates = fn_dxbc_cli::uniform::set_candidates(&bytes, &names);
             let docs=candidates.iter().map(|c|{
                 let mut expressions=fn_dxbc_cli::material::uniforms_json(p,&c.set,&Default::default());
                 // Existing legacy export's tN label is only list position.
@@ -120,27 +161,61 @@ fn run() -> Result<(), String> {
             let spec = positional.first().ok_or("disasm needs a shader spec")?;
             let b = load_blob(&install, spec)?;
             let c = Container::parse(&b.bytes).map_err(|e| e.to_string())?;
-            print!("{}", disassemble_container(&c, DisasmOptions { hex_literals: flag("--hex") }).map_err(|e| e.to_string())?);
+            print!(
+                "{}",
+                disassemble_container(
+                    &c,
+                    DisasmOptions {
+                        hex_literals: flag("--hex")
+                    }
+                )
+                .map_err(|e| e.to_string())?
+            );
         }
         "layout" => {
-            let b = load_blob(&install, positional.first().ok_or("layout needs a shader spec")?)?;
+            let b = load_blob(
+                &install,
+                positional.first().ok_or("layout needs a shader spec")?,
+            )?;
             let c = Container::parse(&b.bytes).map_err(|e| e.to_string())?;
             let sh = Shader::from_container(&c).map_err(|e| e.to_string())?;
-            println!("{}", serde_json::to_string_pretty(&layout_json(&c, &sh)).unwrap());
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&layout_json(&c, &sh)).unwrap()
+            );
         }
         "eval" => {
-            let b = load_blob(&install, positional.first().ok_or("eval needs a shader spec")?)?;
+            let b = load_blob(
+                &install,
+                positional.first().ok_or("eval needs a shader spec")?,
+            )?;
             let sh = Shader::parse(&b.bytes).map_err(|e| e.to_string())?;
             let mut m = Machine::new(&sh);
-            m.opts = Options { div_zero_is_zero: flag("--div0"), ignore_discard: flag("--no-discard"), ..Default::default() };
+            m.opts = Options {
+                div_zero_is_zero: flag("--div0"),
+                ignore_discard: flag("--no-discard"),
+                ..Default::default()
+            };
             for s in values("--cb") {
                 let (k, v) = s.split_once('=').ok_or("--cb SLOT:ELEM=x,y,z,w")?;
                 let (slot, elem) = k.split_once(':').ok_or("--cb SLOT:ELEM=x,y,z,w")?;
-                let (slot, elem): (usize, usize) = (slot.parse().map_err(|_| "bad slot")?, elem.parse().map_err(|_| "bad element")?);
-                if m.cb.len() <= slot { m.cb.resize(slot + 1, vec![]); }
-                if m.cb[slot].len() <= elem { m.cb[slot].resize(elem + 1, [0; 4]); }
+                let (slot, elem): (usize, usize) = (
+                    slot.parse().map_err(|_| "bad slot")?,
+                    elem.parse().map_err(|_| "bad element")?,
+                );
+                if m.cb.len() <= slot {
+                    m.cb.resize(slot + 1, vec![]);
+                }
+                if m.cb[slot].len() <= elem {
+                    m.cb[slot].resize(elem + 1, [0; 4]);
+                }
                 let v = parse_vec(v)?;
-                m.cb[slot][elem] = [v[0].to_bits(), v[1].to_bits(), v[2].to_bits(), v[3].to_bits()];
+                m.cb[slot][elem] = [
+                    v[0].to_bits(),
+                    v[1].to_bits(),
+                    v[2].to_bits(),
+                    v[3].to_bits(),
+                ];
             }
             for s in values("--in") {
                 let (k, v) = s.split_once('=').ok_or("--in REG=x,y,z,w")?;
@@ -149,40 +224,84 @@ fn run() -> Result<(), String> {
             let mut env = CliEnv { tex: vec![] };
             for s in values("--tex") {
                 let (k, v) = s.split_once('=').ok_or("--tex SLOT=r,g,b,a")?;
-                env.tex.push((k.parse().map_err(|_| "bad slot")?, parse_vec(v)?));
+                env.tex
+                    .push((k.parse().map_err(|_| "bad slot")?, parse_vec(v)?));
             }
             let out = m.run(&mut env).map_err(|e| e.to_string())?;
             println!("{}", sh.version_string());
-            if out.discarded { println!("DISCARDED"); }
-            for (i, o) in out.o.iter().enumerate() { println!("o{i} = {:.7} {:.7} {:.7} {:.7}", o[0], o[1], o[2], o[3]); }
+            if out.discarded {
+                println!("DISCARDED");
+            }
+            for (i, o) in out.o.iter().enumerate() {
+                println!("o{i} = {:.7} {:.7} {:.7} {:.7}", o[0], o[1], o[2], o[3]);
+            }
         }
         "translate" => {
             let target = positional.first().ok_or("translate rust|wgsl <shader>")?;
-            let b = load_blob(&install, positional.get(1).ok_or("translate rust|wgsl <shader>")?)?;
+            let b = load_blob(
+                &install,
+                positional.get(1).ok_or("translate rust|wgsl <shader>")?,
+            )?;
             let sh = Shader::parse(&b.bytes).map_err(|e| e.to_string())?;
             let name = value("--name").unwrap_or_else(|| format!("shader_{}", b.id));
             match target.as_str() {
-                "rust" => { println!("{}", rust_prelude()); println!("{}", translate_rust(&sh, &name).map_err(|e| e.0)?); }
+                "rust" => {
+                    println!("{}", rust_prelude());
+                    println!("{}", translate_rust(&sh, &name).map_err(|e| e.0)?);
+                }
                 "wgsl" => println!("{}", translate_wgsl(&sh, &name).map_err(|e| e.0)?),
                 t => return Err(format!("unknown target {t}")),
             }
         }
         "extract" | "sweep" => {
-            let inst = positional.first().map(|s| PathBuf::from(s.as_str())).unwrap_or(install);
-            let out = if cmd == "extract" { positional.get(1).map(|s| PathBuf::from(s.as_str())) } else { None };
-            let opts = SweepOptions { out: out.clone(), write_asm: flag("--asm"), limit: value("--limit").and_then(|s| s.parse().ok()), filter: value("--filter"), global_only: flag("--global-only"), validate_wgsl: flag("--validate-wgsl") };
+            let inst = positional
+                .first()
+                .map(|s| PathBuf::from(s.as_str()))
+                .unwrap_or(install);
+            let out = if cmd == "extract" {
+                positional.get(1).map(|s| PathBuf::from(s.as_str()))
+            } else {
+                None
+            };
+            let opts = SweepOptions {
+                out: out.clone(),
+                write_asm: flag("--asm"),
+                limit: value("--limit").and_then(|s| s.parse().ok()),
+                filter: value("--filter"),
+                global_only: flag("--global-only"),
+                validate_wgsl: flag("--validate-wgsl"),
+            };
             let t = std::time::Instant::now();
             let stats = sweep(&inst, &opts)?;
-            let text = format!("{}elapsed: {:.1}s\n", report(&stats), t.elapsed().as_secs_f64());
+            let text = format!(
+                "{}elapsed: {:.1}s\n",
+                report(&stats),
+                t.elapsed().as_secs_f64()
+            );
             print!("{text}");
-            if let Some(o) = out { let _ = std::fs::write(o.join("report.txt"), &text); }
+            if let Some(o) = out {
+                let _ = std::fs::write(o.join("report.txt"), &text);
+            }
         }
         "material" => {
-            let out = PathBuf::from(positional.first().ok_or("material <out-dir> <package>...")?.as_str());
+            let out = PathBuf::from(
+                positional
+                    .first()
+                    .ok_or("material <out-dir> <package>...")?
+                    .as_str(),
+            );
             let set = fn_pak::PakSet::open_install(&install).map_err(|e| e.to_string())?;
             for p in &positional[1..] {
                 let r = fn_dxbc_cli::material::export_package(&set, p, &out, true)?;
-                println!("{p}: {} shaders{}", r.shaders, if r.uniforms { ", uniforms json written" } else { "" });
+                println!(
+                    "{p}: {} shaders{}",
+                    r.shaders,
+                    if r.uniforms {
+                        ", uniforms json written"
+                    } else {
+                        ""
+                    }
+                );
             }
         }
         "tonemap" => {
@@ -193,10 +312,19 @@ fn run() -> Result<(), String> {
             let blobs = fn_dxbc_cli::extract::scan_blobs(&bytes);
             let mut n = 0;
             for id in [1182809usize, 1070630, 769199, 801686, 923320] {
-                let b = blobs.iter().find(|b| b.id == id).ok_or(format!("global shader cache: no shader stream at {id}"))?;
-                std::fs::write(out.join(format!("shader_{id}.dxbc")), &b.bytes).map_err(|e| e.to_string())?;
+                let b = blobs
+                    .iter()
+                    .find(|b| b.id == id)
+                    .ok_or(format!("global shader cache: no shader stream at {id}"))?;
+                std::fs::write(out.join(format!("shader_{id}.dxbc")), &b.bytes)
+                    .map_err(|e| e.to_string())?;
                 let c = Container::parse(&b.bytes).map_err(|e| e.to_string())?;
-                std::fs::write(out.join(format!("shader_{id}.asm")), disassemble_container(&c, DisasmOptions::default()).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+                std::fs::write(
+                    out.join(format!("shader_{id}.asm")),
+                    disassemble_container(&c, DisasmOptions::default())
+                        .map_err(|e| e.to_string())?,
+                )
+                .map_err(|e| e.to_string())?;
                 n += 1;
             }
             println!("wrote {n} shaders to {}", out.display());
@@ -204,58 +332,118 @@ fn run() -> Result<(), String> {
         "menu-shaders" => {
             let out = PathBuf::from(positional.first().ok_or("menu-shaders <out-dir>")?.as_str());
             let widgets_path = value("--widgets").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(r"C:\Users\Brady\Desktop\Fortnite Rust\FortniteRuntime\reports\menu-widgets.json"));
-            let txt = std::fs::read_to_string(&widgets_path).map_err(|e| format!("{}: {e}", widgets_path.display()))?;
-            let widgets: serde_json::Value = serde_json::from_str(txt.trim_start_matches('\u{feff}')).map_err(|e| e.to_string())?;
+            let txt = std::fs::read_to_string(&widgets_path)
+                .map_err(|e| format!("{}: {e}", widgets_path.display()))?;
+            let widgets: serde_json::Value =
+                serde_json::from_str(txt.trim_start_matches('\u{feff}'))
+                    .map_err(|e| e.to_string())?;
             let set = fn_pak::PakSet::open_install(&install).map_err(|e| e.to_string())?;
             let r = fn_dxbc_cli::menu::run(&set, &widgets, &out)?;
-            println!("menu-shaders: {} material instances, roles {} -> {}", r["materials"].as_object().map_or(0, |m| m.len()), r["roles"].as_object().map_or(String::new(), |m| m.keys().cloned().collect::<Vec<_>>().join(", ")), out.display());
+            println!(
+                "menu-shaders: {} material instances, roles {} -> {}",
+                r["materials"].as_object().map_or(0, |m| m.len()),
+                r["roles"].as_object().map_or(String::new(), |m| m
+                    .keys()
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(", ")),
+                out.display()
+            );
         }
         "gen-ui" => {
-            let out = PathBuf::from(positional.first().ok_or("gen-ui <out.rs> <fn>=<package>#<id>...")?.as_str());
+            let out = PathBuf::from(
+                positional
+                    .first()
+                    .ok_or("gen-ui <out.rs> <fn>=<package>#<id>...")?
+                    .as_str(),
+            );
             let mut entries = vec![];
             for a in &positional[1..] {
-                let (name, rest) = a.split_once('=').ok_or("gen-ui entries are <fn>=<package>#<shader id>")?;
-                let (pkg, id) = rest.rsplit_once('#').ok_or("gen-ui entries are <fn>=<package>#<shader id>")?;
-                entries.push(fn_dxbc_cli::uigen::UiEntry { name: name.to_string(), package: pkg.to_string(), shader_id: id.trim_start_matches("shader_").parse().map_err(|_| "bad shader id")? });
+                let (name, rest) = a
+                    .split_once('=')
+                    .ok_or("gen-ui entries are <fn>=<package>#<shader id>")?;
+                let (pkg, id) = rest
+                    .rsplit_once('#')
+                    .ok_or("gen-ui entries are <fn>=<package>#<shader id>")?;
+                entries.push(fn_dxbc_cli::uigen::UiEntry {
+                    name: name.to_string(),
+                    package: pkg.to_string(),
+                    shader_id: id
+                        .trim_start_matches("shader_")
+                        .parse()
+                        .map_err(|_| "bad shader id")?,
+                });
             }
             let set = fn_pak::PakSet::open_install(&install).map_err(|e| e.to_string())?;
             let text = fn_dxbc_cli::uigen::generate(&set, &entries)?;
             std::fs::write(&out, &text).map_err(|e| e.to_string())?;
-            println!("wrote {} ({} bytes, {} materials)", out.display(), text.len(), entries.len());
+            println!(
+                "wrote {} ({} bytes, {} materials)",
+                out.display(),
+                text.len(),
+                entries.len()
+            );
         }
         "survey" => {
             // survey <dir-with-.dxbc>: in how many shaders each opcode occurs, per program type, with one example file
             let dir = PathBuf::from(positional.first().ok_or("survey <dir>")?.as_str());
-            let mut stats: std::collections::BTreeMap<(String, &'static str), (usize, String)> = Default::default();
+            let mut stats: std::collections::BTreeMap<(String, &'static str), (usize, String)> =
+                Default::default();
             let mut n = 0usize;
-            for e in std::fs::read_dir(&dir).map_err(|e| e.to_string())?.flatten() {
+            for e in std::fs::read_dir(&dir)
+                .map_err(|e| e.to_string())?
+                .flatten()
+            {
                 let p = e.path();
-                if p.extension().is_none_or(|x| x != "dxbc") { continue; }
-                let Ok(bytes) = std::fs::read(&p) else { continue };
-                let Ok(sh) = Shader::parse(&bytes) else { continue };
+                if p.extension().is_none_or(|x| x != "dxbc") {
+                    continue;
+                }
+                let Ok(bytes) = std::fs::read(&p) else {
+                    continue;
+                };
+                let Ok(sh) = Shader::parse(&bytes) else {
+                    continue;
+                };
                 n += 1;
                 for (op, _) in fn_dxbc::analysis::opcode_histogram(&sh) {
-                    let ent = stats.entry((sh.program_type.prefix().to_string(), op)).or_insert((0, p.display().to_string()));
+                    let ent = stats
+                        .entry((sh.program_type.prefix().to_string(), op))
+                        .or_insert((0, p.display().to_string()));
                     ent.0 += 1;
                 }
             }
             println!("{n} shaders");
-            for ((pt, op), (c, ex)) in stats { println!("{pt} {op:<22} {c:>7}  e.g. {ex}"); }
+            for ((pt, op), (c, ex)) in stats {
+                println!("{pt} {op:<22} {c:>7}  e.g. {ex}");
+            }
         }
         "scan" | "scan-headers" => {
-            let inst = positional.first().map(|s| PathBuf::from(s.as_str())).unwrap_or(install);
+            let inst = positional
+                .first()
+                .map(|s| PathBuf::from(s.as_str()))
+                .unwrap_or(install);
             let pkg = positional.get(1).ok_or("scan <install> <package>")?;
             let set = fn_pak::PakSet::open_install(&inst).map_err(|e| e.to_string())?;
             let bytes = fn_dxbc_cli::spec::package_bytes(&set, pkg)?;
-            let blobs=fn_dxbc_cli::extract::scan_blobs(&bytes);
-            if cmd=="scan-headers" {
+            let blobs = fn_dxbc_cli::extract::scan_blobs(&bytes);
+            if cmd == "scan-headers" {
                 let entries=blobs.iter().map(|b|serde_json::json!({"id":b.id,"shader":Shader::parse(&b.bytes).map(|s|s.version_string()).ok(),"header":b.header,"trailer":b.trailer})).collect::<Vec<_>>();
-                println!("{}",serde_json::to_string_pretty(&entries).map_err(|e|e.to_string())?);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&entries).map_err(|e| e.to_string())?
+                );
                 return Ok(());
             }
             for b in blobs {
-                let kind = Shader::parse(&b.bytes).map(|s| s.version_string()).unwrap_or_else(|e| format!("error: {e}"));
-                println!("shader_{} prefix={} bytes={} {kind}", b.id, b.prefix, b.bytes.len());
+                let kind = Shader::parse(&b.bytes)
+                    .map(|s| s.version_string())
+                    .unwrap_or_else(|e| format!("error: {e}"));
+                println!(
+                    "shader_{} prefix={} bytes={} {kind}",
+                    b.id,
+                    b.prefix,
+                    b.bytes.len()
+                );
             }
         }
         _ => println!("{USAGE}"),
@@ -269,6 +457,3 @@ fn main() {
         std::process::exit(1);
     }
 }
-
-
-

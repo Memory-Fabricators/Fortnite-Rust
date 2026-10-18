@@ -10,19 +10,39 @@ use fn_uasset::PackageData;
 use serde_json::Value;
 
 const DEFAULT_ROOT: &str = r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame";
-const ANIMBP: &str = "/Game/Characters/Player/Male/Male_Avg_Base/Fortnite_M_Avg_Player_AnimBlueprint";
+const ANIMBP: &str =
+    "/Game/Characters/Player/Male/Male_Avg_Base/Fortnite_M_Avg_Player_AnimBlueprint";
 
 /// `Foo_12_0123456789ABCDEF0123456789ABCDEF` -> `Foo` (Blueprint struct member names carry `_<index>_<GUID>`).
 fn field_base(n: &str) -> &str {
     let b = n.as_bytes();
-    if b.len() > 34 && b[b.len() - 33] == b'_' && b[b.len() - 32..].iter().all(|c| c.is_ascii_hexdigit()) {
+    if b.len() > 34
+        && b[b.len() - 33] == b'_'
+        && b[b.len() - 32..].iter().all(|c| c.is_ascii_hexdigit())
+    {
         let head = &n[..n.len() - 33];
-        if let Some(p) = head.rfind('_') { if head[p + 1..].bytes().all(|c| c.is_ascii_digit()) { return &head[..p]; } }
+        if let Some(p) = head.rfind('_') {
+            if head[p + 1..].bytes().all(|c| c.is_ascii_digit()) {
+                return &head[..p];
+            }
+        }
     }
     n
 }
 /// `/Game/x/Y.Y` -> `Y`; null -> "".
-fn short(v: &Value) -> String { v.as_str().map(|s| s.rsplit('/').next().unwrap().split('.').next().unwrap().to_string()).unwrap_or_default() }
+fn short(v: &Value) -> String {
+    v.as_str()
+        .map(|s| {
+            s.rsplit('/')
+                .next()
+                .unwrap()
+                .split('.')
+                .next()
+                .unwrap()
+                .to_string()
+        })
+        .unwrap_or_default()
+}
 
 fn cdo_props(set: &PakSet, pkg_path: &str) -> Option<Value> {
     let d = PackageData::load(set, pkg_path).ok()?;
@@ -34,33 +54,65 @@ fn super_of(set: &PakSet, pkg_path: &str) -> Option<String> {
     let d = PackageData::load(set, pkg_path).ok()?;
     let pkg = d.package().ok()?;
     let j = fn_uasset::classes::package_classes_json(&pkg);
-    let list = if j.is_array() { j.as_array().unwrap().clone() } else { vec![j] };
-    list.iter().find(|c| c["kind"] == "class").and_then(|c| c["super"].as_str().map(|s| s.to_string()))
+    let list = if j.is_array() {
+        j.as_array().unwrap().clone()
+    } else {
+        vec![j]
+    };
+    list.iter()
+        .find(|c| c["kind"] == "class")
+        .and_then(|c| c["super"].as_str().map(|s| s.to_string()))
 }
 /// Package part of an object path (`/Game/a/b.b_C` -> `/Game/a/b`).
-fn pkg_of(obj: &str) -> &str { obj.split('.').next().unwrap() }
+fn pkg_of(obj: &str) -> &str {
+    obj.split('.').next().unwrap()
+}
 
 /// The `WeaponCoreAnimation` an actor class resolves to: the first Blueprint CDO in its super chain that serializes the property.
 /// `AFortWeapon::WeaponCoreAnimation` (UPROPERTY at +0xA80) as the 1.8 exe constructors initialise it (static read of decomp `AFortWeapon__AFortWeapon`: writes 0 = Melee;
 /// `AFortWeaponRanged__AFortWeaponRanged`: writes 1 = Pistol; the building / editing tool constructors do not touch +0xA80, so they keep Melee). Blueprint CDOs only serialize it when it differs.
 fn native_default(class: &str) -> String {
-    match class { "/Script/FortniteGame.FortWeaponRanged" => "Pistol", "/Script/FortniteGame.FortWeapon" | "/Script/FortniteGame.FortWeap_BuildingTool" | "/Script/FortniteGame.FortWeap_EditingTool" => "Melee", _ => "" }.to_string()
+    match class {
+        "/Script/FortniteGame.FortWeaponRanged" => "Pistol",
+        "/Script/FortniteGame.FortWeapon"
+        | "/Script/FortniteGame.FortWeap_BuildingTool"
+        | "/Script/FortniteGame.FortWeap_EditingTool" => "Melee",
+        _ => "",
+    }
+    .to_string()
 }
 /// Returns (core animation, "") when a Blueprint serializes it, else (the native constructor default, the native class the Blueprint chain ends in).
 fn resolve_core(set: &PakSet, actor_class: &str) -> (String, String) {
     let mut path = pkg_of(actor_class).to_string();
     for _ in 0..32 {
-        if let Some(p) = cdo_props(set, &path) { if let Some(c) = p["WeaponCoreAnimation"].as_str() { return (c.rsplit("::").next().unwrap().to_string(), String::new()); } }
-        match super_of(set, &path) { Some(s) if s.starts_with("/Game/") => path = pkg_of(&s).to_string(), Some(s) => return (native_default(&s), s), None => return (String::new(), String::new()) }
+        if let Some(p) = cdo_props(set, &path) {
+            if let Some(c) = p["WeaponCoreAnimation"].as_str() {
+                return (c.rsplit("::").next().unwrap().to_string(), String::new());
+            }
+        }
+        match super_of(set, &path) {
+            Some(s) if s.starts_with("/Game/") => path = pkg_of(&s).to_string(),
+            Some(s) => return (native_default(&s), s),
+            None => return (String::new(), String::new()),
+        }
     }
     (String::new(), String::new())
 }
 
 fn main() {
     let mut root = std::env::var("FN_ROOT").unwrap_or_else(|_| DEFAULT_ROOT.to_string());
-    let mut out_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../fn-animgraph/src/anim_core.rs").to_string();
+    let mut out_path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../fn-animgraph/src/anim_core.rs"
+    )
+    .to_string();
     let mut it = std::env::args().skip(1);
-    while let Some(a) = it.next() { match a.as_str() { "--root" => root = it.next().unwrap(), o => out_path = o.to_string() } }
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--root" => root = it.next().unwrap(),
+            o => out_path = o.to_string(),
+        }
+    }
     let set = PakSet::open_install(&root).unwrap_or_else(|e| panic!("open {root}: {e}"));
     let p = cdo_props(&set, ANIMBP).expect("AnimBP CDO");
 
@@ -71,8 +123,15 @@ fn main() {
     for e in p["CoreAnims_Male"].as_array().expect("CoreAnims_Male") {
         let key = e["key"].as_str().unwrap().rsplit("::").next().unwrap();
         let v = e["value"].as_object().unwrap();
-        let get = |name: &str| -> Value { v.iter().find(|(k, _)| field_base(k) == name).map(|(_, x)| x.clone()).unwrap_or_else(|| panic!("{key}: field {name} missing")) };
-        for k in v.keys() { seen_fields.insert(field_base(k).to_string()); }
+        let get = |name: &str| -> Value {
+            v.iter()
+                .find(|(k, _)| field_base(k) == name)
+                .map(|(_, x)| x.clone())
+                .unwrap_or_else(|| panic!("{key}: field {name} missing"))
+        };
+        for k in v.keys() {
+            seen_fields.insert(field_base(k).to_string());
+        }
         let s = |name: &str| format!("{:?}", short(&get(name)));
         rs += &format!(" ({key:?},CoreAnimSet{{ao_full_body:{},targeting_pose:{},targeting_ao:{},nontargeting_pose:{},nontargeting_ao:{},relaxed_pose:{},relaxed_pose2:{},relaxed_ao:{},jog_additive:{},jog_additive_relaxed:{},jog_additive_relaxed2:{},sprint:{},crouch_targeting_pose:{},crouch_nontargeting_pose:{},crouch_relaxed_pose:{},crouch_walk_additive:{},crouch_jog_additive:{},crouch_jog_additive_relaxed:{},crouch_sprint:{}}}),\n",
             get("ShouldAimOffsetsApplytoFullBody").as_bool().unwrap(), s("TargetingPose"), s("TargetingAimOffset"), s("Non-targetingPose"), s("Non-targetingAimOffset"), s("RelaxedPose"), s("RelaxedPoseLevel2"), s("RelaxedAimOffset"),
@@ -80,10 +139,22 @@ fn main() {
             s("CrouchWalkAdditiveBlendspace"), s("CrouchJogAdditiveBlendspace"), s("CrouchJogAdditiveBlendspaceRelaxed"), s("CrouchSprintAnimation"));
     }
     rs += "];\n";
-    eprintln!("PlayerAnimAssets_Struct fields in the paks: {:?}", seen_fields);
+    eprintln!(
+        "PlayerAnimAssets_Struct fields in the paks: {:?}",
+        seen_fields
+    );
 
     rs += "/// The AnimBP's own `Default*_Male` assets (the fallbacks of the weapon-state selection).\npub static ANIM_DEFAULTS_MALE:&[(&str,&str)]=&[\n";
-    for k in ["DefaultJogAdditive_Male", "DefaultCrouchJogAdditive_Male", "DefaultCrouchWalkAdditive", "DefaultSprint_Male", "DefaultCrouchSprint_Male", "DefaultUpperBodyPose_Male", "DefaultCrouchUpperBodyPose_Male", "DefaultAimOffset"] {
+    for k in [
+        "DefaultJogAdditive_Male",
+        "DefaultCrouchJogAdditive_Male",
+        "DefaultCrouchWalkAdditive",
+        "DefaultSprint_Male",
+        "DefaultCrouchSprint_Male",
+        "DefaultUpperBodyPose_Male",
+        "DefaultCrouchUpperBodyPose_Male",
+        "DefaultAimOffset",
+    ] {
         rs += &format!(" ({k:?},{:?}),\n", short(&p[k]));
     }
     rs += "];\n";
@@ -91,25 +162,55 @@ fn main() {
     // every Athena item definition with a weapon actor class
     let mut rows: Vec<(String, String, String, String)> = vec![];
     let mut files: Vec<String> = vec![];
-    for pat in ["FortniteGame/Content/Athena/Items/Weapons/**/*.uasset", "FortniteGame/Content/Athena/Items/Consumables/**/*.uasset", "FortniteGame/Content/Athena/Items/Traps/**/*.uasset",
-                "FortniteGame/Content/Athena/Items/Schematics/Weapons/**/*.uasset", "FortniteGame/Content/Items/Weapons/BuildingTools/**/*.uasset", "FortniteGame/Content/Athena/Items/Gadgets/**/*.uasset"] {
-        for (_, e) in set.glob(pat) { files.push(e.rel_path().to_string()); }
+    for pat in [
+        "FortniteGame/Content/Athena/Items/Weapons/**/*.uasset",
+        "FortniteGame/Content/Athena/Items/Consumables/**/*.uasset",
+        "FortniteGame/Content/Athena/Items/Traps/**/*.uasset",
+        "FortniteGame/Content/Athena/Items/Schematics/Weapons/**/*.uasset",
+        "FortniteGame/Content/Items/Weapons/BuildingTools/**/*.uasset",
+        "FortniteGame/Content/Athena/Items/Gadgets/**/*.uasset",
+    ] {
+        for (_, e) in set.glob(pat) {
+            files.push(e.rel_path().to_string());
+        }
     }
-    files.sort(); files.dedup();
+    files.sort();
+    files.dedup();
     for f in files {
-        let Ok(d) = PackageData::load(&set, &f) else { continue };
+        let Ok(d) = PackageData::load(&set, &f) else {
+            continue;
+        };
         let Ok(pkg) = d.package() else { continue };
-        let Some(i) = pkg.default_object_export().or_else(|| (0..pkg.exports.len()).find(|&i| pkg.export_class_name(i).ends_with("ItemDefinition"))) else { continue };
-        let Ok(obj) = pkg.read_export(i) else { continue };
+        let Some(i) = pkg.default_object_export().or_else(|| {
+            (0..pkg.exports.len()).find(|&i| pkg.export_class_name(i).ends_with("ItemDefinition"))
+        }) else {
+            continue;
+        };
+        let Ok(obj) = pkg.read_export(i) else {
+            continue;
+        };
         let j = obj.to_json(&pkg);
-        let Some(actor) = j["properties"]["WeaponActorClass"].as_str() else { continue };
-        let name = f.rsplit('/').next().unwrap().trim_end_matches(".uasset").to_string();
+        let Some(actor) = j["properties"]["WeaponActorClass"].as_str() else {
+            continue;
+        };
+        let name = f
+            .rsplit('/')
+            .next()
+            .unwrap()
+            .trim_end_matches(".uasset")
+            .to_string();
         let (core, native) = resolve_core(&set, actor);
         rows.push((name, short(&Value::String(actor.to_string())), core, native));
     }
     rs += "/// Athena (Battle Royale) item definition -> (weapon actor class, `WeaponCoreAnimation` of its Blueprint CDO chain, native class the chain ends in when no Blueprint serializes it: then the core animation is that class\x27s constructor default, see native_default in gen-anim-core.rs).\npub static BR_WEAPON_CORE_ANIM:&[(&str,&str,&str,&str)]=&[\n";
-    for r in &rows { rs += &format!(" ({:?},{:?},{:?},{:?}),\n", r.0, r.1, r.2, r.3); }
+    for r in &rows {
+        rs += &format!(" ({:?},{:?},{:?},{:?}),\n", r.0, r.1, r.2, r.3);
+    }
     rs += "];\n";
     std::fs::write(&out_path, &rs).unwrap_or_else(|e| panic!("write {out_path}: {e}"));
-    println!("wrote {out_path}: {} bytes, {} weapon items", rs.len(), rows.len());
+    println!(
+        "wrote {out_path}: {} bytes, {} weapon items",
+        rs.len(),
+        rows.len()
+    );
 }

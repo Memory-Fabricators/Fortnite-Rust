@@ -33,7 +33,10 @@ fn main() {
                 continue;
             }
         };
-        let c = Ctx { names: &pkg.names, file_version: pkg.summary.file_version };
+        let c = Ctx {
+            names: &pkg.names,
+            file_version: pkg.summary.file_version,
+        };
         for i in 0..pkg.exports.len() {
             *classes.entry(pkg.export_class(i)).or_default() += 1;
             let (s, e) = pkg.export_range(i);
@@ -47,7 +50,12 @@ fn main() {
                     }
                 }
                 Err(err) => {
-                    println!("PROP FAIL {} export {} ({}): {err}", f.display(), i + 1, pkg.export_class(i));
+                    println!(
+                        "PROP FAIL {} export {} ({}): {err}",
+                        f.display(),
+                        i + 1,
+                        pkg.export_class(i)
+                    );
                     bad += 1;
                 }
             }

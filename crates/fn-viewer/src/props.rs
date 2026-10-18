@@ -17,7 +17,11 @@ pub fn prop_vertices(world: &World) -> Vec<PropVertex> {
             let n = prop_normal(p, &tri);
             for v in tri {
                 let w = prop_vertex(p, v);
-                out.push(PropVertex { pos: w.to_array(), normal: n.to_array(), color });
+                out.push(PropVertex {
+                    pos: w.to_array(),
+                    normal: n.to_array(),
+                    color,
+                });
             }
         }
     }
@@ -28,15 +32,27 @@ pub fn prop_vertices(world: &World) -> Vec<PropVertex> {
 /// front of the spawn (x -45..45, z -50..20), keeping a clear 3 m disc around the pawn and the sandbox props; every 7th one is shaking.
 pub fn scatter(n: usize, seed: u32) -> Vec<PropInstance> {
     let mut s = seed.wrapping_mul(2654435761).wrapping_add(12345);
-    let mut rnd = move || { s ^= s << 13; s ^= s >> 17; s ^= s << 5; (s >> 8) as f32 / (1u32 << 24) as f32 };
+    let mut rnd = move || {
+        s ^= s << 13;
+        s ^= s >> 17;
+        s ^= s << 5;
+        (s >> 8) as f32 / (1u32 << 24) as f32
+    };
     let mut out = Vec::with_capacity(n);
     while out.len() < n {
         let (x, z) = (rnd() * 90. - 45., rnd() * 70. - 50.);
         let pos = Vec3::new(x, 0., z);
-        if (pos - Vec3::new(0., 0., 12.)).length() < 3. { continue; }
+        if (pos - Vec3::new(0., 0., 12.)).length() < 3. {
+            continue;
+        }
         let kind = if rnd() < 0.67 { Kind::Tree } else { Kind::Rock };
         let k = out.len();
-        out.push(PropInstance::new(kind, pos).with_yaw(rnd() * std::f32::consts::TAU).with_scale(0.8 + rnd() * 0.5).with_shake(if k % 7 == 0 { 0.2 } else { 0. }));
+        out.push(
+            PropInstance::new(kind, pos)
+                .with_yaw(rnd() * std::f32::consts::TAU)
+                .with_scale(0.8 + rnd() * 0.5)
+                .with_shake(if k % 7 == 0 { 0.2 } else { 0. }),
+        );
     }
     out
 }
@@ -50,7 +66,9 @@ mod tests {
         let v = prop_vertices(&w);
         assert_eq!(v.len() % 3, 0);
         assert!(v.len() > 3 * 16 * 3);
-        assert!(v.iter().all(|p| (glam::Vec3::from(p.normal).length() - 1.).abs() < 1e-4));
+        assert!(v
+            .iter()
+            .all(|p| (glam::Vec3::from(p.normal).length() - 1.).abs() < 1e-4));
     }
     #[test]
     fn instances_reproduce_the_reference_expansion() {
@@ -59,7 +77,12 @@ mod tests {
         let want = prop_vertices(&w);
         let got = fn_render::PropTemplates::default().build(&PropInstance::from_world(&w));
         assert_eq!(got.len(), want.len());
-        assert!(got.iter().zip(&want).all(|(a, b)| (0..3).all(|k| (a.pos[k] - b.pos[k]).abs() < 1e-5 && (a.normal[k] - b.normal[k]).abs() < 1e-5)));
+        assert!(got
+            .iter()
+            .zip(&want)
+            .all(|(a, b)| (0..3)
+                .all(|k| (a.pos[k] - b.pos[k]).abs() < 1e-5
+                    && (a.normal[k] - b.normal[k]).abs() < 1e-5)));
     }
     #[test]
     fn scatter_is_deterministic_and_counts_match() {
@@ -67,6 +90,9 @@ mod tests {
         assert_ne!(scatter(50, 1), scatter(50, 2));
         assert_eq!(scatter(50, 1).len(), 50);
         assert!(scatter(0, 1).is_empty());
-        assert!(scatter(50, 1).iter().any(|p| p.kind == Kind::Rock) && scatter(50, 1).iter().any(|p| p.shake > 0.));
+        assert!(
+            scatter(50, 1).iter().any(|p| p.kind == Kind::Rock)
+                && scatter(50, 1).iter().any(|p| p.shake > 0.)
+        );
     }
 }

@@ -13,10 +13,20 @@ pub struct Image {
 }
 
 impl Image {
-    pub fn new(w: usize, h: usize) -> Self { Image { w, h, px: vec![[0.0; 4]; w * h] } }
+    pub fn new(w: usize, h: usize) -> Self {
+        Image {
+            w,
+            h,
+            px: vec![[0.0; 4]; w * h],
+        }
+    }
     pub fn from_fn(w: usize, h: usize, mut f: impl FnMut(usize, usize) -> [f32; 4]) -> Self {
         let mut im = Image::new(w, h);
-        for y in 0..h { for x in 0..w { im.px[y * w + x] = f(x, y); } }
+        for y in 0..h {
+            for x in 0..w {
+                im.px[y * w + x] = f(x, y);
+            }
+        }
         im
     }
     pub fn load(&self, x: i32, y: i32) -> [f32; 4] {
@@ -25,7 +35,12 @@ impl Image {
         self.px[yi * self.w + xi]
     }
     /// Nearest texel for a uv in [0,1] (what `textureLoad(floor(uv * size))` does).
-    pub fn point(&self, u: f32, v: f32) -> [f32; 4] { self.load((u * self.w as f32).floor() as i32, (v * self.h as f32).floor() as i32) }
+    pub fn point(&self, u: f32, v: f32) -> [f32; 4] {
+        self.load(
+            (u * self.w as f32).floor() as i32,
+            (v * self.h as f32).floor() as i32,
+        )
+    }
     /// Bilinear, clamp to edge, texel centres at +0.5.
     pub fn sample(&self, u: f32, v: f32) -> [f32; 4] {
         let x = u * self.w as f32 - 0.5;
@@ -46,14 +61,24 @@ impl Image {
         o
     }
     /// Round every channel to f16 (the render targets are `Rgba16Float`).
-    pub fn quantize_f16(&mut self) { for p in &mut self.px { for c in p.iter_mut() { *c = round_f16(*c); } } }
+    pub fn quantize_f16(&mut self) {
+        for p in &mut self.px {
+            for c in p.iter_mut() {
+                *c = round_f16(*c);
+            }
+        }
+    }
 }
 
 /// Round to the nearest representable f16 (ties to even), returned as f32.
 pub fn round_f16(x: f32) -> f32 {
-    if !x.is_finite() { return x; }
+    if !x.is_finite() {
+        return x;
+    }
     let a = x.abs();
-    if a >= 65520.0 { return f32::INFINITY.copysign(x); }
+    if a >= 65520.0 {
+        return f32::INFINITY.copysign(x);
+    }
     if a < 6.103515625e-5 {
         // subnormal f16: multiples of 2^-24
         let q = (a * 16777216.0).round_ties_even() / 16777216.0;
@@ -64,7 +89,13 @@ pub fn round_f16(x: f32) -> f32 {
     ((a / ulp).round_ties_even() * ulp).copysign(x)
 }
 
-pub fn sat(x: f32) -> f32 { if x.is_nan() { 0.0 } else { x.clamp(0.0, 1.0) } }
+pub fn sat(x: f32) -> f32 {
+    if x.is_nan() {
+        0.0
+    } else {
+        x.clamp(0.0, 1.0)
+    }
+}
 
 // ------------------------------------------------------------------------------------------------------------------------------
 // Gaussian taps (ASSUMED host maths of FRCPassPostProcessWeightedSampleSum, see README "Recalled, not recovered")
@@ -92,24 +123,41 @@ pub fn gaussian_taps(radius: f32) -> Vec<[f32; 2]> {
         }
         i += 2;
     }
-    for t in &mut taps { t[1] /= sum; }
+    for t in &mut taps {
+        t[1] /= sum;
+    }
     taps
 }
 
 /// One separable pass: `out = sum w * sample(src, uv + off * dir) * tint (+ prev)`; `dir` is in texels of `src` (target and source have the same size).
-pub fn blur_pass(src: &Image, taps: &[[f32; 2]], dir: [f32; 2], tint: [f32; 4], prev: Option<&Image>) -> Image {
+pub fn blur_pass(
+    src: &Image,
+    taps: &[[f32; 2]],
+    dir: [f32; 2],
+    tint: [f32; 4],
+    prev: Option<&Image>,
+) -> Image {
     Image::from_fn(src.w, src.h, |x, y| {
         let u = (x as f32 + 0.5) / src.w as f32;
         let v = (y as f32 + 0.5) / src.h as f32;
         let mut acc = [0.0f32; 4];
         for t in taps {
-            let s = src.sample(u + dir[0] * t[0] / src.w as f32, v + dir[1] * t[0] / src.h as f32);
-            for c in 0..4 { acc[c] += s[c] * t[1]; }
+            let s = src.sample(
+                u + dir[0] * t[0] / src.w as f32,
+                v + dir[1] * t[0] / src.h as f32,
+            );
+            for c in 0..4 {
+                acc[c] += s[c] * t[1];
+            }
         }
-        for c in 0..4 { acc[c] *= tint[c]; }
+        for c in 0..4 {
+            acc[c] *= tint[c];
+        }
         if let Some(p) = prev {
             let s = p.sample(u, v);
-            for c in 0..4 { acc[c] += s[c]; }
+            for c in 0..4 {
+                acc[c] += s[c];
+            }
         }
         acc
     })
@@ -120,7 +168,9 @@ pub fn blur_pass(src: &Image, taps: &[[f32; 2]], dir: [f32; 2], tint: [f32; 4], 
 // ------------------------------------------------------------------------------------------------------------------------------
 
 /// Half-resolution size used by the setup/blur buffers.
-pub fn half(n: usize) -> usize { n.div_ceil(2).max(1) }
+pub fn half(n: usize) -> usize {
+    n.div_ceil(2).max(1)
+}
 
 pub struct DofUniforms {
     pub depth: DepthTransform,
@@ -137,13 +187,21 @@ impl DofUniforms {
             depth: p.depth,
             focal_plus_region: p.dof.focal_distance + p.dof.focal_region,
             far_transition: p.dof.far_transition.max(1.0e-4),
-            sky_distance: if p.dof.sky_focus_distance > 0.0 { p.dof.sky_focus_distance } else { 1.0e30 },
+            sky_distance: if p.dof.sky_focus_distance > 0.0 {
+                p.dof.sky_focus_distance
+            } else {
+                1.0e30
+            },
             cm_per_unit: p.cm_per_unit,
             rows: p.view.screen_to_world_rows,
         }
     }
-    fn lin_cm(&self, d: f32) -> f32 { self.depth.linearize(d) * self.cm_per_unit }
-    fn far_coc(&self, lin: f32) -> f32 { sat((lin - self.focal_plus_region) / self.far_transition) }
+    fn lin_cm(&self, d: f32) -> f32 {
+        self.depth.linearize(d) * self.cm_per_unit
+    }
+    fn far_coc(&self, lin: f32) -> f32 {
+        sat((lin - self.focal_plus_region) / self.far_transition)
+    }
 }
 
 /// FPostProcessDOFSetupPS10: half-res far layer (premultiplied colour, coverage in alpha) from full-res colour + depth (`.x` of `depth`).
@@ -153,18 +211,29 @@ pub fn dof_setup_far(depth: &Image, color: &Image, u: &DofUniforms) -> Image {
         let uv = [(x as f32 + 0.5) / ow as f32, (y as f32 + 0.5) / oh as f32];
         let scr = [uv[0] * 2.0 - 1.0, -(uv[1] * 2.0 - 1.0)];
         let mut ray = [0.0f32; 3];
-        for i in 0..3 { ray[i] = scr[0] * u.rows[0][i] + scr[1] * u.rows[1][i] + u.rows[2][i]; }
+        for i in 0..3 {
+            ray[i] = scr[0] * u.rows[0][i] + scr[1] * u.rows[1][i] + u.rows[2][i];
+        }
         let s = sat(3.0 * ray[2] / (ray[0] * ray[0] + ray[1] * ray[1] + ray[2] * ray[2]).sqrt());
         let bx = (uv[0] * depth.w as f32 - 0.5).floor() as i32;
         let by = (uv[1] * depth.h as f32 - 0.5).floor() as i32;
-        let d = [depth.load(bx, by + 1)[0], depth.load(bx + 1, by + 1)[0], depth.load(bx + 1, by)[0], depth.load(bx, by)[0]];
+        let d = [
+            depth.load(bx, by + 1)[0],
+            depth.load(bx + 1, by + 1)[0],
+            depth.load(bx + 1, by)[0],
+            depth.load(bx, by)[0],
+        ];
         let offs = [[-0.5, 0.5], [0.5, 0.5], [0.5, -0.5], [-0.5, -0.5]];
         let (tx, ty) = (1.0 / color.w as f32, 1.0 / color.h as f32);
         let mut acc = [0.0f32; 4];
         for i in 0..4 {
             let lin = u.lin_cm(d[i]);
             let far = u.far_coc(lin);
-            let w = if u.sky_distance < lin { far * (1.0 - s) } else { far };
+            let w = if u.sky_distance < lin {
+                far * (1.0 - s)
+            } else {
+                far
+            };
             let c = color.sample(uv[0] + offs[i][0] * tx, uv[1] + offs[i][1] * ty);
             acc[0] += c[0] * w;
             acc[1] += c[1] * w;
@@ -180,7 +249,10 @@ pub fn dof_recombine_far(depth: &Image, color: &Image, far: &Image, u: &DofUnifo
     let (fw, fh) = (far.w as f32, far.h as f32);
     let rect = [0.5 / fw, 0.5 / fh, 1.0 - 0.5 / fw, 1.0 - 0.5 / fh];
     Image::from_fn(color.w, color.h, |x, y| {
-        let uv = [(x as f32 + 0.5) / color.w as f32, (y as f32 + 0.5) / color.h as f32];
+        let uv = [
+            (x as f32 + 0.5) / color.w as f32,
+            (y as f32 + 0.5) / color.h as f32,
+        ];
         let lin = u.lin_cm(depth.load(x as i32, y as i32)[0]);
         let col = color.sample(uv[0], uv[1]);
         let far_c = u.far_coc(lin);
@@ -203,18 +275,26 @@ pub fn dof_recombine_far(depth: &Image, color: &Image, far: &Image, u: &DofUnifo
 pub fn dof_far_full(depth: &Image, color: &Image, p: &PostFxParams, quantize: bool) -> Image {
     let u = DofUniforms::new(p);
     let mut setup = dof_setup_far(depth, color, &u);
-    if quantize { setup.quantize_f16(); }
+    if quantize {
+        setup.quantize_f16();
+    }
     let radius = dof_blur_radius(p.dof.far_blur_size, setup.w);
     let taps = gaussian_taps(radius);
     let mut h = blur_pass(&setup, &taps, [1.0, 0.0], [1.0; 4], None);
-    if quantize { h.quantize_f16(); }
+    if quantize {
+        h.quantize_f16();
+    }
     let mut v = blur_pass(&h, &taps, [0.0, 1.0], [1.0; 4], None);
-    if quantize { v.quantize_f16(); }
+    if quantize {
+        v.quantize_f16();
+    }
     dof_recombine_far(depth, color, &v, &u)
 }
 
 /// Kernel radius (texels of the half-res buffer) of a DOF blur of `size_percent` of the view width (ASSUMED: percent of the buffer width).
-pub fn dof_blur_radius(size_percent: f32, buffer_width: usize) -> f32 { size_percent * 0.01 * buffer_width as f32 }
+pub fn dof_blur_radius(size_percent: f32, buffer_width: usize) -> f32 {
+    size_percent * 0.01 * buffer_width as f32
+}
 
 // ------------------------------------------------------------------------------------------------------------------------------
 // Motion blur
@@ -253,20 +333,30 @@ impl MbUniforms {
             clip_to_prev: p.view.clip_to_prev_clip,
         }
     }
-    pub fn tiles(&self) -> (usize, usize) { (self.width.div_ceil(TILE), self.height.div_ceil(TILE)) }
+    pub fn tiles(&self) -> (usize, usize) {
+        (self.width.div_ceil(TILE), self.height.div_ceil(TILE))
+    }
 }
 
 fn atan2_fast(y: f32, x: f32) -> f32 {
     let (ax, ay) = (x.abs(), y.abs());
     let (mx, mn) = (ax.max(ay), ax.min(ay));
-    if mx == 0.0 { return 0.0; }
+    if mx == 0.0 {
+        return 0.0;
+    }
     let a = mn / mx;
     let a2 = a * a;
     let p = (a2 * 0.087293 - 0.301895) * a2 + 1.0;
     let mut r = a * p;
-    if ax < ay { r = 1.570796 - p * a; }
-    if x < 0.0 { r = 3.141593 - r; }
-    if y < 0.0 { r = -r; }
+    if ax < ay {
+        r = 1.570796 - p * a;
+    }
+    if x < 0.0 {
+        r = 3.141593 - r;
+    }
+    if y < 0.0 {
+        r = -r;
+    }
     r
 }
 
@@ -291,20 +381,33 @@ pub fn velocity_flatten(velocity: Option<&Image>, depth: &Image, u: &MbUniforms)
                     let li = ly * TILE + lx;
                     let inside = x < w && y < h;
                     let dev_z = depth.load(x as i32, y as i32)[0];
-                    let venc = velocity.map(|v| v.load(x as i32, y as i32)).unwrap_or([0.0; 4]);
+                    let venc = velocity
+                        .map(|v| v.load(x as i32, y as i32))
+                        .unwrap_or([0.0; 4]);
                     let written = venc[3] > 0.5;
                     let uv = [(x as f32 + 0.5) / w as f32, (y as f32 + 0.5) / h as f32];
                     let cur = glam::Vec4::new(uv[0] * 2.0 - 1.0, 1.0 - uv[1] * 2.0, dev_z, 1.0);
                     let prev = u.clip_to_prev * cur;
-                    let vcam = if prev.w.abs() > 1e-6 { [cur.x - prev.x / prev.w, cur.y - prev.y / prev.w] } else { [0.0, 0.0] };
+                    let vcam = if prev.w.abs() > 1e-6 {
+                        [cur.x - prev.x / prev.w, cur.y - prev.y / prev.w]
+                    } else {
+                        [0.0, 0.0]
+                    };
                     let v = if written { [venc[0], venc[1]] } else { vcam };
                     let vy = v[1] * -u.aspect;
                     let len = (v[0] * v[0] + vy * vy).sqrt();
                     let ang = atan2_fast(vy, v[0]);
                     let lin = u.depth.linearize(dev_z) * u.cm_per_unit;
-                    if inside { flat.px[y * w + x] = [len, ang * 0.159155 + 0.5, lin, lin]; }
+                    if inside {
+                        flat.px[y * w + x] = [len, ang * 0.159155 + 0.5, lin, lin];
+                    }
                     let lc = (u.max_px / u.scale).min(len);
-                    g0[li] = [if inside { lc } else { 2.0 }, ang, if inside { lc } else { 0.0 }, ang];
+                    g0[li] = [
+                        if inside { lc } else { 2.0 },
+                        ang,
+                        if inside { lc } else { 0.0 },
+                        ang,
+                    ];
                 }
             }
             let mut s = 128;
@@ -312,15 +415,28 @@ pub fn velocity_flatten(velocity: Option<&Image>, depth: &Image, u: &MbUniforms)
                 let mut next = g0;
                 for li in 0..s {
                     let (a, b) = (g0[li], g0[li + s]);
-                    let mn = if a[0] < b[0] { [a[0], a[1]] } else { [b[0], b[1]] };
-                    let mx = if b[2] < a[2] { [a[2], a[3]] } else { [b[2], b[3]] };
+                    let mn = if a[0] < b[0] {
+                        [a[0], a[1]]
+                    } else {
+                        [b[0], b[1]]
+                    };
+                    let mx = if b[2] < a[2] {
+                        [a[2], a[3]]
+                    } else {
+                        [b[2], b[3]]
+                    };
                     next[li] = [mn[0], mn[1], mx[0], mx[1]];
                 }
                 g0 = next;
                 s >>= 1;
             }
             let r = g0[0];
-            tiles.px[ty * tw + tx] = [r[0] * r[1].cos(), r[0] * r[1].sin(), r[2] * r[3].cos(), r[2] * r[3].sin()];
+            tiles.px[ty * tw + tx] = [
+                r[0] * r[1].cos(),
+                r[0] * r[1].sin(),
+                r[2] * r[3].cos(),
+                r[2] * r[3].sin(),
+            ];
         }
     }
     Flattened { flat, tiles }
@@ -335,9 +451,13 @@ pub fn velocity_gather(tiles: &Image, u: &MbUniforms) -> Image {
         let mut acc = tiles.load(x, y);
         for ox in -3i32..=3 {
             for oy in -3i32..=3 {
-                if ox == 0 && oy == 0 { continue; }
+                if ox == 0 && oy == 0 {
+                    continue;
+                }
                 let (nx, ny) = (x + ox, y + oy);
-                if nx < 0 || ny < 0 || nx >= gw || ny >= gh { continue; }
+                if nx < 0 || ny < 0 || nx >= gw || ny >= gh {
+                    continue;
+                }
                 let n = tiles.load(nx, ny);
                 let v = [n[2] * tile_scale, n[3] * tile_scale];
                 let d2 = v[0] * v[0] + v[1] * v[1];
@@ -350,9 +470,19 @@ pub fn velocity_gather(tiles: &Image, u: &MbUniforms) -> Image {
                 let perp = -nrm[1] * d[0] + nrm[0] * d[1];
                 let reach = along.abs() < thr[0] && perp.abs() < thr[1];
                 let dot = |a: [f32; 2]| a[0] * a[0] + a[1] * a[1];
-                let mn = if dot([acc[0], acc[1]]) < dot([n[0], n[1]]) { [acc[0], acc[1]] } else { [n[0], n[1]] };
-                let mx = if dot([n[2], n[3]]) < dot([acc[2], acc[3]]) { [n[2], n[3]] } else { [acc[2], acc[3]] };
-                if reach { acc = [mn[0], mn[1], mx[0], mx[1]]; }
+                let mn = if dot([acc[0], acc[1]]) < dot([n[0], n[1]]) {
+                    [acc[0], acc[1]]
+                } else {
+                    [n[0], n[1]]
+                };
+                let mx = if dot([n[2], n[3]]) < dot([acc[2], acc[3]]) {
+                    [n[2], n[3]]
+                } else {
+                    [acc[2], acc[3]]
+                };
+                if reach {
+                    acc = [mn[0], mn[1], mx[0], mx[1]];
+                }
             }
         }
         acc
@@ -360,7 +490,14 @@ pub fn velocity_gather(tiles: &Image, u: &MbUniforms) -> Image {
 }
 
 /// FPostProcessMotionBlurPS<4> for pixel `(px, py)` (integer pixel, `in.pos` = centre).
-pub fn motion_blur_pixel(color: &Image, flat: &Image, tiles: &Image, u: &MbUniforms, px: usize, py: usize) -> [f32; 3] {
+pub fn motion_blur_pixel(
+    color: &Image,
+    flat: &Image,
+    tiles: &Image,
+    u: &MbUniforms,
+    px: usize,
+    py: usize,
+) -> [f32; 3] {
     let fp = [px as f32, py as f32];
     let ign = |p: [f32; 2]| {
         let d = p[0] * 0.06711056 + p[1] * 0.00583715;
@@ -377,20 +514,31 @@ pub fn motion_blur_pixel(color: &Image, flat: &Image, tiles: &Image, u: &MbUnifo
     tc[1] = tc[1].min(u.height as f32);
     let tl = tiles.point(tc[0] / tiles.w as f32, tc[1] / tiles.h as f32);
     let scale = u.scale;
-    let uv = [(px as f32 + 0.5) / u.width as f32, (py as f32 + 0.5) / u.height as f32];
+    let uv = [
+        (px as f32 + 0.5) / u.width as f32,
+        (py as f32 + 0.5) / u.height as f32,
+    ];
     let scr = [uv[0] * 2.0 - 1.0, -(uv[1] * 2.0 - 1.0)];
     let vmax = [tl[2] * scale, tl[3] * scale];
     let m = vmax[0] * vmax[0] + vmax[1] * vmax[1];
     let c0s = color.sample(uv[0], uv[1]);
     let c0 = [c0s[0], c0s[1], c0s[2]];
-    if m < 0.25 { return c0; }
+    if m < 0.25 {
+        return c0;
+    }
     let vmin = [tl[0] * scale, tl[1] * scale];
     let uniform_motion = m * 0.4 < vmin[0] * vmin[0] + vmin[1] * vmin[1];
     let vc = [tl[2] * scale + 0.00001, tl[3] * scale + 0.00001];
     let rc = [1.0 / vc[0], 1.0 / vc[1]];
     let e = u.edge;
-    let tp = [rc[0] * e - rc[0] * e * scr[0], rc[1] * e - rc[1] * e * scr[1]];
-    let tn = [-(rc[0] * e) - rc[0] * e * scr[0], -(rc[1] * e) - rc[1] * e * scr[1]];
+    let tp = [
+        rc[0] * e - rc[0] * e * scr[0],
+        rc[1] * e - rc[1] * e * scr[1],
+    ];
+    let tn = [
+        -(rc[0] * e) - rc[0] * e * scr[0],
+        -(rc[1] * e) - rc[1] * e * scr[1],
+    ];
     let fwd = [tp[0].max(tn[0]), tp[1].max(tn[1])];
     let bwd = [(-tp[0]).max(-tn[0]), (-tp[1]).max(-tn[1])];
     let cl_pos = sat(fwd[1].min(fwd[0]));
@@ -407,7 +555,9 @@ pub fn motion_blur_pixel(color: &Image, flat: &Image, tiles: &Image, u: &MbUnifo
             for (t, v) in [(a, vpos), (b, vneg)] {
                 let p = at(t, v);
                 let s = color.sample(p[0], p[1]);
-                for i in 0..3 { acc[i] += s[i]; }
+                for i in 0..3 {
+                    acc[i] += s[i];
+                }
             }
         }
         return [acc[0] * 0.0625, acc[1] * 0.0625, acc[2] * 0.0625];
@@ -439,14 +589,25 @@ pub fn motion_blur_pixel(color: &Image, flat: &Image, tiles: &Image, u: &MbUnifo
         let c2 = fb[2] < fa[2];
         let wa2 = if c1 && c2 { wb } else { wa };
         let wb2 = if c1 || c2 { wb } else { wa };
-        for i in 0..3 { acc[i] += ca[i] * wa2 + cb[i] * wb2; }
+        for i in 0..3 {
+            acc[i] += ca[i] * wa2 + cb[i] * wb2;
+        }
         acc[3] += wa2 + wb2;
     }
     let keep = 1.0 - acc[3] * 0.0625;
-    [acc[0] * 0.0625 + c0[0] * keep, acc[1] * 0.0625 + c0[1] * keep, acc[2] * 0.0625 + c0[2] * keep]
+    [
+        acc[0] * 0.0625 + c0[0] * keep,
+        acc[1] * 0.0625 + c0[1] * keep,
+        acc[2] * 0.0625 + c0[2] * keep,
+    ]
 }
 
-pub fn motion_blur_full(color: &Image, velocity: Option<&Image>, depth: &Image, u: &MbUniforms) -> Image {
+pub fn motion_blur_full(
+    color: &Image,
+    velocity: Option<&Image>,
+    depth: &Image,
+    u: &MbUniforms,
+) -> Image {
     let fl = velocity_flatten(velocity, depth, u);
     let tiles = velocity_gather(&fl.tiles, u);
     Image::from_fn(u.width, u.height, |x, y| {
@@ -478,9 +639,15 @@ mod tests {
 
     #[test]
     fn f16_rounding_matches_hardware_conversion() {
-        for &x in &[0.0f32, 1.0, 0.1, 3.14159, 65504.0, 1e-5, 6.1e-5, -2.5, 1234.5678] {
+        for &x in &[
+            0.0f32, 1.0, 0.1, 3.14159, 65504.0, 1e-5, 6.1e-5, -2.5, 1234.5678,
+        ] {
             let bits = crate::harness::f32_to_f16_bits(x);
-            assert_eq!(round_f16(x), crate::harness::f16_bits_to_f32(bits), "x = {x}");
+            assert_eq!(
+                round_f16(x),
+                crate::harness::f16_bits_to_f32(bits),
+                "x = {x}"
+            );
         }
     }
 
@@ -532,14 +699,20 @@ pub fn downsample(src: &Image) -> Image {
         let c = src.sample(uv[0] - ox, uv[1] + oy);
         let d = src.sample(uv[0] + ox, uv[1] + oy);
         let mut o = [0.0f32; 4];
-        for i in 0..4 { o[i] = (a[i] + b[i] + c[i] + d[i]) * 0.25; }
-        for i in 0..3 { o[i] = o[i].max(0.0); }
+        for i in 0..4 {
+            o[i] = (a[i] + b[i] + c[i] + d[i]) * 0.25;
+        }
+        for i in 0..3 {
+            o[i] = o[i].max(0.0);
+        }
         o
     })
 }
 
 /// Blur radius (texels) of bloom level `level` (0 = first blurred level, half-res): `size% * 0.01 * level width * size_scale` (ASSUMED law).
-pub fn bloom_level_radius(b: &BloomParams, level: usize, level_width: usize) -> f32 { b.sizes[level] * 0.01 * level_width as f32 * b.size_scale }
+pub fn bloom_level_radius(b: &BloomParams, level: usize, level_width: usize) -> f32 {
+    b.sizes[level] * 0.01 * level_width as f32 * b.size_scale
+}
 
 /// Whole bloom chain: setup (half) -> downsample to level k -> Gaussian H+V with tint -> accumulate from the smallest level up.
 /// Returns the half-res bloom image (RGB already includes the tints; the tonemapper multiplies by `BloomIntensity`).
@@ -547,29 +720,57 @@ pub fn bloom_chain(scene: &Image, p: &PostFxParams, quantize: bool) -> Image {
     let b = &p.bloom;
     let mut levels: Vec<Image> = Vec::new();
     let mut cur = bloom_setup(scene, p.exposure, b.threshold);
-    if quantize { cur.quantize_f16(); }
+    if quantize {
+        cur.quantize_f16();
+    }
     levels.push(cur.clone());
     for _ in 1..6 {
         cur = downsample(&cur);
-        if quantize { cur.quantize_f16(); }
+        if quantize {
+            cur.quantize_f16();
+        }
         levels.push(cur.clone());
     }
     let mut acc: Option<Image> = None;
     for k in (0..6).rev() {
         let tint = b.tints[k];
-        if tint[0] == 0.0 && tint[1] == 0.0 && tint[2] == 0.0 || b.sizes[k] <= 0.0 { continue; }
+        if tint[0] == 0.0 && tint[1] == 0.0 && tint[2] == 0.0 || b.sizes[k] <= 0.0 {
+            continue;
+        }
         let src = &levels[k];
         let taps = gaussian_taps(bloom_level_radius(b, k, src.w));
         let mut h = blur_pass(src, &taps, [1.0, 0.0], [1.0; 4], None);
-        if quantize { h.quantize_f16(); }
-        let prev_up = acc.as_ref().map(|a| Image::from_fn(src.w, src.h, |x, y| a.sample((x as f32 + 0.5) / src.w as f32, (y as f32 + 0.5) / src.h as f32)));
-        let mut v = blur_pass(&h, &taps, [0.0, 1.0], [tint[0], tint[1], tint[2], 1.0], prev_up.as_ref());
-        if quantize { v.quantize_f16(); }
+        if quantize {
+            h.quantize_f16();
+        }
+        let prev_up = acc.as_ref().map(|a| {
+            Image::from_fn(src.w, src.h, |x, y| {
+                a.sample(
+                    (x as f32 + 0.5) / src.w as f32,
+                    (y as f32 + 0.5) / src.h as f32,
+                )
+            })
+        });
+        let mut v = blur_pass(
+            &h,
+            &taps,
+            [0.0, 1.0],
+            [tint[0], tint[1], tint[2], 1.0],
+            prev_up.as_ref(),
+        );
+        if quantize {
+            v.quantize_f16();
+        }
         acc = Some(v);
     }
     // bring to level 0 size
     match acc {
-        Some(a) => Image::from_fn(levels[0].w, levels[0].h, |x, y| a.sample((x as f32 + 0.5) / levels[0].w as f32, (y as f32 + 0.5) / levels[0].h as f32)),
+        Some(a) => Image::from_fn(levels[0].w, levels[0].h, |x, y| {
+            a.sample(
+                (x as f32 + 0.5) / levels[0].w as f32,
+                (y as f32 + 0.5) / levels[0].h as f32,
+            )
+        }),
         None => Image::new(levels[0].w, levels[0].h),
     }
 }

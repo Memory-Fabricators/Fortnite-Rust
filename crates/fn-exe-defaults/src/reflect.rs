@@ -30,9 +30,15 @@ pub fn props_in(pe: &Pe, fb: u32, fe: u32) -> Vec<Prop> {
     let mut i = 0;
     while i < ins.len() {
         let it = &ins[i];
-        if it.mnemonic() == Mnemonic::Lea && it.op0_register() == Register::RDX && it.is_ip_rel_memory_operand() {
+        if it.mnemonic() == Mnemonic::Lea
+            && it.op0_register() == Register::RDX
+            && it.is_ip_rel_memory_operand()
+        {
             let t = (it.ip_rel_memory_address() - pe.image_base) as u32;
-            let name = pe.rva_to_off(t).map(|o| pe.utf16_at_off(o)).unwrap_or_default();
+            let name = pe
+                .rva_to_off(t)
+                .map(|o| pe.utf16_at_off(o))
+                .unwrap_or_default();
             if name.len() >= 2 && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
                 // scan forward for the property-ctor sequence, stopping at the next name-looking lea rdx
                 let mut obj_size = None;
@@ -41,19 +47,57 @@ pub fn props_in(pe: &Pe, fb: u32, fe: u32) -> Vec<Prop> {
                 let mut found = None;
                 while j < ins.len() && j < i + 60 {
                     let c = &ins[j];
-                    if c.mnemonic() == Mnemonic::Lea && c.op0_register() == Register::RDX && c.is_ip_rel_memory_operand() {
+                    if c.mnemonic() == Mnemonic::Lea
+                        && c.op0_register() == Register::RDX
+                        && c.is_ip_rel_memory_operand()
+                    {
                         let tt = (c.ip_rel_memory_address() - pe.image_base) as u32;
-                        let nn = pe.rva_to_off(tt).map(|o| pe.utf16_at_off(o)).unwrap_or_default();
-                        if nn.len() >= 2 { break; }
+                        let nn = pe
+                            .rva_to_off(tt)
+                            .map(|o| pe.utf16_at_off(o))
+                            .unwrap_or_default();
+                        if nn.len() >= 2 {
+                            break;
+                        }
                     }
-                    if c.mnemonic() == Mnemonic::Mov && c.op0_kind() == OpKind::Register && c.op0_register() == Register::ECX && matches!(c.op1_kind(), OpKind::Immediate32) { obj_size = Some(c.immediate(1) as u32); }
-                    if c.mnemonic() == Mnemonic::Mov && c.op0_kind() == OpKind::Register && c.op0_register() == Register::RCX && matches!(c.op1_kind(), OpKind::Immediate64 | OpKind::Immediate32to64) { flags = Some(c.immediate(1)); }
-                    if c.mnemonic() == Mnemonic::Mov && c.op0_kind() == OpKind::Register && c.op0_register() == Register::R9D && matches!(c.op1_kind(), OpKind::Immediate32) {
+                    if c.mnemonic() == Mnemonic::Mov
+                        && c.op0_kind() == OpKind::Register
+                        && c.op0_register() == Register::ECX
+                        && matches!(c.op1_kind(), OpKind::Immediate32)
+                    {
+                        obj_size = Some(c.immediate(1) as u32);
+                    }
+                    if c.mnemonic() == Mnemonic::Mov
+                        && c.op0_kind() == OpKind::Register
+                        && c.op0_register() == Register::RCX
+                        && matches!(c.op1_kind(), OpKind::Immediate64 | OpKind::Immediate32to64)
+                    {
+                        flags = Some(c.immediate(1));
+                    }
+                    if c.mnemonic() == Mnemonic::Mov
+                        && c.op0_kind() == OpKind::Register
+                        && c.op0_register() == Register::R9D
+                        && matches!(c.op1_kind(), OpKind::Immediate32)
+                    {
                         found = Some(c.immediate(1) as u32);
                         // ctor call target: next direct call
                         let mut tgt = None;
-                        for k in j + 1..(j + 8).min(ins.len()) { if ins[k].mnemonic() == Mnemonic::Call && ins[k].op0_kind() == OpKind::NearBranch64 { tgt = Some((ins[k].near_branch_target() - pe.image_base) as u32); break; } }
-                        out.push(Prop { name: name.clone(), offset: found.unwrap(), obj_size, flags, ctor_target: tgt, lea_rva: rva_of(pe, it) });
+                        for k in j + 1..(j + 8).min(ins.len()) {
+                            if ins[k].mnemonic() == Mnemonic::Call
+                                && ins[k].op0_kind() == OpKind::NearBranch64
+                            {
+                                tgt = Some((ins[k].near_branch_target() - pe.image_base) as u32);
+                                break;
+                            }
+                        }
+                        out.push(Prop {
+                            name: name.clone(),
+                            offset: found.unwrap(),
+                            obj_size,
+                            flags,
+                            ctor_target: tgt,
+                            lea_rva: rva_of(pe, it),
+                        });
                         break;
                     }
                     j += 1;

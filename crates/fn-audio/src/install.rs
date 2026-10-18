@@ -27,13 +27,20 @@ pub fn to_pak_asset_path(p: &str) -> String {
 
 /// Read the optional `.ubulk` sibling of a `.uasset` pak path.
 pub fn read_ubulk(set: &PakSet, asset_path: &str) -> Vec<u8> {
-    let stem = asset_path.rsplit_once('.').map(|x| x.0).unwrap_or(asset_path);
-    set.read(&format!("{stem}.ubulk")).map(|c| c.into_owned()).unwrap_or_default()
+    let stem = asset_path
+        .rsplit_once('.')
+        .map(|x| x.0)
+        .unwrap_or(asset_path);
+    set.read(&format!("{stem}.ubulk"))
+        .map(|c| c.into_owned())
+        .unwrap_or_default()
 }
 
 impl Install {
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
-        Ok(Install { paks: PakSet::open_install(path)? })
+        Ok(Install {
+            paks: PakSet::open_install(path)?,
+        })
     }
 
     /// Every effective `.uasset` pak path whose directory looks like audio (`Sounds`, `Audio`).
@@ -43,14 +50,22 @@ impl Install {
             .filter_map(|(_, e)| {
                 let p = e.rel_path();
                 let l = p.to_ascii_lowercase();
-                (l.ends_with(".uasset") && (l.contains("/sound") || l.contains("/audio"))).then(|| p.to_owned())
+                (l.ends_with(".uasset") && (l.contains("/sound") || l.contains("/audio")))
+                    .then(|| p.to_owned())
             })
             .collect()
     }
 
     /// Every `.uasset` pak path (for whole-install sweeps).
     pub fn all_asset_paths(&self) -> Vec<String> {
-        self.paks.effective().filter_map(|(_, e)| e.rel_path().ends_with(".uasset").then(|| e.rel_path().to_owned())).collect()
+        self.paks
+            .effective()
+            .filter_map(|(_, e)| {
+                e.rel_path()
+                    .ends_with(".uasset")
+                    .then(|| e.rel_path().to_owned())
+            })
+            .collect()
     }
 
     /// Parse the (first) `SoundWave` export of a package.
@@ -58,7 +73,13 @@ impl Install {
         let ap = to_pak_asset_path(path);
         let data = PackageData::load(&self.paks, &ap)?;
         let pkg = data.package()?;
-        let idx = pkg.exports_of_class("SoundWave").next().ok_or_else(|| AudioError::Malformed { what: "package", detail: format!("{ap} has no SoundWave export") })?;
+        let idx =
+            pkg.exports_of_class("SoundWave")
+                .next()
+                .ok_or_else(|| AudioError::Malformed {
+                    what: "package",
+                    detail: format!("{ap} has no SoundWave export"),
+                })?;
         let ub = read_ubulk(&self.paks, &ap);
         parse_soundwave(&pkg, idx, &ub)
     }

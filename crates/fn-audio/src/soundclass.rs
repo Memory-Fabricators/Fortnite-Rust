@@ -1,4 +1,4 @@
-﻿//! `USoundClass` hierarchy and `USoundMix` assets.
+//! `USoundClass` hierarchy and `USoundMix` assets.
 //!
 //! Recovered from `/Game/Sounds/FortSoundClassesAndModes/**` (103 classes, 50 mixes). The class tree is
 //! `Master (0.7) -> { Music (0.5), SFX (0.5), Voice (0.8), Fort_01_VOIP }` with ~100 game classes below those
@@ -26,7 +26,13 @@ pub enum Bus {
 }
 
 impl Bus {
-    pub const ALL: [Bus; 5] = [Bus::Master, Bus::Music, Bus::Sfx, Bus::Voice, Bus::VoiceChat];
+    pub const ALL: [Bus; 5] = [
+        Bus::Master,
+        Bus::Music,
+        Bus::Sfx,
+        Bus::Voice,
+        Bus::VoiceChat,
+    ];
     pub fn index(self) -> usize {
         self as usize
     }
@@ -61,7 +67,15 @@ pub struct ClassInfo {
 
 impl Default for ClassInfo {
     fn default() -> Self {
-        ClassInfo { name: "SFX".into(), base_volume: 1.0, pitch: 1.0, bus: Bus::Sfx, is_ui: false, always_play: false, chain: vec!["sfx".into(), "master".into()] }
+        ClassInfo {
+            name: "SFX".into(),
+            base_volume: 1.0,
+            pitch: 1.0,
+            bus: Bus::Sfx,
+            is_ui: false,
+            always_play: false,
+            chain: vec!["sfx".into(), "master".into()],
+        }
     }
 }
 
@@ -110,7 +124,10 @@ impl SoundClassTree {
     pub fn info(&self, name: &str) -> ClassInfo {
         let chain = self.chain(name);
         if chain.is_empty() {
-            return ClassInfo { name: object_name(name).to_string(), ..Default::default() };
+            return ClassInfo {
+                name: object_name(name).to_string(),
+                ..Default::default()
+            };
         }
         let mut bus = Bus::Sfx;
         for c in &chain {
@@ -152,17 +169,32 @@ impl SoundClassTree {
     /// Load every `SoundClass` asset of the install (only the `FortSoundClassesAndModes` folder is scanned).
     pub fn load(install: &Install) -> Result<SoundClassTree> {
         let mut t = SoundClassTree::default();
-        for p in install.all_asset_paths().into_iter().filter(|p| p.contains("/FortSoundClassesAndModes/")) {
-            let Ok(data) = PackageData::load(&install.paks, &p) else { continue };
+        for p in install
+            .all_asset_paths()
+            .into_iter()
+            .filter(|p| p.contains("/FortSoundClassesAndModes/"))
+        {
+            let Ok(data) = PackageData::load(&install.paks, &p) else {
+                continue;
+            };
             let Ok(pkg) = data.package() else { continue };
             for i in pkg.exports_of_class("SoundClass").collect::<Vec<_>>() {
                 let Ok(o) = pkg.read_export(i) else { continue };
                 let props = o.get("Properties");
                 let f = |n: &str| props.and_then(|p| p.field(n)).and_then(Value::as_f32);
-                let b = |n: &str, d: bool| props.and_then(|p| p.field(n)).and_then(Value::as_bool).unwrap_or(d);
+                let b = |n: &str, d: bool| {
+                    props
+                        .and_then(|p| p.field(n))
+                        .and_then(Value::as_bool)
+                        .unwrap_or(d)
+                };
                 t.insert(SoundClass {
                     name: o.name.clone(),
-                    parent: o.get("ParentClass").and_then(Value::as_object).filter(|i| !i.is_null()).map(|i| object_name(&pkg.object_path(i)).to_string()),
+                    parent: o
+                        .get("ParentClass")
+                        .and_then(Value::as_object)
+                        .filter(|i| !i.is_null())
+                        .map(|i| object_name(&pkg.object_path(i)).to_string()),
                     volume: f("Volume").unwrap_or(1.0),
                     pitch: f("Pitch").unwrap_or(1.0),
                     is_ui: b("bIsUISound", false),
@@ -203,7 +235,9 @@ impl SoundMix {
         let ap = crate::install::to_pak_asset_path(path);
         let data = PackageData::load(&install.paks, &ap)?;
         let pkg = data.package()?;
-        let Some(i) = pkg.exports_of_class("SoundMix").next() else { return Ok(None) };
+        let Some(i) = pkg.exports_of_class("SoundMix").next() else {
+            return Ok(None);
+        };
         let o = pkg.read_export(i)?;
         let f = |n: &str, d: f32| o.get(n).and_then(Value::as_f32).unwrap_or(d);
         let adjusters = o
@@ -212,19 +246,39 @@ impl SoundMix {
             .map(|a| {
                 a.iter()
                     .filter_map(|e| {
-                        let class = e.field("SoundClassObject").and_then(Value::as_object).filter(|i| !i.is_null()).map(|i| object_name(&pkg.object_path(i)).to_string())?;
+                        let class = e
+                            .field("SoundClassObject")
+                            .and_then(Value::as_object)
+                            .filter(|i| !i.is_null())
+                            .map(|i| object_name(&pkg.object_path(i)).to_string())?;
                         Some(ClassAdjuster {
                             class,
-                            volume: e.field("VolumeAdjuster").and_then(Value::as_f32).unwrap_or(1.0),
-                            pitch: e.field("PitchAdjuster").and_then(Value::as_f32).unwrap_or(1.0),
-                            apply_to_children: e.field("bApplyToChildren").and_then(Value::as_bool).unwrap_or(false),
+                            volume: e
+                                .field("VolumeAdjuster")
+                                .and_then(Value::as_f32)
+                                .unwrap_or(1.0),
+                            pitch: e
+                                .field("PitchAdjuster")
+                                .and_then(Value::as_f32)
+                                .unwrap_or(1.0),
+                            apply_to_children: e
+                                .field("bApplyToChildren")
+                                .and_then(Value::as_bool)
+                                .unwrap_or(false),
                         })
                     })
                     .collect()
             })
             .unwrap_or_default();
         // Engine defaults of USoundMix (UE 4.16): FadeInTime 1.0, Duration -1, FadeOutTime 1.0.
-        Ok(Some(SoundMix { name: o.name.clone(), initial_delay: f("InitialDelay", 0.0), fade_in_time: f("FadeInTime", 1.0), duration: f("Duration", -1.0), fade_out_time: f("FadeOutTime", 1.0), adjusters }))
+        Ok(Some(SoundMix {
+            name: o.name.clone(),
+            initial_delay: f("InitialDelay", 0.0),
+            fade_in_time: f("FadeInTime", 1.0),
+            duration: f("Duration", -1.0),
+            fade_out_time: f("FadeOutTime", 1.0),
+            adjusters,
+        }))
     }
 }
 
@@ -234,7 +288,17 @@ mod tests {
 
     fn tree() -> SoundClassTree {
         let mut t = SoundClassTree::default();
-        let mk = |n: &str, p: Option<&str>, v: f32| SoundClass { name: n.into(), parent: p.map(str::to_string), volume: v, pitch: 1.0, is_ui: n == "Fort_UI", is_music: false, always_play: false, apply_effects: true, reverb: false };
+        let mk = |n: &str, p: Option<&str>, v: f32| SoundClass {
+            name: n.into(),
+            parent: p.map(str::to_string),
+            volume: v,
+            pitch: 1.0,
+            is_ui: n == "Fort_UI",
+            is_music: false,
+            always_play: false,
+            apply_effects: true,
+            reverb: false,
+        };
         t.insert(mk("Master", None, 0.7));
         t.insert(mk("SFX", Some("Master"), 0.5));
         t.insert(mk("Music", Some("Master"), 0.5));
@@ -260,9 +324,18 @@ mod tests {
     fn cycles_do_not_hang() {
         let mut t = SoundClassTree::default();
         for (n, p) in [("A", "B"), ("B", "A")] {
-            t.insert(SoundClass { name: n.into(), parent: Some(p.into()), volume: 0.5, pitch: 1.0, is_ui: false, is_music: false, always_play: false, apply_effects: true, reverb: false });
+            t.insert(SoundClass {
+                name: n.into(),
+                parent: Some(p.into()),
+                volume: 0.5,
+                pitch: 1.0,
+                is_ui: false,
+                is_music: false,
+                always_play: false,
+                apply_effects: true,
+                reverb: false,
+            });
         }
         assert_eq!(t.chain("A").len(), 2);
     }
 }
-

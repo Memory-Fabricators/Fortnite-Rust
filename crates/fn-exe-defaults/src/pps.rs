@@ -13,7 +13,9 @@ use fn_exe_slate::{Pe, XrefIndex};
 use iced_x86::Mnemonic;
 use std::collections::BTreeMap;
 
-pub const FINGERPRINT: [f32; 12] = [0.03, 2.0, 0.675, 0.4, 40.0, 0.04, 6500.0, 0.0001, 0.5, 8.0, 3.0, 0.98];
+pub const FINGERPRINT: [f32; 12] = [
+    0.03, 2.0, 0.675, 0.4, 40.0, 0.04, 6500.0, 0.0001, 0.5, 8.0, 3.0, 0.98,
+];
 
 #[derive(Clone, Debug)]
 pub struct PpsCtor {
@@ -28,24 +30,50 @@ pub struct PpsCtor {
 /// Locate the constructor (fingerprint search over every large `.text` function) and the struct's reflection data.
 pub fn find(pe: &Pe, xi: &XrefIndex) -> Option<PpsCtor> {
     let text = pe.section_named(".text")?.clone();
-    let funcs: Vec<(u32, u32)> = pe.funcs.iter().copied().filter(|x| x.0 >= text.rva && x.0 < text.rva + text.vsize && x.1 - x.0 > 0x400 && x.1 - x.0 < 0x1000).collect();
+    let funcs: Vec<(u32, u32)> = pe
+        .funcs
+        .iter()
+        .copied()
+        .filter(|x| {
+            x.0 >= text.rva
+                && x.0 < text.rva + text.vsize
+                && x.1 - x.0 > 0x400
+                && x.1 - x.0 < 0x1000
+        })
+        .collect();
     let vals: Vec<u32> = FINGERPRINT.iter().map(|f| f.to_bits()).collect();
     let ranked = crate::ctor::rank_functions(pe, xi, &funcs, &vals, 9);
     let (func, _) = *ranked.first()?;
     let ins = decode_range(pe, func.0, func.1);
-    let memset_call = ins.iter().find(|i| i.mnemonic() == Mnemonic::Call).map(|i| rva_of(pe, i))?;
-    let stores: Vec<Store> = collect_stores(pe, func.0, func.1).into_iter().filter(|s| s.rva > memset_call).collect();
+    let memset_call = ins
+        .iter()
+        .find(|i| i.mnemonic() == Mnemonic::Call)
+        .map(|i| rva_of(pe, i))?;
+    let stores: Vec<Store> = collect_stores(pe, func.0, func.1)
+        .into_iter()
+        .filter(|s| s.rva > memset_call)
+        .collect();
     let (z_construct, props) = props_by_hint(pe, xi, "AutoExposureMinBrightness")?;
-    Some(PpsCtor { func, memset_call, stores, props, z_construct })
+    Some(PpsCtor {
+        func,
+        memset_call,
+        stores,
+        props,
+        z_construct,
+    })
 }
 
 /// Final value of every dword written by the constructor (last store wins), keyed by byte offset: `(u32 bits, store rva)`.
 pub fn final_dwords(stores: &[Store]) -> BTreeMap<i64, (u32, u32)> {
     let mut m = BTreeMap::new();
     for s in stores {
-        for (o, v) in dwords(s) { m.insert(o, (v, s.rva)); }
+        for (o, v) in dwords(s) {
+            m.insert(o, (v, s.rva));
+        }
         // sub-dword stores (bool/byte enums): record as byte values at the exact offset, bits = value
-        if s.bytes.len() < 4 { m.insert(s.disp, (s.bytes[0] as u32, s.rva)); }
+        if s.bytes.len() < 4 {
+            m.insert(s.disp, (s.bytes[0] as u32, s.rva));
+        }
     }
     m
 }
@@ -65,28 +93,72 @@ pub struct FieldValue {
     pub kind: &'static str,
 }
 
-pub fn field_values(props: &[Prop], dw: &BTreeMap<i64, (u32, u32)>, stores: &[Store]) -> Vec<FieldValue> {
+pub fn field_values(
+    props: &[Prop],
+    dw: &BTreeMap<i64, (u32, u32)>,
+    stores: &[Store],
+) -> Vec<FieldValue> {
     let mut ps: Vec<&Prop> = props.iter().collect();
     ps.sort_by_key(|p| p.offset);
     let mut out = vec![];
     for (i, p) in ps.iter().enumerate() {
         let gap = ps.get(i + 1).map(|n| n.offset - p.offset).unwrap_or(4);
-        let kind = match p.ctor_target { Some(0x13f53c0) if gap >= 16 => "struct16", Some(0x9cf5e0) => "byte_enum", Some(0x9d02e0) => "object_ptr", Some(0x13f53c0) => "array_or_struct", _ => "float" };
-        let n = match kind { "struct16" => 4, "float" => 1, "byte_enum" => 1, _ => 0 };
-        if n == 0 { continue; }
+        let kind = match p.ctor_target {
+            Some(0x13f53c0) if gap >= 16 => "struct16",
+            Some(0x9cf5e0) => "byte_enum",
+            Some(0x9d02e0) => "object_ptr",
+            Some(0x13f53c0) => "array_or_struct",
+            _ => "float",
+        };
+        let n = match kind {
+            "struct16" => 4,
+            "float" => 1,
+            "byte_enum" => 1,
+            _ => 0,
+        };
+        if n == 0 {
+            continue;
+        }
         let mut raw = vec![];
         let mut rva = None;
         let mut explicit = false;
         for k in 0..n {
             let off = p.offset as i64 + 4 * k as i64;
-            if let Some((v, r)) = dw.get(&off) { raw.push(*v); rva = Some(*r); explicit = true; }
-            else if kind == "byte_enum" {
+            if let Some((v, r)) = dw.get(&off) {
+                raw.push(*v);
+                rva = Some(*r);
+                explicit = true;
+            } else if kind == "byte_enum" {
                 // byte store at the exact offset
-                if let Some(s) = stores.iter().rev().find(|s| s.disp == p.offset as i64 && s.bytes.len() < 4) { raw.push(s.bytes[0] as u32); rva = Some(s.rva); explicit = true; } else { raw.push(0); }
-            } else { raw.push(0); }
+                if let Some(s) = stores
+                    .iter()
+                    .rev()
+                    .find(|s| s.disp == p.offset as i64 && s.bytes.len() < 4)
+                {
+                    raw.push(s.bytes[0] as u32);
+                    rva = Some(s.rva);
+                    explicit = true;
+                } else {
+                    raw.push(0);
+                }
+            } else {
+                raw.push(0);
+            }
         }
-        let components = if kind == "byte_enum" { vec![raw[0] as f32] } else { raw.iter().map(|b| f32::from_bits(*b)).collect() };
-        out.push(FieldValue { name: p.name.clone(), offset: p.offset, components, raw, store_rva: rva, explicit, kind });
+        let components = if kind == "byte_enum" {
+            vec![raw[0] as f32]
+        } else {
+            raw.iter().map(|b| f32::from_bits(*b)).collect()
+        };
+        out.push(FieldValue {
+            name: p.name.clone(),
+            offset: p.offset,
+            components,
+            raw,
+            store_rva: rva,
+            explicit,
+            kind,
+        });
     }
     out
 }

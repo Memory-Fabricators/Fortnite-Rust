@@ -23,9 +23,17 @@ struct Summary {
 
 fn pkg_path(testdata: &Path, pkg: &str, ext: &str) -> PathBuf {
     if let Some(rest) = pkg.strip_prefix("Engine/") {
-        testdata.join("Engine").join("Content").join(rest).with_extension(ext)
+        testdata
+            .join("Engine")
+            .join("Content")
+            .join(rest)
+            .with_extension(ext)
     } else if let Some(rest) = pkg.strip_prefix("Game/") {
-        testdata.join("FortniteGame").join("Content").join(rest).with_extension(ext)
+        testdata
+            .join("FortniteGame")
+            .join("Content")
+            .join(rest)
+            .with_extension(ext)
     } else {
         testdata.join(pkg).with_extension(ext)
     }
@@ -33,33 +41,55 @@ fn pkg_path(testdata: &Path, pkg: &str, ext: &str) -> PathBuf {
 
 fn main() {
     let mut args = std::env::args().skip(1);
-    let testdata = args.next().map(PathBuf::from).unwrap_or_else(|| PathBuf::from(std::env::var("TEMP").unwrap_or_default()).join("fn-testdata"));
+    let testdata = args.next().map(PathBuf::from).unwrap_or_else(|| {
+        PathBuf::from(std::env::var("TEMP").unwrap_or_default()).join("fn-testdata")
+    });
     let runtime = args
         .next()
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(r"C:\Users\Brady\Documents\Codex\2026-10-02\im-seeing-titkoks-where-people-are-2\FortniteRuntime"));
     if !testdata.is_dir() || !runtime.is_dir() {
-        println!("SKIP: testdata ({}) or runtime ({}) directory missing", testdata.display(), runtime.display());
+        println!(
+            "SKIP: testdata ({}) or runtime ({}) directory missing",
+            testdata.display(),
+            runtime.display()
+        );
         return;
     }
-    let manifest: serde_json::Value = serde_json::from_slice(&std::fs::read(runtime.join("tools").join("asset-manifest.json")).unwrap()).unwrap();
+    let manifest: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(runtime.join("tools").join("asset-manifest.json")).unwrap(),
+    )
+    .unwrap();
     let assets = runtime.join("assets");
 
     // (pkg, old png relative path)
     let mut jobs: Vec<(String, String)> = Vec::new();
     for t in manifest["textures"].as_array().unwrap() {
-        jobs.push((t["pkg"].as_str().unwrap().to_string(), t["out"].as_str().unwrap().to_string()));
+        jobs.push((
+            t["pkg"].as_str().unwrap().to_string(),
+            t["out"].as_str().unwrap().to_string(),
+        ));
     }
     for t in manifest["aliases"].as_array().unwrap() {
-        jobs.push((t["pkg"].as_str().unwrap().to_string(), t["alias"].as_str().unwrap().to_string()));
+        jobs.push((
+            t["pkg"].as_str().unwrap().to_string(),
+            t["alias"].as_str().unwrap().to_string(),
+        ));
     }
 
     let mut sums: BTreeMap<String, Summary> = BTreeMap::new();
     let opts = DecodeOptions::default();
     let (mut skipped_pkg, mut skipped_png) = (0, 0);
-    println!("{:<70} {:<12} {:>11} {:>11} {:>5} {:>8} {:>9}", "texture", "format", "ours", "old", "max", "mean", "diffpx");
+    println!(
+        "{:<70} {:<12} {:>11} {:>11} {:>5} {:>8} {:>9}",
+        "texture", "format", "ours", "old", "max", "mean", "diffpx"
+    );
     for (pkg, out) in &jobs {
-        let (ua, ue, ub) = (pkg_path(&testdata, pkg, "uasset"), pkg_path(&testdata, pkg, "uexp"), pkg_path(&testdata, pkg, "ubulk"));
+        let (ua, ue, ub) = (
+            pkg_path(&testdata, pkg, "uasset"),
+            pkg_path(&testdata, pkg, "uexp"),
+            pkg_path(&testdata, pkg, "ubulk"),
+        );
         if !ua.exists() {
             skipped_pkg += 1;
             println!("{pkg}: raw package not in testdata (skipped)");
@@ -106,7 +136,15 @@ fn main() {
         let oldd = format!("{ow}x{oh}");
         if (ow as usize, oh as usize) != (img.width, img.height) {
             s.dim_mismatch += 1;
-            println!("{:<70} {:<12} {:>11} {:>11} DIMENSION MISMATCH (mip {mip}, top {}x{})", short(pkg), fmt, ours, oldd, tex.size_x, tex.size_y);
+            println!(
+                "{:<70} {:<12} {:>11} {:>11} DIMENSION MISMATCH (mip {mip}, top {}x{})",
+                short(pkg),
+                fmt,
+                ours,
+                oldd,
+                tex.size_x,
+                tex.size_y
+            );
             continue;
         }
         let o = old.as_raw();
@@ -129,13 +167,40 @@ fn main() {
         }
         s.worst = s.worst.max(max);
         s.mean_sum += mean;
-        println!("{:<70} {:<12} {:>11} {:>11} {:>5} {:>8.4} {:>9}  mip{mip} srgb={} {}", short(pkg), fmt, ours, oldd, max, mean, diffpx, tex.srgb, tex.compression_settings);
+        println!(
+            "{:<70} {:<12} {:>11} {:>11} {:>5} {:>8.4} {:>9}  mip{mip} srgb={} {}",
+            short(pkg),
+            fmt,
+            ours,
+            oldd,
+            max,
+            mean,
+            diffpx,
+            tex.srgb,
+            tex.compression_settings
+        );
     }
     println!();
-    println!("{:<14} {:>6} {:>7} {:>9} {:>7} {:>9} {:>10}", "format", "count", "exact", "dimMismat", "failed", "worstMax", "meanOfMean");
+    println!(
+        "{:<14} {:>6} {:>7} {:>9} {:>7} {:>9} {:>10}",
+        "format", "count", "exact", "dimMismat", "failed", "worstMax", "meanOfMean"
+    );
     for (f, s) in &sums {
         let cmp = s.count.saturating_sub(s.dim_mismatch + s.failed);
-        println!("{:<14} {:>6} {:>7} {:>9} {:>7} {:>9} {:>10.5}", f, s.count, s.exact, s.dim_mismatch, s.failed, s.worst, if cmp > 0 { s.mean_sum / cmp as f64 } else { 0.0 });
+        println!(
+            "{:<14} {:>6} {:>7} {:>9} {:>7} {:>9} {:>10.5}",
+            f,
+            s.count,
+            s.exact,
+            s.dim_mismatch,
+            s.failed,
+            s.worst,
+            if cmp > 0 {
+                s.mean_sum / cmp as f64
+            } else {
+                0.0
+            }
+        );
     }
     println!("skipped (no raw package): {skipped_pkg}, skipped (no old png): {skipped_png}");
 }

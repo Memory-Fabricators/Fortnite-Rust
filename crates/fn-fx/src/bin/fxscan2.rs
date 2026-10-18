@@ -15,17 +15,37 @@ fn main() -> Result<(), String> {
         let st = fn_dxbc::extract::serialized_stream(&uexp, b, &sh)?;
         let e = fn_dxbc::unreal_entry::named_entry(&uexp, &p.names, from, header, &st)?;
         from = st.tail.end;
-        if sh.major < 5 || !e.name.contains(&filter) { continue; }
+        if sh.major < 5 || !e.name.contains(&filter) {
+            continue;
+        }
         let mut vfs = vec![];
         let mut i = e.offset + 12;
         while i + 8 <= st.start {
-            let idx = i32::from_le_bytes(uexp[i..i + 4].try_into().unwrap()); let num = i32::from_le_bytes(uexp[i + 4..i + 8].try_into().unwrap());
-            if idx >= 0 && (0..=4).contains(&num) { if let Some(n) = p.names.get(idx as usize) { if n.ends_with("VertexFactory") { vfs.push(format!("{n}#{num}@{}", i - e.offset)); } } }
+            let idx = i32::from_le_bytes(uexp[i..i + 4].try_into().unwrap());
+            let num = i32::from_le_bytes(uexp[i + 4..i + 8].try_into().unwrap());
+            if idx >= 0 && (0..=4).contains(&num) {
+                if let Some(n) = p.names.get(idx as usize) {
+                    if n.ends_with("VertexFactory") {
+                        vfs.push(format!("{n}#{num}@{}", i - e.offset));
+                    }
+                }
+            }
             i += 1;
         }
         let opt = fn_dxbc::unreal_packet::optional_fields(&b.trailer).ok();
-        let ubs = opt.and_then(|o| fn_dxbc::unreal_packet::uniform_buffer_names(&o).ok().flatten());
-        println!("{:>7} {} {:<58} vf {:?} ubs {:?}", b.id, sh.version_string(), e.name, vfs, ubs);
+        let ubs = opt.and_then(|o| {
+            fn_dxbc::unreal_packet::uniform_buffer_names(&o)
+                .ok()
+                .flatten()
+        });
+        println!(
+            "{:>7} {} {:<58} vf {:?} ubs {:?}",
+            b.id,
+            sh.version_string(),
+            e.name,
+            vfs,
+            ubs
+        );
     }
     Ok(())
 }

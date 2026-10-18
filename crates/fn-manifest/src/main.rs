@@ -59,7 +59,11 @@ struct Args {
 }
 
 fn parse_args() -> Result<Args, String> {
-    let mut a = Args { paks: PathBuf::new(), out: PathBuf::from("tools/asset-manifest.json"), ui_map: PathBuf::from(DEFAULT_UI_MAP) };
+    let mut a = Args {
+        paks: PathBuf::new(),
+        out: PathBuf::from("tools/asset-manifest.json"),
+        ui_map: PathBuf::from(DEFAULT_UI_MAP),
+    };
     let mut it = std::env::args().skip(1);
     while let Some(x) = it.next() {
         let mut val = |name: &str| it.next().ok_or_else(|| format!("{name} needs a value"));
@@ -89,7 +93,9 @@ impl StemIndex {
         let mut m: HashMap<String, Vec<String>> = HashMap::new();
         for (_, e) in set.effective() {
             let p: &str = e.rel_path();
-            let Some(stem) = p.strip_suffix(".uasset") else { continue };
+            let Some(stem) = p.strip_suffix(".uasset") else {
+                continue;
+            };
             let low = p.to_ascii_lowercase();
             if !low.starts_with("fortnitegame/content/") && !low.starts_with("engine/content/") {
                 continue;
@@ -109,7 +115,11 @@ impl StemIndex {
     /// Every `Game/...` package whose asset name is `stem` (lower case), in the order the runtime's clip loader would
     /// see them (`PakSet::glob` sorts the winning entries by lower-cased path, and the loader takes the first).
     fn candidates(&self, stem: &str) -> Vec<&str> {
-        let mut v: Vec<&str> = self.0.get(&stem.to_ascii_lowercase()).map(|v| v.iter().map(String::as_str).collect()).unwrap_or_default();
+        let mut v: Vec<&str> = self
+            .0
+            .get(&stem.to_ascii_lowercase())
+            .map(|v| v.iter().map(String::as_str).collect())
+            .unwrap_or_default();
         v.sort_by_key(|p| p.to_ascii_lowercase());
         v
     }
@@ -135,7 +145,8 @@ fn ui_entries(text: &str) -> Vec<(String, String)> {
 
 fn run() -> Result<(), String> {
     let args = parse_args()?;
-    let set = PakSet::open_install(&args.paks).map_err(|e| format!("cannot open the paks at {}: {e}", args.paks.display()))?;
+    let set = PakSet::open_install(&args.paks)
+        .map_err(|e| format!("cannot open the paks at {}: {e}", args.paks.display()))?;
     println!("opened {} paks, {} entries", set.paks().len(), set.len());
     let index = StemIndex::build(&set);
 
@@ -146,12 +157,14 @@ fn run() -> Result<(), String> {
 
     // 1. UI textures: the file name the UI asks for is also the exported file name (lookups are by file name), so the
     //    output keeps the requested name even where the package stem differs (`-64` -> `-XL`).
-    let map_text = std::fs::read_to_string(&args.ui_map).map_err(|e| format!("{}: {e}", args.ui_map.display()))?;
+    let map_text = std::fs::read_to_string(&args.ui_map)
+        .map_err(|e| format!("{}: {e}", args.ui_map.display()))?;
     let mut ui = ui_entries(&map_text);
     ui.sort();
     for (name, pkg) in &ui {
         if present(&set, pkg) {
-            textures.push(json!({ "pkg": pkg, "out": format!("exported/{}/{}", dir_of(pkg), name) }));
+            textures
+                .push(json!({ "pkg": pkg, "out": format!("exported/{}/{}", dir_of(pkg), name) }));
         } else {
             missing.push(format!("{name} <- {pkg}"));
         }
@@ -160,7 +173,8 @@ fn run() -> Result<(), String> {
     // 2. the textures the runtime loads that the UI table does not list (the ground texture for the world).
     for stem in EXTRA_TEXTURES {
         match index.candidates(stem).first() {
-            Some(pkg) => textures.push(json!({ "pkg": pkg, "out": format!("exported/{}/{stem}.png", dir_of(pkg)) })),
+            Some(pkg) => textures
+                .push(json!({ "pkg": pkg, "out": format!("exported/{}/{stem}.png", dir_of(pkg)) })),
             None => missing.push(format!("{stem} <- <not found in the paks>")),
         }
     }
@@ -210,13 +224,18 @@ fn run() -> Result<(), String> {
         animations.push(json!({ "pkg": pkg, "out": format!("exported/{pkg}.md5anim") }));
     }
 
-    let manifest = json!({ "textures": textures, "aliases": [], "meshes": meshes, "animations": animations });
+    let manifest =
+        json!({ "textures": textures, "aliases": [], "meshes": meshes, "animations": animations });
     if let Some(p) = args.out.parent() {
         if !p.as_os_str().is_empty() {
             std::fs::create_dir_all(p).map_err(|e| format!("{}: {e}", p.display()))?;
         }
     }
-    std::fs::write(&args.out, serde_json::to_string_pretty(&manifest).unwrap() + "\n").map_err(|e| format!("{}: {e}", args.out.display()))?;
+    std::fs::write(
+        &args.out,
+        serde_json::to_string_pretty(&manifest).unwrap() + "\n",
+    )
+    .map_err(|e| format!("{}: {e}", args.out.display()))?;
 
     println!(
         "wrote {}: {} textures, {} meshes, {} animations",
@@ -257,8 +276,14 @@ mod tests {
         assert_eq!(
             ui_entries(t),
             vec![
-                ("aliveico.png".to_owned(), "Game/Athena/HUD/Art/AliveIco".to_owned()),
-                ("allblack.png".to_owned(), "Game/Characters/Fortress_Character/Textures/AllBlack".to_owned()),
+                (
+                    "aliveico.png".to_owned(),
+                    "Game/Athena/HUD/Art/AliveIco".to_owned()
+                ),
+                (
+                    "allblack.png".to_owned(),
+                    "Game/Characters/Fortress_Character/Textures/AllBlack".to_owned()
+                ),
             ]
         );
     }
@@ -273,7 +298,10 @@ mod tests {
     fn embedded_ui_table_parses() {
         let entries = ui_entries(include_str!("../../fn-ui/data/ui-texture-map.tsv"));
         assert!(entries.len() > 150, "{} entries", entries.len());
-        assert!(entries.iter().all(|(n, p)| n.ends_with(".png") && (p.starts_with("Game/") || p.starts_with("Engine/"))));
+        assert!(entries
+            .iter()
+            .all(|(n, p)| n.ends_with(".png")
+                && (p.starts_with("Game/") || p.starts_with("Engine/"))));
     }
 
     #[test]

@@ -1,4 +1,4 @@
-﻿//! Small signal-analysis helpers used by tests and the CLI to sanity-check decoded audio without listening:
+//! Small signal-analysis helpers used by tests and the CLI to sanity-check decoded audio without listening:
 //! radix-2 FFT, dominant frequency, spectral centroid / roll-off, loop-seam continuity.
 
 use crate::wave::DecodedWave;
@@ -60,7 +60,12 @@ pub fn spectrum(w: &DecodedWave, start: usize, window: usize) -> Option<Spectrum
         return None;
     }
     let start = start.min(frames - 64);
-    let n = window.min(frames - start).next_power_of_two() / if (window.min(frames - start)).is_power_of_two() { 1 } else { 2 };
+    let n = window.min(frames - start).next_power_of_two()
+        / if (window.min(frames - start)).is_power_of_two() {
+            1
+        } else {
+            2
+        };
     let n = n.max(64);
     let ch = w.channels as usize;
     let mut re = vec![0f64; n];
@@ -79,7 +84,12 @@ pub fn spectrum(w: &DecodedWave, start: usize, window: usize) -> Option<Spectrum
     let mag2: Vec<f64> = (0..half).map(|k| re[k] * re[k] + im[k] * im[k]).collect();
     let total: f64 = mag2.iter().skip(1).sum();
     if total <= 0.0 {
-        return Some(Spectrum { dominant_hz: 0.0, centroid_hz: 0.0, rolloff95_hz: 0.0, high_band_fraction: 0.0 });
+        return Some(Spectrum {
+            dominant_hz: 0.0,
+            centroid_hz: 0.0,
+            rolloff95_hz: 0.0,
+            high_band_fraction: 0.0,
+        });
     }
     let bin = w.sample_rate as f64 / n as f64;
     let (mut best, mut best_k) = (0.0, 1);
@@ -101,7 +111,12 @@ pub fn spectrum(w: &DecodedWave, start: usize, window: usize) -> Option<Spectrum
             high += mag2[k];
         }
     }
-    Some(Spectrum { dominant_hz: (best_k as f64 * bin) as f32, centroid_hz: (cen / total) as f32, rolloff95_hz: roll as f32, high_band_fraction: (high / total) as f32 })
+    Some(Spectrum {
+        dominant_hz: (best_k as f64 * bin) as f32,
+        centroid_hz: (cen / total) as f32,
+        rolloff95_hz: roll as f32,
+        high_band_fraction: (high / total) as f32,
+    })
 }
 
 /// Average power per octave band (upper edge Hz, dB relative to full scale) over up to 64 evenly spread 4096-frame
@@ -118,7 +133,11 @@ pub fn octave_bands_db(w: &DecodedWave) -> Vec<(f32, f32)> {
     let mut acc = [0f64; 9];
     let bin = w.sample_rate as f64 / n as f64;
     for wi in 0..windows {
-        let start = if windows == 1 { 0 } else { wi * (frames - n) / (windows - 1) };
+        let start = if windows == 1 {
+            0
+        } else {
+            wi * (frames - n) / (windows - 1)
+        };
         let mut re = vec![0f64; n];
         let mut im = vec![0f64; n];
         for i in 0..n {
@@ -133,7 +152,14 @@ pub fn octave_bands_db(w: &DecodedWave) -> Vec<(f32, f32)> {
             acc[b] += (re[k] * re[k] + im[k] * im[k]) / (n as f64 * n as f64 * 0.375);
         }
     }
-    (0..9).map(|b| (if b < 8 { EDGES[b] } else { f32::INFINITY }, (10.0 * (acc[b] / windows as f64 + 1e-20).log10()) as f32)).collect()
+    (0..9)
+        .map(|b| {
+            (
+                if b < 8 { EDGES[b] } else { f32::INFINITY },
+                (10.0 * (acc[b] / windows as f64 + 1e-20).log10()) as f32,
+            )
+        })
+        .collect()
 }
 
 /// Loop-seam discontinuity: |last frame -> first frame| step relative to the RMS frame-to-frame step of the signal
@@ -161,7 +187,13 @@ mod tests {
 
     fn sine(freq: f32, rate: u32, secs: f32) -> DecodedWave {
         let n = (rate as f32 * secs) as usize;
-        DecodedWave::new((0..n).map(|i| (2.0 * std::f32::consts::PI * freq * i as f32 / rate as f32).sin() * 0.5).collect(), rate, 1)
+        DecodedWave::new(
+            (0..n)
+                .map(|i| (2.0 * std::f32::consts::PI * freq * i as f32 / rate as f32).sin() * 0.5)
+                .collect(),
+            rate,
+            1,
+        )
     }
 
     #[test]
@@ -177,7 +209,11 @@ mod tests {
     fn seam_ratio_distinguishes_clean_loop_from_a_jump() {
         // exactly 40 periods -> seamless
         let w = sine(600.0, 24000, 1.0);
-        assert!(loop_seam_ratio(&w).unwrap() < 2.0, "{:?}", loop_seam_ratio(&w));
+        assert!(
+            loop_seam_ratio(&w).unwrap() < 2.0,
+            "{:?}",
+            loop_seam_ratio(&w)
+        );
         // a jump at the seam
         let mut j = w.clone();
         let last = j.samples.len() - 1;
@@ -186,4 +222,3 @@ mod tests {
         assert!(loop_seam_ratio(&j).unwrap() > 10.0);
     }
 }
-

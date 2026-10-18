@@ -1,6 +1,6 @@
-﻿use crate::decode::{decode_mip, DecodeOptions};
-use crate::format::PixelFormat;
+use crate::decode::{decode_mip, DecodeOptions};
 use crate::decoded::DecodedImage;
+use crate::format::PixelFormat;
 use crate::{Error, Result};
 use fn_ueio::props::{read_props, Ctx, PropList};
 use fn_ueio::{BulkData, Package, Reader, BULK_ZLIB};
@@ -94,8 +94,15 @@ fn strip_enum(s: &str) -> String {
 fn read_fname(r: &mut Reader, names: &[String]) -> Result<String> {
     let idx = r.i32()?;
     let num = r.i32()?;
-    let base = names.get(idx as usize).cloned().ok_or_else(|| Error::Invalid(format!("bad FName index {idx}")))?;
-    Ok(if num > 0 { format!("{base}_{}", num - 1) } else { base })
+    let base = names
+        .get(idx as usize)
+        .cloned()
+        .ok_or_else(|| Error::Invalid(format!("bad FName index {idx}")))?;
+    Ok(if num > 0 {
+        format!("{base}_{}", num - 1)
+    } else {
+        base
+    })
 }
 
 impl Texture2D {
@@ -127,12 +134,20 @@ impl Texture2D {
     pub fn parse_export(pkg: &Package, idx: usize) -> Result<Texture2D> {
         let class = pkg.export_class(idx);
         if class != "Texture2D" && class != "TextureCube" {
-            return Err(Error::NotATexture(format!("export {idx} has class {class}")));
+            return Err(Error::NotATexture(format!(
+                "export {idx} has class {class}"
+            )));
         }
         let (start, end) = pkg.export_range(idx);
-        let data = pkg.data.get(..end).ok_or_else(|| Error::Invalid("export out of range".into()))?;
+        let data = pkg
+            .data
+            .get(..end)
+            .ok_or_else(|| Error::Invalid("export out of range".into()))?;
         let mut r = Reader::at(data, start);
-        let ctx = Ctx { names: &pkg.names, file_version: pkg.summary.file_version };
+        let ctx = Ctx {
+            names: &pkg.names,
+            file_version: pkg.summary.file_version,
+        };
         let props = read_props(&mut r, &ctx)?;
 
         // UObject::Serialize tail: bool bSerializeGuid (+ FGuid), then UTexture / UTexture2D FStripDataFlags.
@@ -143,7 +158,9 @@ impl Texture2D {
         r.skip(2)?; // UTexture2D / UTextureCube FStripDataFlags
         let cooked = r.i32()?;
         if cooked == 0 {
-            return Err(Error::Invalid("uncooked texture (source art only) is not supported".into()));
+            return Err(Error::Invalid(
+                "uncooked texture (source art only) is not supported".into(),
+            ));
         }
 
         // Loop over per-pixel-format platform data; like UEViewer only the first block is used.
@@ -162,7 +179,9 @@ impl Texture2D {
                 let first_mip = r.i32()?;
                 let count = r.i32()?;
                 if size_x <= 0 || size_y <= 0 || !(0..=32).contains(&count) {
-                    return Err(Error::Invalid(format!("bad platform data header {size_x}x{size_y} mips={count}")));
+                    return Err(Error::Invalid(format!(
+                        "bad platform data header {size_x}x{size_y} mips={count}"
+                    )));
                 }
                 let format = PixelFormat::from_name(&fmt_str);
                 let mut mips = Vec::with_capacity(count as usize);
@@ -174,7 +193,9 @@ impl Texture2D {
                     let bulk = BulkData::read(&mut r)?;
                     let (stored_width, stored_height);
                     // inline payload (no AT_END / SEPARATE flag) follows the header immediately
-                    let inline = bulk.flags & (fn_ueio::BULK_AT_END | fn_ueio::BULK_SEPARATE | 0x800) == 0 && !bulk.is_unused();
+                    let inline =
+                        bulk.flags & (fn_ueio::BULK_AT_END | fn_ueio::BULK_SEPARATE | 0x800) == 0
+                            && !bulk.is_unused();
                     if inline {
                         r.skip(bulk.size_on_disk.max(0) as usize)?;
                     }
@@ -185,9 +206,15 @@ impl Texture2D {
                         base_y = stored_height as usize;
                     }
                     let (payload, missing) = if bulk.is_unused() {
-                        (None, Some("bulk data flagged unused (mip stripped)".to_string()))
+                        (
+                            None,
+                            Some("bulk data flagged unused (mip stripped)".to_string()),
+                        )
                     } else if bulk.flags & BULK_ZLIB != 0 {
-                        (None, Some("zlib compressed bulk data is not supported".to_string()))
+                        (
+                            None,
+                            Some("zlib compressed bulk data is not supported".to_string()),
+                        )
                     } else {
                         match resolve_bulk(pkg, &bulk) {
                             Ok(Some(p)) => (Some(p.to_vec()), None),
@@ -208,7 +235,14 @@ impl Texture2D {
                         missing,
                     });
                 }
-                result = Some((size_x as usize, size_y as usize, num_slices.max(1) as usize, format, first_mip, mips));
+                result = Some((
+                    size_x as usize,
+                    size_y as usize,
+                    num_slices.max(1) as usize,
+                    format,
+                    first_mip,
+                    mips,
+                ));
             }
             // SkipOffset is an absolute position in `uasset ++ uexp`: always resync on it.
             if skip_offset < 0 || skip_offset as usize > data.len() {
@@ -229,10 +263,22 @@ impl Texture2D {
             first_mip,
             mips,
             srgb: props.bool("SRGB").unwrap_or(true),
-            compression_settings: props.text("CompressionSettings").map(strip_enum).unwrap_or_else(|| "TC_Default".into()),
-            address_x: props.text("AddressX").map(strip_enum).unwrap_or_else(|| "TA_Wrap".into()),
-            address_y: props.text("AddressY").map(strip_enum).unwrap_or_else(|| "TA_Wrap".into()),
-            lod_group: props.text("LODGroup").map(strip_enum).unwrap_or_else(|| "TEXTUREGROUP_World".into()),
+            compression_settings: props
+                .text("CompressionSettings")
+                .map(strip_enum)
+                .unwrap_or_else(|| "TC_Default".into()),
+            address_x: props
+                .text("AddressX")
+                .map(strip_enum)
+                .unwrap_or_else(|| "TA_Wrap".into()),
+            address_y: props
+                .text("AddressY")
+                .map(strip_enum)
+                .unwrap_or_else(|| "TA_Wrap".into()),
+            lod_group: props
+                .text("LODGroup")
+                .map(strip_enum)
+                .unwrap_or_else(|| "TEXTUREGROUP_World".into()),
             never_stream: props.bool("NeverStream").unwrap_or(false),
             compression_no_alpha: props.bool("CompressionNoAlpha").unwrap_or(false),
             props,
@@ -252,13 +298,26 @@ impl Texture2D {
     /// Largest available mip whose width and height are both `<= max_dim`; falls back to the smallest available mip
     /// when every mip is larger.
     pub fn mip_for_max_dimension(&self, max_dim: usize) -> Option<usize> {
-        let avail = || self.mips.iter().enumerate().filter(|(_, m)| m.is_available());
-        avail().find(|(_, m)| m.width <= max_dim && m.height <= max_dim).map(|(i, _)| i).or_else(|| avail().last().map(|(i, _)| i))
+        let avail = || {
+            self.mips
+                .iter()
+                .enumerate()
+                .filter(|(_, m)| m.is_available())
+        };
+        avail()
+            .find(|(_, m)| m.width <= max_dim && m.height <= max_dim)
+            .map(|(i, _)| i)
+            .or_else(|| avail().last().map(|(i, _)| i))
     }
 
     /// Indices of all mips that have a payload.
     pub fn available_mips(&self) -> Vec<usize> {
-        self.mips.iter().enumerate().filter(|(_, m)| m.is_available()).map(|(i, _)| i).collect()
+        self.mips
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| m.is_available())
+            .map(|(i, _)| i)
+            .collect()
     }
 
     /// Decode mip `mip_index` (slice 0 for cube maps) to an image.
@@ -267,11 +326,29 @@ impl Texture2D {
     }
 
     /// Decode one slice (cube face) of a mip.
-    pub fn decode_slice(&self, mip_index: usize, slice: usize, opts: DecodeOptions) -> Result<DecodedImage> {
-        let mip = self.mips.get(mip_index).ok_or_else(|| Error::MipUnavailable(format!("mip {mip_index} out of range ({} mips)", self.mips.len())))?;
-        let data = mip.data().ok_or_else(|| Error::MipUnavailable(format!("mip {mip_index}: {}", mip.missing_reason().unwrap_or("no data"))))?;
+    pub fn decode_slice(
+        &self,
+        mip_index: usize,
+        slice: usize,
+        opts: DecodeOptions,
+    ) -> Result<DecodedImage> {
+        let mip = self.mips.get(mip_index).ok_or_else(|| {
+            Error::MipUnavailable(format!(
+                "mip {mip_index} out of range ({} mips)",
+                self.mips.len()
+            ))
+        })?;
+        let data = mip.data().ok_or_else(|| {
+            Error::MipUnavailable(format!(
+                "mip {mip_index}: {}",
+                mip.missing_reason().unwrap_or("no data")
+            ))
+        })?;
         if slice >= self.num_slices {
-            return Err(Error::MipUnavailable(format!("slice {slice} out of range ({} slices)", self.num_slices)));
+            return Err(Error::MipUnavailable(format!(
+                "slice {slice} out of range ({} slices)",
+                self.num_slices
+            )));
         }
         let one = self
             .format
@@ -279,13 +356,22 @@ impl Texture2D {
             .ok_or_else(|| Error::UnsupportedFormat(self.format.name().to_string()))?;
         let start = one * slice;
         let src = data.get(start..start + one).ok_or_else(|| {
-            Error::Invalid(format!("mip {mip_index} payload is {} bytes, need {} for slice {slice} of {}x{} {}", data.len(), start + one, mip.width, mip.height, self.format.name()))
+            Error::Invalid(format!(
+                "mip {mip_index} payload is {} bytes, need {} for slice {slice} of {}x{} {}",
+                data.len(),
+                start + one,
+                mip.width,
+                mip.height,
+                self.format.name()
+            ))
         })?;
         decode_mip(&self.format, src, mip.width, mip.height, &opts)
     }
 }
 
-fn resolve_bulk<'a>(pkg: &'a Package, b: &BulkData) -> std::result::Result<Option<&'a [u8]>, String> {
+fn resolve_bulk<'a>(
+    pkg: &'a Package,
+    b: &BulkData,
+) -> std::result::Result<Option<&'a [u8]>, String> {
     pkg.bulk_payload(b).map_err(|e| e.to_string())
 }
-

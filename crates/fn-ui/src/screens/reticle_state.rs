@@ -1,4 +1,4 @@
-﻿//! The data contract of the 1.8 "world feedback" HUD pieces: pickaxe reticle, harvest `+N` popups, Target Info bar, interaction prompt, equip progress.
+//! The data contract of the 1.8 "world feedback" HUD pieces: pickaxe reticle, harvest `+N` popups, Target Info bar, interaction prompt, equip progress.
 //!
 //! PLAIN DATA ONLY (no behaviour, no renderer): the game side fills a [`HudWorld`] each frame and hands it over inside
 //! [`crate::screens::hud::HudState::world`]; `Hud::set_state` consumes the harvest hits, `Hud::present` draws the rest.
@@ -12,8 +12,21 @@
 
 /// The three harvestable resources (index = pack order Wood | Stone | Metal).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
-pub enum HarvestResource { #[default] Wood, Stone, Metal }
-impl HarvestResource { pub fn index(self) -> usize { match self { HarvestResource::Wood => 0, HarvestResource::Stone => 1, HarvestResource::Metal => 2 } } }
+pub enum HarvestResource {
+    #[default]
+    Wood,
+    Stone,
+    Metal,
+}
+impl HarvestResource {
+    pub fn index(self) -> usize {
+        match self {
+            HarvestResource::Wood => 0,
+            HarvestResource::Stone => 1,
+            HarvestResource::Metal => 2,
+        }
+    }
+}
 
 /// One harvest hit: the arguments of `FortHUDContext.OnDamagedResourceBuilding(object, item, destroyed, weakpoint)` as the popups use them.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -39,7 +52,12 @@ pub struct ReticleState {
 /// `EFortBuildingHealthDisplayRule` (BuildingInfoIndicator bytecode, `UpdateBuildingInfo`): 0 Never, 1 = shown after damage (value names INFERRED
 /// from the visibility switch: only the damage handler makes the bar visible for rule 1), 2 Always.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum HealthDisplayRule { #[default] Never, OnDamage, Always }
+pub enum HealthDisplayRule {
+    #[default]
+    Never,
+    OnDamage,
+    Always,
+}
 
 /// `FortFocusedBuildingInfo` as far as the Target Info bar reads it (BuildingInfoIndicator.UpdateBuildingInfo / HandleBuildingHealthChanged).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -81,7 +99,10 @@ pub struct EquipProgress {
 /// Original sniper scope post-process input. The image is the exact texture bound to the recovered `Reticle` material parameter;
 /// `amount` is the recovered `DownSightPostProcessAmount` timeline value.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ScopeOverlay { pub image: String, pub amount: f32 }
+pub struct ScopeOverlay {
+    pub image: String,
+    pub amount: f32,
+}
 
 /// What the native `SFortReticle` needs of a ranged weapon for one frame (see `screens::reticle` for the exact rules).
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -102,7 +123,8 @@ pub struct FirearmReticle {
     /// infinite reserve) is <= 0; the muzzle-blocked image being visible dims it too (the HUD adds that itself).
     pub dim: bool,
     /// `HitNotifyImage` / `HitNotifyReticleImage` and `MuzzleBlockedImage` / `MuzzleBlockedReticleImage` file names.
-    pub hit: Option<String>, pub muzzle_blocked: Option<String>,
+    pub hit: Option<String>,
+    pub muzzle_blocked: Option<String>,
     /// The weapon's muzzle-blocked point (`AFortWeaponRanged+0xaa0`, non-zero = blocked, `GetMuzzleBlockedLocation` vtable +0x670) projected to pixels from the screen centre.
     pub muzzle_blocked_px: Option<[f32; 2]>,
 }
@@ -134,18 +156,38 @@ impl HudWorld {
     pub fn sanitized(&self) -> HudWorld {
         let mut w = self.clone();
         let fin = |v: f32| if v.is_finite() { v } else { 0. };
-        for h in &mut w.harvest_hits { h.amount = h.amount.min(99_999); }
+        for h in &mut w.harvest_hits {
+            h.amount = h.amount.min(99_999);
+        }
         if let Some(t) = w.target.as_mut() {
-            t.health = fin(t.health).max(0.); t.max_health = fin(t.max_health).max(0.);
+            t.health = fin(t.health).max(0.);
+            t.max_health = fin(t.max_health).max(0.);
             t.screen = t.screen.filter(|p| p.0.is_finite() && p.1.is_finite());
         }
-        if let Some(i) = w.interaction.as_mut() { i.screen = i.screen.filter(|p| p.0.is_finite() && p.1.is_finite()); }
-        if let Some(e) = w.equip.as_mut() { e.elapsed = fin(e.elapsed).max(0.); e.duration = fin(e.duration).max(0.); }
-        for c in w.slot_cooldowns.iter_mut().flatten() { c.remaining = fin(c.remaining).max(0.); c.duration = fin(c.duration).max(0.); }
-        if let Some(r) = w.firearm_reticle.as_mut() { r.spread_deg = fin(r.spread_deg).max(0.); r.fov_deg = if r.fov_deg.is_finite() && r.fov_deg > 0. { r.fov_deg.min(170.) } else { 80. }; }
+        if let Some(i) = w.interaction.as_mut() {
+            i.screen = i.screen.filter(|p| p.0.is_finite() && p.1.is_finite());
+        }
+        if let Some(e) = w.equip.as_mut() {
+            e.elapsed = fin(e.elapsed).max(0.);
+            e.duration = fin(e.duration).max(0.);
+        }
+        for c in w.slot_cooldowns.iter_mut().flatten() {
+            c.remaining = fin(c.remaining).max(0.);
+            c.duration = fin(c.duration).max(0.);
+        }
+        if let Some(r) = w.firearm_reticle.as_mut() {
+            r.spread_deg = fin(r.spread_deg).max(0.);
+            r.fov_deg = if r.fov_deg.is_finite() && r.fov_deg > 0. {
+                r.fov_deg.min(170.)
+            } else {
+                80.
+            };
+        }
         if let Some(scope) = w.scope_overlay.as_mut() {
             scope.amount = fin(scope.amount).clamp(0., 1.);
-            if scope.image.is_empty() || scope.amount <= 0. { w.scope_overlay = None; }
+            if scope.image.is_empty() || scope.amount <= 0. {
+                w.scope_overlay = None;
+            }
         }
         w
     }
@@ -154,12 +196,54 @@ impl HudWorld {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn defaults_are_a_quiet_hud() { let w = HudWorld::default(); assert!(!w.reticle.on_target && w.harvest_hits.is_empty() && w.target.is_none() && w.interaction.is_none() && w.equip.is_none() && w.current_resource == HarvestResource::Wood); }
-    #[test] fn resource_index_is_the_pack_order() { assert_eq!([HarvestResource::Wood, HarvestResource::Stone, HarvestResource::Metal].map(HarvestResource::index), [0, 1, 2]); }
-    #[test] fn sanitizing_repairs_non_finite_values() {
+    #[test]
+    fn defaults_are_a_quiet_hud() {
+        let w = HudWorld::default();
+        assert!(
+            !w.reticle.on_target
+                && w.harvest_hits.is_empty()
+                && w.target.is_none()
+                && w.interaction.is_none()
+                && w.equip.is_none()
+                && w.current_resource == HarvestResource::Wood
+        );
+    }
+    #[test]
+    fn resource_index_is_the_pack_order() {
+        assert_eq!(
+            [
+                HarvestResource::Wood,
+                HarvestResource::Stone,
+                HarvestResource::Metal
+            ]
+            .map(HarvestResource::index),
+            [0, 1, 2]
+        );
+    }
+    #[test]
+    fn sanitizing_repairs_non_finite_values() {
         let mut w = HudWorld::default();
-        w.target = Some(TargetInfo { id: 1, health: f32::NAN, max_health: f32::INFINITY, rule: HealthDisplayRule::Always, interaction: 0, screen: Some((f32::NAN, 1.)) });
-        w.equip = Some(EquipProgress { elapsed: f32::NAN, duration: -3. });
-        let s = w.sanitized(); let t = s.target.unwrap(); assert_eq!((t.health, t.max_health, t.screen), (0., 0., None)); assert_eq!(s.equip.unwrap(), EquipProgress { elapsed: 0., duration: 0. });
+        w.target = Some(TargetInfo {
+            id: 1,
+            health: f32::NAN,
+            max_health: f32::INFINITY,
+            rule: HealthDisplayRule::Always,
+            interaction: 0,
+            screen: Some((f32::NAN, 1.)),
+        });
+        w.equip = Some(EquipProgress {
+            elapsed: f32::NAN,
+            duration: -3.,
+        });
+        let s = w.sanitized();
+        let t = s.target.unwrap();
+        assert_eq!((t.health, t.max_health, t.screen), (0., 0., None));
+        assert_eq!(
+            s.equip.unwrap(),
+            EquipProgress {
+                elapsed: 0.,
+                duration: 0.
+            }
+        );
     }
 }

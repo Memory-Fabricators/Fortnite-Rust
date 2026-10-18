@@ -22,7 +22,9 @@
 use crate::draw::{MaterialKind, RenderList, TextureId};
 use crate::layout::{dpi_scale, Rect};
 use crate::scene::UiContext;
-use crate::screens::{art, atlas_px, ascent, line_height, mat_tex, put_text, text_width, Snap, WHITE};
+use crate::screens::{
+    art, ascent, atlas_px, line_height, mat_tex, put_text, text_width, Snap, WHITE,
+};
 use crate::text::FontId;
 
 pub const BOTTOM_PAD: f32 = 160.; // OverlaySlot_10 Padding.Bottom (shared with equip_progress)
@@ -59,22 +61,50 @@ pub struct EquippedAmmo {
 
 /// `GetCurrentAmmoText`.
 pub fn magazine_text(count: i32) -> String {
-    if count < 10 { format!("  {count}") } else if count < 100 { format!(" {count}") } else { int_text(count) }
+    if count < 10 {
+        format!("  {count}")
+    } else if count < 100 {
+        format!(" {count}")
+    } else {
+        int_text(count)
+    }
 }
 /// `Conv_IntToText(v, bAlwaysSign = false?, grouping = true)`: "1,234".
 pub fn int_text(v: i32) -> String {
-    let n = v.max(0) as u64; let s = n.to_string(); let mut out = String::new();
-    for (i, c) in s.chars().enumerate() { if i > 0 && (s.len() - i) % 3 == 0 { out.push(','); } out.push(c); }
+    let n = v.max(0) as u64;
+    let s = n.to_string();
+    let mut out = String::new();
+    for (i, c) in s.chars().enumerate() {
+        if i > 0 && (s.len() - i) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(c);
+    }
     out
 }
 /// `TextTotalAmmoCount` text: `Max(Remaining - Count, 0)`, or "∞" while `InfiniteAmmo`.
-pub fn total_text(a: &EquippedAmmo) -> String { if a.remaining > INFINITE { "\u{221E}".to_owned() } else { int_text((a.remaining - a.magazine).max(0)) } }
+pub fn total_text(a: &EquippedAmmo) -> String {
+    if a.remaining > INFINITE {
+        "\u{221E}".to_owned()
+    } else {
+        int_text((a.remaining - a.magazine).max(0))
+    }
+}
 /// `HasAmmo` of `UpdateWidgetColor`.
-pub fn has_ammo(a: &EquippedAmmo) -> bool { a.remaining > 0 }
+pub fn has_ammo(a: &EquippedAmmo) -> bool {
+    a.remaining > 0
+}
 
 /// Resolved geometry in pixels (exposed for tests): (widget rect, mag text x, divider rect, total text x, icon rect, row rect).
 #[derive(Clone, Copy, Debug)]
-pub struct Geometry { pub widget: Rect, pub mag_x: f32, pub divider: Rect, pub total_x: f32, pub icon: Rect, pub row: Rect }
+pub struct Geometry {
+    pub widget: Rect,
+    pub mag_x: f32,
+    pub divider: Rect,
+    pub total_x: f32,
+    pub icon: Rect,
+    pub row: Rect,
+}
 pub fn geometry(w: f32, h: f32, mag_w: f32, total_w: f32, line_h: f32) -> Geometry {
     let s = dpi_scale(w, h);
     let row_h = line_h.max(DIVIDER_H * s);
@@ -88,43 +118,144 @@ pub fn geometry(w: f32, h: f32, mag_w: f32, total_w: f32, line_h: f32) -> Geomet
     let row = Rect::new(x0, top, b_w, row_h);
     let mag_x = x0 + MAG_PAD_LEFT * s;
     let div_x = mag_x + mag_w + DIVIDER_PAD * s;
-    let divider = Rect::new(div_x, top + (row_h - DIVIDER_H * s) * 0.5, DIVIDER_W * s, DIVIDER_H * s);
+    let divider = Rect::new(
+        div_x,
+        top + (row_h - DIVIDER_H * s) * 0.5,
+        DIVIDER_W * s,
+        DIVIDER_H * s,
+    );
     let total_x = div_x + (DIVIDER_W + DIVIDER_PAD) * s;
-    let icon = Rect::new(x0 + b_w + ICON_PAD.0 * s, top + ICON_PAD.1 * s, ICON * s, ICON * s);
-    Geometry { widget: Rect::new(x0, top, total_w_all, total_h), mag_x, divider, total_x, icon, row }
+    let icon = Rect::new(
+        x0 + b_w + ICON_PAD.0 * s,
+        top + ICON_PAD.1 * s,
+        ICON * s,
+        ICON * s,
+    );
+    Geometry {
+        widget: Rect::new(x0, top, total_w_all, total_h),
+        mag_x,
+        divider,
+        total_x,
+        icon,
+        row,
+    }
 }
 
 /// Draw the counter for a held firearm. Returns the names of art the widget needed but the asset source lacked.
-pub fn build(ctx: &mut UiContext, w: f32, h: f32, a: &EquippedAmmo, out: &mut RenderList) -> Vec<String> {
+pub fn build(
+    ctx: &mut UiContext,
+    w: f32,
+    h: f32,
+    a: &EquippedAmmo,
+    out: &mut RenderList,
+) -> Vec<String> {
     let s = dpi_scale(w, h);
     let px = atlas_px(FONT_SIZE, s);
     let (mag, total) = (magazine_text(a.magazine), total_text(a));
-    let (mag_w, total_w) = (text_width(ctx, FontId::Regular, &mag, px), text_width(ctx, FontId::Regular, &total, px));
+    let (mag_w, total_w) = (
+        text_width(ctx, FontId::Regular, &mag, px),
+        text_width(ctx, FontId::Regular, &total, px),
+    );
     let lh = line_height(ctx, FontId::Regular, px);
     let g = geometry(w, h, mag_w, total_w, lh);
     let ok = has_ammo(a);
-    let tint = if ok { WHITE } else { [crate::screens::srgb(DEBUFF[0]), crate::screens::srgb(DEBUFF[1]), crate::screens::srgb(DEBUFF[2]), 1.] };
+    let tint = if ok {
+        WHITE
+    } else {
+        [
+            crate::screens::srgb(DEBUFF[0]),
+            crate::screens::srgb(DEBUFF[1]),
+            crate::screens::srgb(DEBUFF[2]),
+            1.,
+        ]
+    };
     let mut missing = vec![];
     let base = (g.row.y + (g.row.h - lh) * 0.5 + ascent(ctx, FontId::Regular, px)).round();
     let shadow = Some(([SHADOW.0[0] * s, SHADOW.0[1] * s], SHADOW.1));
     let with_alpha = |c: [f32; 4], o: f32| [c[0], c[1], c[2], c[3] * o];
-    put_text(ctx, out, FontId::Regular, px, g.mag_x, base, &mag, with_alpha(tint, if a.magazine > 0 { 1. } else { NO_AMMO_OPACITY }), shadow.map(|(o, c)| (o, with_alpha(c, if a.magazine > 0 { 1. } else { NO_AMMO_OPACITY }))), Snap::Pen);
+    put_text(
+        ctx,
+        out,
+        FontId::Regular,
+        px,
+        g.mag_x,
+        base,
+        &mag,
+        with_alpha(tint, if a.magazine > 0 { 1. } else { NO_AMMO_OPACITY }),
+        shadow.map(|(o, c)| {
+            (
+                o,
+                with_alpha(c, if a.magazine > 0 { 1. } else { NO_AMMO_OPACITY }),
+            )
+        }),
+        Snap::Pen,
+    );
     let line = mat_tex(ctx, "T-Border-HUD-Line-Vert.png", false);
-    if line.id != TextureId::NONE { out.material(MaterialKind::PanelLine { mask: line.id, global_alpha: LINE_VERT_ALPHA }, g.divider, WHITE, false); } else { missing.push("T-Border-HUD-Line-Vert.png".to_owned()); }
-    let total_o = if (a.remaining - a.magazine).max(0) > 0 || a.remaining > INFINITE { 1. } else { NO_AMMO_OPACITY };
-    put_text(ctx, out, FontId::Regular, px, g.total_x, base, &total, with_alpha(tint, total_o), shadow.map(|(o, c)| (o, with_alpha(c, total_o))), Snap::Pen);
+    if line.id != TextureId::NONE {
+        out.material(
+            MaterialKind::PanelLine {
+                mask: line.id,
+                global_alpha: LINE_VERT_ALPHA,
+            },
+            g.divider,
+            WHITE,
+            false,
+        );
+    } else {
+        missing.push("T-Border-HUD-Line-Vert.png".to_owned());
+    }
+    let total_o = if (a.remaining - a.magazine).max(0) > 0 || a.remaining > INFINITE {
+        1.
+    } else {
+        NO_AMMO_OPACITY
+    };
+    put_text(
+        ctx,
+        out,
+        FontId::Regular,
+        px,
+        g.total_x,
+        base,
+        &total,
+        with_alpha(tint, total_o),
+        shadow.map(|(o, c)| (o, with_alpha(c, total_o))),
+        Snap::Pen,
+    );
     let icon = art(ctx, &a.icon);
-    if icon.id != TextureId::NONE { out.sprite(icon.id, g.icon, tint); } else { missing.push(a.icon.clone()); }
+    if icon.id != TextureId::NONE {
+        out.sprite(icon.id, g.icon, tint);
+    } else {
+        missing.push(a.icon.clone());
+    }
     if !ok {
         // TextAmmoOutOverlay (TextStyle-Base-S-B-S): Overlay_28 slot padding Left 4 / Bottom 40, VAlign Bottom, translated down by 24 (the -5 degree rotation is not drawn).
         let opx = atlas_px(OUT_FONT, s);
-        let (ow, olh) = (text_width(ctx, FontId::Bold, OUT_OF_AMMO, opx), line_height(ctx, FontId::Bold, opx));
+        let (ow, olh) = (
+            text_width(ctx, FontId::Bold, OUT_OF_AMMO, opx),
+            line_height(ctx, FontId::Bold, opx),
+        );
         let bottom = g.widget.y + g.widget.h - OUT_PAD.1 * s + OUT_TRANSLATE_Y * s;
         let ob = (bottom - olh + ascent(ctx, FontId::Bold, opx)).round();
         let (ox, start) = (g.widget.x + OUT_PAD.0 * s, out.cmds.len());
-        put_text(ctx, out, FontId::Bold, opx, ox, ob, OUT_OF_AMMO, tint, shadow, Snap::Pen);
+        put_text(
+            ctx,
+            out,
+            FontId::Bold,
+            opx,
+            ox,
+            ob,
+            OUT_OF_AMMO,
+            tint,
+            shadow,
+            Snap::Pen,
+        );
         // RenderTransform Angle -5 about the default pivot (0.5, 0.5) of the text widget (its own box ow x olh, already translated by (0, 24)); WIDGETS3
-        crate::screens::xform::rotate_quads_since(out, start, (ox + ow * 0.5, bottom - olh * 0.5), OUT_ANGLE_DEG);
+        crate::screens::xform::rotate_quads_since(
+            out,
+            start,
+            (ox + ow * 0.5, bottom - olh * 0.5),
+            OUT_ANGLE_DEG,
+        );
     }
     missing
 }
@@ -132,26 +263,70 @@ pub fn build(ctx: &mut UiContext, w: f32, h: f32, a: &EquippedAmmo, out: &mut Re
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn ammo(magazine: i32, remaining: i32) -> EquippedAmmo { EquippedAmmo { magazine, remaining, icon: "T-Items-AmmoMedium.png".into() } }
-    #[test] fn magazine_text_pads_like_getcurrentammotext() {
-        assert_eq!(magazine_text(7), "  7"); assert_eq!(magazine_text(30), " 30"); assert_eq!(magazine_text(100), "100"); assert_eq!(magazine_text(1234), "1,234");
+    fn ammo(magazine: i32, remaining: i32) -> EquippedAmmo {
+        EquippedAmmo {
+            magazine,
+            remaining,
+            icon: "T-Items-AmmoMedium.png".into(),
+        }
     }
-    #[test] fn total_is_remaining_minus_magazine_clamped_and_infinite_above_200_million() {
-        assert_eq!(total_text(&ammo(24, 144)), "120"); assert_eq!(total_text(&ammo(30, 30)), "0"); assert_eq!(total_text(&ammo(5, 3)), "0"); assert_eq!(total_text(&ammo(30, 200_000_001)), "\u{221E}");
+    #[test]
+    fn magazine_text_pads_like_getcurrentammotext() {
+        assert_eq!(magazine_text(7), "  7");
+        assert_eq!(magazine_text(30), " 30");
+        assert_eq!(magazine_text(100), "100");
+        assert_eq!(magazine_text(1234), "1,234");
+    }
+    #[test]
+    fn total_is_remaining_minus_magazine_clamped_and_infinite_above_200_million() {
+        assert_eq!(total_text(&ammo(24, 144)), "120");
+        assert_eq!(total_text(&ammo(30, 30)), "0");
+        assert_eq!(total_text(&ammo(5, 3)), "0");
+        assert_eq!(total_text(&ammo(30, 200_000_001)), "\u{221E}");
         assert_eq!(int_text(1_000_000), "1,000,000");
     }
-    #[test] fn build_draws_the_counts_divider_and_out_of_ammo_only_when_dry() {
+    #[test]
+    fn build_draws_the_counts_divider_and_out_of_ammo_only_when_dry() {
         use crate::screens::testutil::ctx;
         let Some(mut c) = ctx() else { return };
-        let mut out = RenderList::new(); build(&mut c, 1280., 720., &ammo(24, 144), &mut out); let n = out.cmds.len(); assert!(n > 0, "text quads were emitted");
-        let mut dry = RenderList::new(); build(&mut c, 1280., 720., &ammo(0, 0), &mut dry); assert!(dry.cmds.len() > n, "the dry state adds the Out of Ammo! text");
-    }    #[test] fn has_ammo_is_remaining_above_zero() { assert!(has_ammo(&ammo(0, 1))); assert!(!has_ammo(&ammo(0, 0))); }
-    #[test] fn geometry_is_centred_and_sits_160_units_above_the_bottom() {
-        let g = geometry(1920., 1080., 60., 90., 43.); let s = dpi_scale(1920., 1080.);
-        assert!((g.widget.x + g.widget.w * 0.5 - 960.).abs() <= 1.0, "{:?}", g.widget);
+        let mut out = RenderList::new();
+        build(&mut c, 1280., 720., &ammo(24, 144), &mut out);
+        let n = out.cmds.len();
+        assert!(n > 0, "text quads were emitted");
+        let mut dry = RenderList::new();
+        build(&mut c, 1280., 720., &ammo(0, 0), &mut dry);
+        assert!(
+            dry.cmds.len() > n,
+            "the dry state adds the Out of Ammo! text"
+        );
+    }
+    #[test]
+    fn has_ammo_is_remaining_above_zero() {
+        assert!(has_ammo(&ammo(0, 1)));
+        assert!(!has_ammo(&ammo(0, 0)));
+    }
+    #[test]
+    fn geometry_is_centred_and_sits_160_units_above_the_bottom() {
+        let g = geometry(1920., 1080., 60., 90., 43.);
+        let s = dpi_scale(1920., 1080.);
+        assert!(
+            (g.widget.x + g.widget.w * 0.5 - 960.).abs() <= 1.0,
+            "{:?}",
+            g.widget
+        );
         assert!((g.widget.y + g.widget.h - (1080. - 160. * s)).abs() <= 1.0);
-        assert!(g.mag_x < g.divider.x && g.divider.x + g.divider.w < g.total_x && g.total_x < g.icon.x, "mag | divider | total | icon left to right");
-        assert!((g.divider.w - 4. * s).abs() < 1e-3 && (g.divider.h - 36. * s).abs() < 1e-3 && (g.icon.w - 40. * s).abs() < 1e-3);
-        assert!((g.icon.y - (g.widget.y + 8. * s)).abs() < 1e-3, "HorizontalBoxSlot_3 padding Top 8");
+        assert!(
+            g.mag_x < g.divider.x && g.divider.x + g.divider.w < g.total_x && g.total_x < g.icon.x,
+            "mag | divider | total | icon left to right"
+        );
+        assert!(
+            (g.divider.w - 4. * s).abs() < 1e-3
+                && (g.divider.h - 36. * s).abs() < 1e-3
+                && (g.icon.w - 40. * s).abs() < 1e-3
+        );
+        assert!(
+            (g.icon.y - (g.widget.y + 8. * s)).abs() < 1e-3,
+            "HorizontalBoxSlot_3 padding Top 8"
+        );
     }
 }

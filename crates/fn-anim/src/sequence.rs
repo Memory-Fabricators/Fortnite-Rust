@@ -176,7 +176,10 @@ impl FloatCurve {
             2 => {
                 let (t2, t3) = (alpha * alpha, alpha * alpha * alpha);
                 let (m0, m1) = (a.leave_tangent * dt, b.arrive_tangent * dt);
-                (2.0 * t3 - 3.0 * t2 + 1.0) * a.value + (t3 - 2.0 * t2 + alpha) * m0 + (-2.0 * t3 + 3.0 * t2) * b.value + (t3 - t2) * m1
+                (2.0 * t3 - 3.0 * t2 + 1.0) * a.value
+                    + (t3 - 2.0 * t2 + alpha) * m0
+                    + (-2.0 * t3 + 3.0 * t2) * b.value
+                    + (t3 - t2) * m1
             }
             _ => a.value + (b.value - a.value) * alpha,
         }
@@ -218,7 +221,12 @@ pub struct TrackSample {
 }
 
 /// Bracketing keys for `frame` (in frames): `(index0, index1, alpha)`.
-pub fn find_keys(num_keys: usize, times: &[u32], num_frames: usize, frame: f32) -> (usize, usize, f32) {
+pub fn find_keys(
+    num_keys: usize,
+    times: &[u32],
+    num_frames: usize,
+    frame: f32,
+) -> (usize, usize, f32) {
     if num_keys <= 1 {
         return (0, 0, 0.0);
     }
@@ -241,7 +249,11 @@ pub fn find_keys(num_keys: usize, times: &[u32], num_frames: usize, frame: f32) 
     // last i with times[i] <= frame
     let i = times[..n].partition_point(|&t| (t as f32) <= frame) - 1;
     let (t0, t1) = (times[i] as f32, times[i + 1] as f32);
-    let a = if t1 > t0 { (frame - t0) / (t1 - t0) } else { 0.0 };
+    let a = if t1 > t0 {
+        (frame - t0) / (t1 - t0)
+    } else {
+        0.0
+    };
     (i, i + 1, a)
 }
 
@@ -293,7 +305,12 @@ pub fn slerp(a: [f32; 4], b: [f32; 4], alpha: f32) -> [f32; 4] {
         sb = alpha;
     }
     sb *= sign;
-    [sa * a[0] + sb * b[0], sa * a[1] + sb * b[1], sa * a[2] + sb * b[2], sa * a[3] + sb * b[3]]
+    [
+        sa * a[0] + sb * b[0],
+        sa * a[1] + sb * b[1],
+        sa * a[2] + sb * b[2],
+        sa * a[3] + sb * b[3],
+    ]
 }
 
 /// How rotation keys are blended.
@@ -306,7 +323,11 @@ pub enum RotationBlend {
 }
 
 pub fn lerp3(a: [f32; 3], b: [f32; 3], alpha: f32) -> [f32; 3] {
-    [a[0] + (b[0] - a[0]) * alpha, a[1] + (b[1] - a[1]) * alpha, a[2] + (b[2] - a[2]) * alpha]
+    [
+        a[0] + (b[0] - a[0]) * alpha,
+        a[1] + (b[1] - a[1]) * alpha,
+        a[2] + (b[2] - a[2]) * alpha,
+    ]
 }
 
 /// Hamilton product `a * b` (`xyzw`).
@@ -326,11 +347,21 @@ impl Track {
     }
 
     /// [`sample`](Self::sample) with an explicit rotation blend.
-    pub fn sample_with(&self, num_frames: usize, frame: f32, step: bool, blend: RotationBlend) -> TrackSample {
+    pub fn sample_with(
+        &self,
+        num_frames: usize,
+        frame: f32,
+        step: bool,
+        blend: RotationBlend,
+    ) -> TrackSample {
         let mut s = TrackSample::default();
         if !self.pos.is_empty() {
             let (i0, i1, a) = find_keys(self.pos.len(), &self.pos_times, num_frames, frame);
-            s.pos = Some(if step || a <= 0.0 { self.pos[i0] } else { lerp3(self.pos[i0], self.pos[i1], a) });
+            s.pos = Some(if step || a <= 0.0 {
+                self.pos[i0]
+            } else {
+                lerp3(self.pos[i0], self.pos[i1], a)
+            });
         }
         if !self.rot.is_empty() {
             let (i0, i1, a) = find_keys(self.rot.len(), &self.rot_times, num_frames, frame);
@@ -344,7 +375,11 @@ impl Track {
         }
         if !self.scale.is_empty() {
             let (i0, i1, a) = find_keys(self.scale.len(), &self.scale_times, num_frames, frame);
-            s.scale = Some(if step || a <= 0.0 { self.scale[i0] } else { lerp3(self.scale[i0], self.scale[i1], a) });
+            s.scale = Some(if step || a <= 0.0 {
+                self.scale[i0]
+            } else {
+                lerp3(self.scale[i0], self.scale[i1], a)
+            });
         }
         s
     }
@@ -386,7 +421,9 @@ pub struct AnimSequence {
 
 fn enum_text(v: &PropValue) -> Option<String> {
     match v {
-        PropValue::Enum(s) | PropValue::Name(s) => Some(s.rsplit("::").next().unwrap_or(s).to_string()),
+        PropValue::Enum(s) | PropValue::Name(s) => {
+            Some(s.rsplit("::").next().unwrap_or(s).to_string())
+        }
         PropValue::Byte(b) => Some(b.to_string()),
         _ => None,
     }
@@ -406,10 +443,15 @@ fn obj_name(pkg: &Package, idx: i32) -> Option<String> {
 
 pub(crate) fn parse_notifies(pkg: &Package, props: &PropList) -> Vec<Notify> {
     let mut out = Vec::new();
-    let Some(PropValue::Array(items)) = props.get("Notifies") else { return out };
+    let Some(PropValue::Array(items)) = props.get("Notifies") else {
+        return out;
+    };
     for it in items {
         let Some(f) = it.as_fields() else { continue };
-        let mut n = Notify { notify_trigger_chance: 1.0, ..Default::default() };
+        let mut n = Notify {
+            notify_trigger_chance: 1.0,
+            ..Default::default()
+        };
         n.notify_name = f.text("NotifyName").unwrap_or("").to_string();
         n.link_value = f.float("LinkValue").unwrap_or(0.0) as f32;
         if n.link_value == 0.0 {
@@ -433,12 +475,20 @@ pub(crate) fn parse_notifies(pkg: &Package, props: &PropList) -> Vec<Notify> {
                 if class == "AnimNotify_PlaySound" || class == "AnimNotify_PlayReloadFX_C" {
                     let (start, end) = pkg.export_range(o as usize - 1);
                     let mut r = Reader::at(&pkg.data[..end], start);
-                    let ctx = Ctx { names: &pkg.names, file_version: pkg.summary.file_version };
+                    let ctx = Ctx {
+                        names: &pkg.names,
+                        file_version: pkg.summary.file_version,
+                    };
                     if let Ok(p) = read_props(&mut r, &ctx) {
                         if class == "AnimNotify_PlaySound" {
-                            n.sound = p.object("Sound").filter(|s| *s < 0).map(|s| pkg.import_path(s));
-                            n.sound_pitch = p.float("PitchMultiplier").map(|x| x as f32).unwrap_or(1.0);
-                            n.sound_volume = p.float("VolumeMultiplier").map(|x| x as f32).unwrap_or(1.0);
+                            n.sound = p
+                                .object("Sound")
+                                .filter(|s| *s < 0)
+                                .map(|s| pkg.import_path(s));
+                            n.sound_pitch =
+                                p.float("PitchMultiplier").map(|x| x as f32).unwrap_or(1.0);
+                            n.sound_volume =
+                                p.float("VolumeMultiplier").map(|x| x as f32).unwrap_or(1.0);
                         } else {
                             n.reload_stage = Some(p.text("ReloadStage").unwrap_or("").to_string());
                         }
@@ -520,7 +570,13 @@ fn rich_keys(v: &PropValue) -> Vec<CurveKey> {
             r.skip(2)?;
             let (time, value, arrive, leave) = (r.f32()?, r.f32()?, r.f32()?, r.f32()?);
             r.skip(8)?;
-            keys.push(CurveKey { time, value, arrive_tangent: arrive, leave_tangent: leave, interp_mode: interp });
+            keys.push(CurveKey {
+                time,
+                value,
+                arrive_tangent: arrive,
+                leave_tangent: leave,
+                interp_mode: interp,
+            });
         }
         Ok(keys)
     };
@@ -623,13 +679,19 @@ struct Stream<'a> {
 impl<'a> Stream<'a> {
     fn reader_at(&self, off: i32) -> Result<Reader<'a>> {
         if off < 0 || off as usize > self.bytes.len() {
-            return err(format!("key block offset {off} outside stream of {} bytes", self.bytes.len()));
+            return err(format!(
+                "key block offset {off} outside stream of {} bytes",
+                self.bytes.len()
+            ));
         }
         Ok(Reader::at(self.bytes, off as usize))
     }
 
     fn decode_track(&self, track: usize, bone: i32) -> Result<Track> {
-        let mut t = Track { bone, ..Default::default() };
+        let mut t = Track {
+            bone,
+            ..Default::default()
+        };
         match self.key_format {
             KeyFormat::PerTrackCompression => self.decode_per_track(track, &mut t)?,
             _ => self.decode_const_var(track, &mut t)?,
@@ -640,7 +702,12 @@ impl<'a> Stream<'a> {
     fn decode_const_var(&self, track: usize, t: &mut Track) -> Result<()> {
         let var = self.key_format == KeyFormat::VariableKeyLerp;
         let o = track * 4;
-        let get = |i: usize| self.offsets.get(o + i).copied().ok_or_else(|| Error::Format("CompressedTrackOffsets too short".into()));
+        let get = |i: usize| {
+            self.offsets
+                .get(o + i)
+                .copied()
+                .ok_or_else(|| Error::Format("CompressedTrackOffsets too short".into()))
+        };
         let (t_off, t_keys, r_off, r_keys) = (get(0)?, get(1)?, get(2)?, get(3)?);
         if t_keys > 0 {
             let (v, times) = self.read_vec_block(t_off, t_keys as usize, self.tf, var)?;
@@ -650,10 +717,19 @@ impl<'a> Stream<'a> {
         if r_keys > 0 {
             let mut r = self.reader_at(r_off)?;
             let n = r_keys as usize;
-            let fmt = if n == 1 { CompressionFormat::Float96NoW } else { self.rf };
-            let (mins, ranges) = if n > 1 && fmt == CompressionFormat::IntervalFixed32NoW { codec::read_interval(&mut r, None)? } else { ([0.0; 3], [0.0; 3]) };
+            let fmt = if n == 1 {
+                CompressionFormat::Float96NoW
+            } else {
+                self.rf
+            };
+            let (mins, ranges) = if n > 1 && fmt == CompressionFormat::IntervalFixed32NoW {
+                codec::read_interval(&mut r, None)?
+            } else {
+                ([0.0; 3], [0.0; 3])
+            };
             for _ in 0..n {
-                t.rot.push(codec::read_quat_key(&mut r, fmt, None, mins, ranges)?);
+                t.rot
+                    .push(codec::read_quat_key(&mut r, fmt, None, mins, ranges)?);
             }
             if var {
                 r.seek(align4(r.tell()))?;
@@ -661,7 +737,10 @@ impl<'a> Stream<'a> {
             }
         }
         if self.scale_offsets.valid() {
-            if let (Some(s_off), Some(s_keys)) = (self.scale_offsets.get(track, 0), self.scale_offsets.get(track, 1)) {
+            if let (Some(s_off), Some(s_keys)) = (
+                self.scale_offsets.get(track, 0),
+                self.scale_offsets.get(track, 1),
+            ) {
                 if s_keys > 0 && s_off >= 0 {
                     let (v, times) = self.read_vec_block(s_off, s_keys as usize, self.sf, var)?;
                     t.scale = v;
@@ -672,10 +751,20 @@ impl<'a> Stream<'a> {
         Ok(())
     }
 
-    fn read_vec_block(&self, off: i32, n: usize, fmt: CompressionFormat, var: bool) -> Result<(Vec<[f32; 3]>, Vec<u32>)> {
+    fn read_vec_block(
+        &self,
+        off: i32,
+        n: usize,
+        fmt: CompressionFormat,
+        var: bool,
+    ) -> Result<(Vec<[f32; 3]>, Vec<u32>)> {
         let mut r = self.reader_at(off)?;
         let fmt = if n == 1 { CompressionFormat::None } else { fmt };
-        let (mins, ranges) = if fmt == CompressionFormat::IntervalFixed32NoW { codec::read_interval(&mut r, None)? } else { ([0.0; 3], [0.0; 3]) };
+        let (mins, ranges) = if fmt == CompressionFormat::IntervalFixed32NoW {
+            codec::read_interval(&mut r, None)?
+        } else {
+            ([0.0; 3], [0.0; 3])
+        };
         let mut v = Vec::with_capacity(n);
         for _ in 0..n {
             v.push(codec::read_vec_key(&mut r, fmt, None, mins, ranges)?);
@@ -690,13 +779,29 @@ impl<'a> Stream<'a> {
 
     fn per_track_header(r: &mut Reader) -> Result<(CompressionFormat, u8, usize)> {
         let h = r.u32()?;
-        Ok((CompressionFormat::from_u8((h >> 28) as u8)?, ((h >> 24) & 0xf) as u8, (h & 0xff_ffff) as usize))
+        Ok((
+            CompressionFormat::from_u8((h >> 28) as u8)?,
+            ((h >> 24) & 0xf) as u8,
+            (h & 0xff_ffff) as usize,
+        ))
     }
 
     fn decode_per_track(&self, track: usize, t: &mut Track) -> Result<()> {
-        let t_off = self.offsets.get(track * 2).copied().ok_or_else(|| Error::Format("CompressedTrackOffsets too short".into()))?;
-        let r_off = self.offsets.get(track * 2 + 1).copied().ok_or_else(|| Error::Format("CompressedTrackOffsets too short".into()))?;
-        let s_off = if self.scale_offsets.valid() { self.scale_offsets.get(track, 0).unwrap_or(-1) } else { -1 };
+        let t_off = self
+            .offsets
+            .get(track * 2)
+            .copied()
+            .ok_or_else(|| Error::Format("CompressedTrackOffsets too short".into()))?;
+        let r_off = self
+            .offsets
+            .get(track * 2 + 1)
+            .copied()
+            .ok_or_else(|| Error::Format("CompressedTrackOffsets too short".into()))?;
+        let s_off = if self.scale_offsets.valid() {
+            self.scale_offsets.get(track, 0).unwrap_or(-1)
+        } else {
+            -1
+        };
         // offset -1 = "no data": the channel keeps the default (reference / additive identity) pose. UEViewer exports
         // a single null key instead, see `md5::export`.
         if t_off != -1 {
@@ -709,9 +814,14 @@ impl<'a> Stream<'a> {
             let mut r = self.reader_at(r_off)?;
             let (fmt, mask, n) = Self::per_track_header(&mut r)?;
             t.rot_format = Some((fmt, mask));
-            let (mins, ranges) = if fmt == CompressionFormat::IntervalFixed32NoW { codec::read_interval(&mut r, Some(mask))? } else { ([0.0; 3], [0.0; 3]) };
+            let (mins, ranges) = if fmt == CompressionFormat::IntervalFixed32NoW {
+                codec::read_interval(&mut r, Some(mask))?
+            } else {
+                ([0.0; 3], [0.0; 3])
+            };
             for _ in 0..n {
-                t.rot.push(codec::read_quat_key(&mut r, fmt, Some(mask), mins, ranges)?);
+                t.rot
+                    .push(codec::read_quat_key(&mut r, fmt, Some(mask), mins, ranges)?);
             }
             r.seek(align4(r.tell()))?;
             if mask & 8 != 0 {
@@ -727,10 +837,17 @@ impl<'a> Stream<'a> {
         Ok(())
     }
 
-    fn read_per_track_vec(&self, off: i32) -> Result<(Vec<[f32; 3]>, Vec<u32>, (CompressionFormat, u8))> {
+    fn read_per_track_vec(
+        &self,
+        off: i32,
+    ) -> Result<(Vec<[f32; 3]>, Vec<u32>, (CompressionFormat, u8))> {
         let mut r = self.reader_at(off)?;
         let (fmt, mask, n) = Self::per_track_header(&mut r)?;
-        let (mins, ranges) = if fmt == CompressionFormat::IntervalFixed32NoW { codec::read_interval(&mut r, Some(mask))? } else { ([0.0; 3], [0.0; 3]) };
+        let (mins, ranges) = if fmt == CompressionFormat::IntervalFixed32NoW {
+            codec::read_interval(&mut r, Some(mask))?
+        } else {
+            ([0.0; 3], [0.0; 3])
+        };
         let mut v = Vec::with_capacity(n);
         for _ in 0..n {
             v.push(codec::read_vec_key(&mut r, fmt, Some(mask), mins, ranges)?);
@@ -756,7 +873,12 @@ fn copy_run(src: &[u8], dst: &mut [u8], sp: &mut usize, dp: &mut usize, n: usize
 
 /// UEViewer `TransferPerTrackData`: undo the translation/rotation/scale order mix-up of the 4.16 per-track byte
 /// stream when scale offsets exist.
-fn transfer_per_track_data(src: &[u8], offsets: &[i32], scale: &OffsetData, num_frames: usize) -> Result<Vec<u8>> {
+fn transfer_per_track_data(
+    src: &[u8],
+    offsets: &[i32],
+    scale: &OffsetData,
+    num_frames: usize,
+) -> Result<Vec<u8>> {
     let mut dst = vec![0u8; src.len()];
     let num_tracks = offsets.len() / 2;
     let mut sp = 0usize;
@@ -780,22 +902,46 @@ fn transfer_per_track_data(src: &[u8], offsets: &[i32], scale: &OffsetData, num_
             let mask = ((h >> 24) & 0xf) as u8;
             let n = (h & 0xff_ffff) as usize;
             if fmt == CompressionFormat::IntervalFixed32NoW {
-                copy_run(src, &mut dst, &mut sp, &mut dp, 4 * codec::components_for_mask(mask) * 2)?;
+                copy_run(
+                    src,
+                    &mut dst,
+                    &mut sp,
+                    &mut dp,
+                    4 * codec::components_for_mask(mask) * 2,
+                )?;
             }
-            copy_run(src, &mut dst, &mut sp, &mut dp, codec::per_track_key_bytes(fmt, mask) * n)?;
+            copy_run(
+                src,
+                &mut dst,
+                &mut sp,
+                &mut dp,
+                codec::per_track_key_bytes(fmt, mask) * n,
+            )?;
             if mask & 8 != 0 {
                 let a = align4(dp);
                 if a != dp {
-                    { let pad = a - dp; copy_run(src, &mut dst, &mut sp, &mut dp, pad)?; }
+                    {
+                        let pad = a - dp;
+                        copy_run(src, &mut dst, &mut sp, &mut dp, pad)?;
+                    }
                 }
-                copy_run(src, &mut dst, &mut sp, &mut dp, if num_frames < 256 { 1 } else { 2 } * n)?;
+                copy_run(
+                    src,
+                    &mut dst,
+                    &mut sp,
+                    &mut dp,
+                    if num_frames < 256 { 1 } else { 2 } * n,
+                )?;
             }
             let a = align4(dp);
             if a != dp {
                 if a > dst.len() {
                     return err("per-track stream transfer: alignment past end");
                 }
-                { let pad = a - dp; copy_run(src, &mut dst, &mut sp, &mut dp, pad)?; }
+                {
+                    let pad = a - dp;
+                    copy_run(src, &mut dst, &mut sp, &mut dp, pad)?;
+                }
             }
         }
     }
@@ -805,14 +951,19 @@ fn transfer_per_track_data(src: &[u8], offsets: &[i32], scale: &OffsetData, num_
 impl AnimSequence {
     /// Parse the (first) `AnimSequence` export of a package.
     pub fn parse(pkg: &Package) -> Result<AnimSequence> {
-        let idx = pkg.find_export("AnimSequence").ok_or_else(|| Error::Format("package has no AnimSequence export".into()))?;
+        let idx = pkg
+            .find_export("AnimSequence")
+            .ok_or_else(|| Error::Format("package has no AnimSequence export".into()))?;
         Self::parse_export(pkg, idx)
     }
 
     pub fn parse_export(pkg: &Package, export: usize) -> Result<AnimSequence> {
         let (start, end) = pkg.export_range(export);
         let mut r = Reader::at(&pkg.data[..end], start);
-        let ctx = Ctx { names: &pkg.names, file_version: pkg.summary.file_version };
+        let ctx = Ctx {
+            names: &pkg.names,
+            file_version: pkg.summary.file_version,
+        };
         let props = read_props(&mut r, &ctx)?;
 
         let num_frames = props.int("NumFrames").unwrap_or(0).max(0) as usize;
@@ -838,7 +989,11 @@ impl AnimSequence {
             kind: additive_kind,
             base: ref_type,
             ref_pose_seq: obj_name(pkg, ref_seq_idx),
-            ref_pose_seq_path: if ref_seq_idx < 0 { Some(pkg.import_path(ref_seq_idx)) } else { None },
+            ref_pose_seq_path: if ref_seq_idx < 0 {
+                Some(pkg.import_path(ref_seq_idx))
+            } else {
+                None
+            },
             ref_frame_index: props.int("RefFrameIndex").unwrap_or(0) as i32,
         };
         let retarget_source = props.text("RetargetSource").unwrap_or("None").to_string();
@@ -858,12 +1013,23 @@ impl AnimSequence {
                         Some(PropValue::Vec3(v)) => *v,
                         _ => [1.0; 3],
                     };
-                    retarget_source_asset_pose.push(BoneTransform { rotation: rot, translation: tr, scale: sc });
+                    retarget_source_asset_pose.push(BoneTransform {
+                        rotation: rot,
+                        translation: tr,
+                        scale: sc,
+                    });
                 }
             }
         }
         let (skeleton_name, skeleton_path) = match props.object("Skeleton") {
-            Some(i) if i != 0 => (obj_name(pkg, i), if i < 0 { Some(pkg.import_path(i)) } else { None }),
+            Some(i) if i != 0 => (
+                obj_name(pkg, i),
+                if i < 0 {
+                    Some(pkg.import_path(i))
+                } else {
+                    None
+                },
+            ),
             _ => (None, None),
         };
         let notifies = parse_notifies(pkg, &props);
@@ -875,14 +1041,21 @@ impl AnimSequence {
         if let Some(PropValue::Array(items)) = props.get("AuthoredSyncMarkers") {
             for it in items {
                 if let Some(f) = it.as_fields() {
-                    sync_markers.push(SyncMarker { name: f.text("MarkerName").unwrap_or("").to_string(), time: float_of(f.get("Time")).unwrap_or(0.0) });
+                    sync_markers.push(SyncMarker {
+                        name: f.text("MarkerName").unwrap_or("").to_string(),
+                        time: float_of(f.get("Time")).unwrap_or(0.0),
+                    });
                 }
             }
         }
         let mut track_map: Vec<i32> = Vec::new();
         if let Some(PropValue::Array(items)) = props.get("TrackToSkeletonMapTable") {
             for it in items {
-                track_map.push(it.as_fields().and_then(|f| f.int("BoneTreeIndex")).unwrap_or(0) as i32);
+                track_map.push(
+                    it.as_fields()
+                        .and_then(|f| f.int("BoneTreeIndex"))
+                        .unwrap_or(0) as i32,
+                );
             }
         }
 
@@ -901,10 +1074,22 @@ impl AnimSequence {
             notifies,
             curves,
             sync_markers,
-            key_format: props.text("KeyEncodingFormat").and_then(KeyFormat::from_name).unwrap_or(KeyFormat::ConstantKeyLerp),
-            translation_format: props.text("TranslationCompressionFormat").and_then(CompressionFormat::from_name).unwrap_or(CompressionFormat::None),
-            rotation_format: props.text("RotationCompressionFormat").and_then(CompressionFormat::from_name).unwrap_or(CompressionFormat::None),
-            scale_format: props.text("ScaleCompressionFormat").and_then(CompressionFormat::from_name).unwrap_or(CompressionFormat::None),
+            key_format: props
+                .text("KeyEncodingFormat")
+                .and_then(KeyFormat::from_name)
+                .unwrap_or(KeyFormat::ConstantKeyLerp),
+            translation_format: props
+                .text("TranslationCompressionFormat")
+                .and_then(CompressionFormat::from_name)
+                .unwrap_or(CompressionFormat::None),
+            rotation_format: props
+                .text("RotationCompressionFormat")
+                .and_then(CompressionFormat::from_name)
+                .unwrap_or(CompressionFormat::None),
+            scale_format: props
+                .text("ScaleCompressionFormat")
+                .and_then(CompressionFormat::from_name)
+                .unwrap_or(CompressionFormat::None),
             compressed_bytes: 0,
             from_raw: false,
             tracks: Vec::new(),
@@ -923,7 +1108,10 @@ impl AnimSequence {
         }
         let serialize_compressed = r.i32()? != 0;
         let mut compressed_offsets: Vec<i32> = Vec::new();
-        let mut scale_offsets = OffsetData { data: Vec::new(), strip: 0 };
+        let mut scale_offsets = OffsetData {
+            data: Vec::new(),
+            strip: 0,
+        };
         let mut compressed_map: Vec<i32> = Vec::new();
         let mut stream: Vec<u8> = Vec::new();
         if serialize_compressed {
@@ -950,9 +1138,17 @@ impl AnimSequence {
         }
         seq.compressed_bytes = stream.len();
 
-        let bone_map: &Vec<i32> = if !compressed_map.is_empty() { &compressed_map } else { &track_map };
+        let bone_map: &Vec<i32> = if !compressed_map.is_empty() {
+            &compressed_map
+        } else {
+            &track_map
+        };
         if !compressed_offsets.is_empty() {
-            let per_bone = if seq.key_format == KeyFormat::PerTrackCompression { 2 } else { 4 };
+            let per_bone = if seq.key_format == KeyFormat::PerTrackCompression {
+                2
+            } else {
+                4
+            };
             if compressed_offsets.len() != bone_map.len() * per_bone {
                 return err(format!(
                     "{}: CompressedTrackOffsets has {} entries, expected {} for {} tracks",
@@ -963,7 +1159,12 @@ impl AnimSequence {
                 ));
             }
             if seq.key_format == KeyFormat::PerTrackCompression && !scale_offsets.data.is_empty() {
-                stream = transfer_per_track_data(&stream, &compressed_offsets, &scale_offsets, num_frames)?;
+                stream = transfer_per_track_data(
+                    &stream,
+                    &compressed_offsets,
+                    &scale_offsets,
+                    num_frames,
+                )?;
             }
             let st = Stream {
                 bytes: &stream,
@@ -976,12 +1177,20 @@ impl AnimSequence {
                 scale_offsets: &scale_offsets,
             };
             for (i, &bone) in bone_map.iter().enumerate() {
-                seq.tracks.push(st.decode_track(i, bone).map_err(|e| Error::Format(format!("{} track {i} (bone {bone}): {e}", seq.name)))?);
+                seq.tracks.push(st.decode_track(i, bone).map_err(|e| {
+                    Error::Format(format!("{} track {i} (bone {bone}): {e}", seq.name))
+                })?);
             }
         } else if !raw.is_empty() {
             seq.from_raw = true;
             for (i, (p, q, s)) in raw.into_iter().enumerate() {
-                seq.tracks.push(Track { bone: bone_map.get(i).copied().unwrap_or(i as i32), pos: p, rot: q, scale: s, ..Default::default() });
+                seq.tracks.push(Track {
+                    bone: bone_map.get(i).copied().unwrap_or(i as i32),
+                    pos: p,
+                    rot: q,
+                    scale: s,
+                    ..Default::default()
+                });
             }
         }
         Ok(seq)
@@ -1037,7 +1246,11 @@ impl AnimSequence {
 
     /// [`pose_at`](Self::pose_at) for a looping player: `time_seconds` wraps modulo `SequenceLength`.
     pub fn pose_at_looped(&self, time_seconds: f32, skel: &SkeletonInfo) -> Vec<BoneTransform> {
-        let t = if self.length > 0.0 { time_seconds.rem_euclid(self.length) } else { 0.0 };
+        let t = if self.length > 0.0 {
+            time_seconds.rem_euclid(self.length)
+        } else {
+            0.0
+        };
         self.pose_at(t, skel)
     }
 
@@ -1047,10 +1260,21 @@ impl AnimSequence {
     }
 
     /// [`pose_at_frame`](Self::pose_at_frame) with an explicit rotation blend.
-    pub fn pose_at_frame_with(&self, frame: f32, skel: &SkeletonInfo, blend: RotationBlend) -> Vec<BoneTransform> {
+    pub fn pose_at_frame_with(
+        &self,
+        frame: f32,
+        skel: &SkeletonInfo,
+        blend: RotationBlend,
+    ) -> Vec<BoneTransform> {
         let additive = self.is_additive();
         let mut out: Vec<BoneTransform> = (0..skel.num_bones())
-            .map(|i| if additive { BoneTransform::ADDITIVE_IDENTITY } else { skel.ref_pose.get(i).copied().unwrap_or_default() })
+            .map(|i| {
+                if additive {
+                    BoneTransform::ADDITIVE_IDENTITY
+                } else {
+                    skel.ref_pose.get(i).copied().unwrap_or_default()
+                }
+            })
             .collect();
         let step = self.interpolation == Interpolation::Step;
         for t in &self.tracks {
@@ -1079,12 +1303,17 @@ impl AnimSequence {
 
     /// Local transforms of every frame for every skeleton bone: `[frame][bone]`.
     pub fn bake_frames(&self, skel: &SkeletonInfo) -> Vec<Vec<BoneTransform>> {
-        (0..self.num_frames).map(|f| self.pose_at_frame(f as f32, skel)).collect()
+        (0..self.num_frames)
+            .map(|f| self.pose_at_frame(f as f32, skel))
+            .collect()
     }
 
     /// Evaluate all float curves at time `t`: `(name, value)`.
     pub fn eval_curves(&self, t: f32) -> Vec<(&str, f32)> {
-        self.curves.iter().map(|c| (c.name.as_str(), c.eval(t))).collect()
+        self.curves
+            .iter()
+            .map(|c| (c.name.as_str(), c.eval(t)))
+            .collect()
     }
 
     /// Additive info shortcut.
@@ -1096,7 +1325,10 @@ impl AnimSequence {
 /// Apply a local-space additive pose on top of a base pose (`AAT_LocalSpaceBase`): rotations compose as
 /// `additive * base` (normalised), translations add, scales combine as `base * (1 + additive)` (additive scale keys
 /// are deltas, see [`BoneTransform::ADDITIVE_IDENTITY`]).
-pub fn apply_additive_local(base: &[BoneTransform], additive: &[BoneTransform]) -> Vec<BoneTransform> {
+pub fn apply_additive_local(
+    base: &[BoneTransform],
+    additive: &[BoneTransform],
+) -> Vec<BoneTransform> {
     base.iter()
         .zip(additive)
         .map(|(b, a)| {
@@ -1107,7 +1339,19 @@ pub fn apply_additive_local(base: &[BoneTransform], additive: &[BoneTransform]) 
                     *c /= l;
                 }
             }
-            BoneTransform { rotation: q, translation: [b.translation[0] + a.translation[0], b.translation[1] + a.translation[1], b.translation[2] + a.translation[2]], scale: [b.scale[0] * (1.0 + a.scale[0]), b.scale[1] * (1.0 + a.scale[1]), b.scale[2] * (1.0 + a.scale[2])] }
+            BoneTransform {
+                rotation: q,
+                translation: [
+                    b.translation[0] + a.translation[0],
+                    b.translation[1] + a.translation[1],
+                    b.translation[2] + a.translation[2],
+                ],
+                scale: [
+                    b.scale[0] * (1.0 + a.scale[0]),
+                    b.scale[1] * (1.0 + a.scale[1]),
+                    b.scale[2] * (1.0 + a.scale[2]),
+                ],
+            }
         })
         .collect()
 }
@@ -1157,7 +1401,13 @@ mod tests {
 
     #[test]
     fn track_sampling_lerps_and_steps() {
-        let t = Track { bone: 0, pos: vec![[0.0; 3], [10.0, 0.0, 0.0], [10.0, 20.0, 0.0]], pos_times: vec![0, 2, 6], rot: vec![[0.0, 0.0, 0.0, 1.0]], ..Default::default() };
+        let t = Track {
+            bone: 0,
+            pos: vec![[0.0; 3], [10.0, 0.0, 0.0], [10.0, 20.0, 0.0]],
+            pos_times: vec![0, 2, 6],
+            rot: vec![[0.0, 0.0, 0.0, 1.0]],
+            ..Default::default()
+        };
         let s = t.sample(7, 1.0, false);
         assert_eq!(s.pos.unwrap(), [5.0, 0.0, 0.0]);
         let s = t.sample(7, 4.0, false);
@@ -1170,7 +1420,22 @@ mod tests {
 
     #[test]
     fn curve_eval_linear() {
-        let c = FloatCurve { name: "x".into(), keys: vec![CurveKey { time: 0.0, value: 0.0, ..Default::default() }, CurveKey { time: 2.0, value: 4.0, ..Default::default() }], ..Default::default() };
+        let c = FloatCurve {
+            name: "x".into(),
+            keys: vec![
+                CurveKey {
+                    time: 0.0,
+                    value: 0.0,
+                    ..Default::default()
+                },
+                CurveKey {
+                    time: 2.0,
+                    value: 4.0,
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
         assert_eq!(c.eval(1.0), 2.0);
         assert_eq!(c.eval(-1.0), 0.0);
         assert_eq!(c.eval(5.0), 4.0);
@@ -1178,8 +1443,15 @@ mod tests {
 
     #[test]
     fn additive_apply() {
-        let base = [BoneTransform { translation: [1.0, 2.0, 3.0], ..BoneTransform::IDENTITY }];
-        let add = [BoneTransform { translation: [1.0, 1.0, 1.0], scale: [0.5, 0.0, -0.5], ..BoneTransform::ADDITIVE_IDENTITY }];
+        let base = [BoneTransform {
+            translation: [1.0, 2.0, 3.0],
+            ..BoneTransform::IDENTITY
+        }];
+        let add = [BoneTransform {
+            translation: [1.0, 1.0, 1.0],
+            scale: [0.5, 0.0, -0.5],
+            ..BoneTransform::ADDITIVE_IDENTITY
+        }];
         let r = apply_additive_local(&base, &add);
         assert_eq!(r[0].translation, [2.0, 3.0, 4.0]);
         assert_eq!(r[0].scale, [1.5, 1.0, 0.5]);
@@ -1202,8 +1474,20 @@ mod tests {
         // 4 + 12 = 16 bytes: already aligned; frame table u8 x2, pad
         s.extend_from_slice(&[0, 4, 0, 0]);
         let offsets = [-1, 0];
-        let so = OffsetData { data: vec![], strip: 0 };
-        let st = Stream { bytes: &s, key_format: KeyFormat::PerTrackCompression, tf: CompressionFormat::Identity, rf: CompressionFormat::Identity, sf: CompressionFormat::Identity, num_frames: 5, offsets: &offsets, scale_offsets: &so };
+        let so = OffsetData {
+            data: vec![],
+            strip: 0,
+        };
+        let st = Stream {
+            bytes: &s,
+            key_format: KeyFormat::PerTrackCompression,
+            tf: CompressionFormat::Identity,
+            rf: CompressionFormat::Identity,
+            sf: CompressionFormat::Identity,
+            num_frames: 5,
+            offsets: &offsets,
+            scale_offsets: &so,
+        };
         let t = st.decode_track(0, 7).unwrap();
         assert_eq!(t.bone, 7);
         assert!(t.pos.is_empty()); // offset -1: no translation data
@@ -1236,13 +1520,36 @@ mod tests {
         let hdr: u32 = ((CompressionFormat::Identity as u32) << 28) | 3;
         s.extend_from_slice(&hdr.to_le_bytes());
         let offsets = [0, rot_off as i32];
-        let so = OffsetData { data: vec![scale_off as i32], strip: 1 };
-        let st = Stream { bytes: &s, key_format: KeyFormat::PerTrackCompression, tf: CompressionFormat::Identity, rf: CompressionFormat::Identity, sf: CompressionFormat::Identity, num_frames: 2, offsets: &offsets, scale_offsets: &so };
+        let so = OffsetData {
+            data: vec![scale_off as i32],
+            strip: 1,
+        };
+        let st = Stream {
+            bytes: &s,
+            key_format: KeyFormat::PerTrackCompression,
+            tf: CompressionFormat::Identity,
+            rf: CompressionFormat::Identity,
+            sf: CompressionFormat::Identity,
+            num_frames: 2,
+            offsets: &offsets,
+            scale_offsets: &so,
+        };
         let t = st.decode_track(0, 1).unwrap();
         assert_eq!(t.pos.len(), 2);
-        assert!((t.pos[0][0] - 10.0).abs() < 1e-4 && t.pos[0][1] == 0.0 && (t.pos[0][2] - 30.0).abs() < 1e-4);
-        assert!((t.pos[1][0] - 12.0).abs() < 1e-3 && (t.pos[1][2] - 34.0).abs() < 1e-3, "{:?}", t.pos[1]);
-        assert_eq!(t.pos_format, Some((CompressionFormat::IntervalFixed32NoW, 5)));
+        assert!(
+            (t.pos[0][0] - 10.0).abs() < 1e-4
+                && t.pos[0][1] == 0.0
+                && (t.pos[0][2] - 30.0).abs() < 1e-4
+        );
+        assert!(
+            (t.pos[1][0] - 12.0).abs() < 1e-3 && (t.pos[1][2] - 34.0).abs() < 1e-3,
+            "{:?}",
+            t.pos[1]
+        );
+        assert_eq!(
+            t.pos_format,
+            Some((CompressionFormat::IntervalFixed32NoW, 5))
+        );
         assert_eq!(t.rot.len(), 1);
         assert!((t.rot[0][0] - 0.0625).abs() < 1e-6);
         assert_eq!(t.scale, vec![[0.0; 3]; 3]);
@@ -1260,8 +1567,20 @@ mod tests {
             s.extend_from_slice(&((1023u32 << 21) | (1023 << 10) | 511).to_le_bytes());
         }
         let offsets = [0, 1, rot_off as i32, 3];
-        let so = OffsetData { data: vec![], strip: 0 };
-        let st = Stream { bytes: &s, key_format: KeyFormat::ConstantKeyLerp, tf: CompressionFormat::Fixed48NoW, rf: CompressionFormat::IntervalFixed32NoW, sf: CompressionFormat::Identity, num_frames: 3, offsets: &offsets, scale_offsets: &so };
+        let so = OffsetData {
+            data: vec![],
+            strip: 0,
+        };
+        let st = Stream {
+            bytes: &s,
+            key_format: KeyFormat::ConstantKeyLerp,
+            tf: CompressionFormat::Fixed48NoW,
+            rf: CompressionFormat::IntervalFixed32NoW,
+            sf: CompressionFormat::Identity,
+            num_frames: 3,
+            offsets: &offsets,
+            scale_offsets: &so,
+        };
         let t = st.decode_track(0, 0).unwrap();
         assert_eq!(t.pos, vec![[5.0, 6.0, 7.0]]);
         assert_eq!(t.rot, vec![[0.0, 0.0, 0.0, 1.0]; 3]);
@@ -1289,10 +1608,22 @@ mod tests {
         wire.extend(f32s(&[1.5, 1.5, 1.5])); // 16 bytes
         assert_eq!(wire.len(), 44);
         let offsets = [16, 32];
-        let so = OffsetData { data: vec![0], strip: 1 };
+        let so = OffsetData {
+            data: vec![0],
+            strip: 1,
+        };
         let fixed = transfer_per_track_data(&wire, &offsets, &so, 10).unwrap();
         assert_eq!(fixed.len(), 44);
-        let st = Stream { bytes: &fixed, key_format: KeyFormat::PerTrackCompression, tf: CompressionFormat::Identity, rf: CompressionFormat::Identity, sf: CompressionFormat::Identity, num_frames: 10, offsets: &offsets, scale_offsets: &so };
+        let st = Stream {
+            bytes: &fixed,
+            key_format: KeyFormat::PerTrackCompression,
+            tf: CompressionFormat::Identity,
+            rf: CompressionFormat::Identity,
+            sf: CompressionFormat::Identity,
+            num_frames: 10,
+            offsets: &offsets,
+            scale_offsets: &so,
+        };
         let t = st.decode_track(0, 2).unwrap();
         assert_eq!(t.pos, vec![[1.0, 2.0, 3.0]]);
         assert!((t.rot[0][2] - 16383.0 / 32767.0).abs() < 1e-5);
@@ -1311,8 +1642,20 @@ mod tests {
             s.extend_from_slice(&f.to_le_bytes());
         }
         let offsets = [0, 2, rot_off as i32, 1];
-        let so = OffsetData { data: vec![], strip: 0 };
-        let st = Stream { bytes: &s, key_format: KeyFormat::VariableKeyLerp, tf: CompressionFormat::Float96NoW, rf: CompressionFormat::Float96NoW, sf: CompressionFormat::Identity, num_frames: 10, offsets: &offsets, scale_offsets: &so };
+        let so = OffsetData {
+            data: vec![],
+            strip: 0,
+        };
+        let st = Stream {
+            bytes: &s,
+            key_format: KeyFormat::VariableKeyLerp,
+            tf: CompressionFormat::Float96NoW,
+            rf: CompressionFormat::Float96NoW,
+            sf: CompressionFormat::Identity,
+            num_frames: 10,
+            offsets: &offsets,
+            scale_offsets: &so,
+        };
         let t = st.decode_track(0, 3).unwrap();
         assert_eq!(t.pos, vec![[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]);
         assert_eq!(t.pos_times, vec![0, 9]);
@@ -1321,4 +1664,3 @@ mod tests {
         assert_eq!(smp.pos.unwrap(), [2.5, 3.5, 4.5]);
     }
 }
-

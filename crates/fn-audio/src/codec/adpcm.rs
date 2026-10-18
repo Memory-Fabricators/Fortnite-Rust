@@ -5,11 +5,24 @@
 use crate::error::{AudioError, Result};
 use crate::wave::DecodedWave;
 
-const STD_COEF: [(i32, i32); 7] = [(256, 0), (512, -256), (0, 0), (192, 64), (240, 0), (460, -208), (392, -232)];
-const ADAPT: [i32; 16] = [230, 230, 230, 230, 307, 409, 512, 614, 768, 614, 512, 409, 307, 230, 230, 230];
+const STD_COEF: [(i32, i32); 7] = [
+    (256, 0),
+    (512, -256),
+    (0, 0),
+    (192, 64),
+    (240, 0),
+    (460, -208),
+    (392, -232),
+];
+const ADAPT: [i32; 16] = [
+    230, 230, 230, 230, 307, 409, 512, 614, 768, 614, 512, 409, 307, 230, 230, 230,
+];
 
 fn bad<T>(d: &str) -> Result<T> {
-    Err(AudioError::Decode { codec: "ms-adpcm", detail: d.to_string() })
+    Err(AudioError::Decode {
+        codec: "ms-adpcm",
+        detail: d.to_string(),
+    })
 }
 
 /// Parse the RIFF image and decode every complete block.
@@ -29,7 +42,9 @@ pub fn decode_wav_adpcm(bytes: &[u8]) -> Result<DecodedWave> {
         }
         p = body.saturating_add(sz).saturating_add(sz & 1);
     }
-    let (Some(f), Some(d)) = (fmt, data) else { return bad("missing fmt or data chunk") };
+    let (Some(f), Some(d)) = (fmt, data) else {
+        return bad("missing fmt or data chunk");
+    };
     if f.len() < 16 || u16::from_le_bytes([f[0], f[1]]) != 2 {
         return bad("not WAVE_FORMAT_ADPCM");
     }
@@ -42,7 +57,10 @@ pub fn decode_wav_adpcm(bytes: &[u8]) -> Result<DecodedWave> {
         if ncoef == 7 && f.len() >= 22 + 28 {
             for (i, c) in coefs.iter_mut().enumerate() {
                 let o = 22 + i * 4;
-                *c = (i16::from_le_bytes([f[o], f[o + 1]]) as i32, i16::from_le_bytes([f[o + 2], f[o + 3]]) as i32);
+                *c = (
+                    i16::from_le_bytes([f[o], f[o + 1]]) as i32,
+                    i16::from_le_bytes([f[o + 2], f[o + 3]]) as i32,
+                );
             }
         }
     }
@@ -68,7 +86,13 @@ impl ChanState {
     }
 }
 
-pub fn decode_blocks(data: &[u8], channels: u16, rate: u32, block_align: usize, coefs: &[(i32, i32); 7]) -> Result<DecodedWave> {
+pub fn decode_blocks(
+    data: &[u8],
+    channels: u16,
+    rate: u32,
+    block_align: usize,
+    coefs: &[(i32, i32); 7],
+) -> Result<DecodedWave> {
     let ch = channels as usize;
     if !(1..=2).contains(&ch) || rate == 0 || block_align < 7 * ch {
         return bad("bad channel count, rate or block alignment");
@@ -84,7 +108,12 @@ pub fn decode_blocks(data: &[u8], channels: u16, rate: u32, block_align: usize, 
             if pred >= 7 {
                 return bad("predictor index out of range");
             }
-            st.push(ChanState { pred, delta: 0, s1: 0, s2: 0 });
+            st.push(ChanState {
+                pred,
+                delta: 0,
+                s1: 0,
+                s2: 0,
+            });
         }
         let rd = |o: usize| i16::from_le_bytes([block[o], block[o + 1]]) as i32;
         for (c, s) in st.iter_mut().enumerate() {
@@ -176,8 +205,14 @@ mod tests {
     #[test]
     fn sine_round_trip_through_reference_encoder() {
         let n = 2 + 2 * 250;
-        let pcm: Vec<i16> = (0..n * 2).map(|i| ((i as f32 * 0.12).sin() * 12000.0) as i16).collect();
-        let blocks: Vec<Vec<u8>> = pcm.chunks(n).filter(|c| c.len() == n).map(encode_block).collect();
+        let pcm: Vec<i16> = (0..n * 2)
+            .map(|i| ((i as f32 * 0.12).sin() * 12000.0) as i16)
+            .collect();
+        let blocks: Vec<Vec<u8>> = pcm
+            .chunks(n)
+            .filter(|c| c.len() == n)
+            .map(encode_block)
+            .collect();
         let align = blocks[0].len();
         let w = decode_wav_adpcm(&wav(&blocks, align, n as u16)).unwrap();
         assert_eq!(w.frames(), n * 2);

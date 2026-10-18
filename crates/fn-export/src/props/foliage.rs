@@ -21,7 +21,10 @@ use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
 fn hex(t: &[u8]) -> String {
-    t.iter().map(|b| format!("{b:02x}")).collect::<Vec<_>>().join(" ")
+    t.iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// One decoded instance in UE world space (cm, left handed, Z up).
@@ -88,13 +91,25 @@ pub fn matrix_to_xf(m: &[f32; 16]) -> Xf {
     let row = |i: usize| [m[i * 4] as f64, m[i * 4 + 1] as f64, m[i * 4 + 2] as f64];
     let (r0, r1, r2) = (row(0), row(1), row(2));
     let len = |v: [f64; 3]| (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
-    let cross = |a: [f64; 3], b: [f64; 3]| [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    let cross = |a: [f64; 3], b: [f64; 3]| {
+        [
+            a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0],
+        ]
+    };
     let det = r0[0] * cross(r1, r2)[0] + r0[1] * cross(r1, r2)[1] + r0[2] * cross(r1, r2)[2];
     let mut s = [len(r0), len(r1), len(r2)];
     if det < 0.0 {
         s[0] = -s[0];
     }
-    let n = |v: [f64; 3], l: f64| if l.abs() > 1e-12 { [v[0] / l, v[1] / l, v[2] / l] } else { [0.0; 3] };
+    let n = |v: [f64; 3], l: f64| {
+        if l.abs() > 1e-12 {
+            [v[0] / l, v[1] / l, v[2] / l]
+        } else {
+            [0.0; 3]
+        }
+    };
     let q = quat_from_rows([n(r0, s[0]), n(r1, s[1]), n(r2, s[2])]);
     Xf { q, t: row(3), s }
 }
@@ -107,29 +122,54 @@ pub fn component_matrices(tail: &[u8]) -> Result<Vec<[f32; 16]>, String> {
     let u32at = |p: usize| u32::from_le_bytes([tail[p], tail[p + 1], tail[p + 2], tail[p + 3]]);
     let (lod_data, elem, n) = (u32at(0), u32at(4) as usize, u32at(8) as usize);
     if lod_data != 0 || elem != 80 {
-        return Err(format!("unexpected component tail head: LODData {lod_data}, element size {elem}"));
+        return Err(format!(
+            "unexpected component tail head: LODData {lod_data}, element size {elem}"
+        ));
     }
     let end = 12 + elem * n;
     if end > tail.len() {
-        return Err(format!("instance array ({n} x {elem}) overruns the {} byte tail", tail.len()));
+        return Err(format!(
+            "instance array ({n} x {elem}) overruns the {} byte tail",
+            tail.len()
+        ));
     }
     Ok((0..n)
         .map(|i| {
             let o = 12 + i * elem;
-            std::array::from_fn(|k| f32::from_le_bytes([tail[o + k * 4], tail[o + k * 4 + 1], tail[o + k * 4 + 2], tail[o + k * 4 + 3]]))
+            std::array::from_fn(|k| {
+                f32::from_le_bytes([
+                    tail[o + k * 4],
+                    tail[o + k * 4 + 1],
+                    tail[o + k * 4 + 2],
+                    tail[o + k * 4 + 3],
+                ])
+            })
         })
         .collect())
 }
 
 fn arr3(v: Option<&Value>, d: [f64; 3]) -> [f64; 3] {
-    v.and_then(|v| v.as_array()).filter(|a| a.len() >= 3).map(|a| [a[0].as_f64().unwrap_or(d[0]), a[1].as_f64().unwrap_or(d[1]), a[2].as_f64().unwrap_or(d[2])]).unwrap_or(d)
+    v.and_then(|v| v.as_array())
+        .filter(|a| a.len() >= 3)
+        .map(|a| {
+            [
+                a[0].as_f64().unwrap_or(d[0]),
+                a[1].as_f64().unwrap_or(d[1]),
+                a[2].as_f64().unwrap_or(d[2]),
+            ]
+        })
+        .unwrap_or(d)
 }
 
 fn rel_xf(j: &Value) -> Xf {
     let l = arr3(j.get("RelativeLocation"), [0.0; 3]);
     let r = arr3(j.get("RelativeRotation"), [0.0; 3]);
     let s = arr3(j.get("RelativeScale3D"), [1.0; 3]);
-    Xf { q: rot_to_quat(r), t: l, s }
+    Xf {
+        q: rot_to_quat(r),
+        t: l,
+        s,
+    }
 }
 
 pub struct Component {
@@ -157,15 +197,28 @@ pub fn gather(src: &Source) -> Result<Vec<Component>, String> {
                 return Err(format!("{} export {i}: {e}", lv.package));
             }
             let j = o.props.to_json(&pkg);
-            let mats = component_matrices(o.trailing).map_err(|e| format!("{} export {i}: {e}", lv.package))?;
+            let mats = component_matrices(o.trailing)
+                .map_err(|e| format!("{} export {i}: {e}", lv.package))?;
             let comp = rel_xf(&j);
             let mut parent = IDENT;
-            if let Some(name) = j.get("AttachParent").and_then(|v| v.as_str()).and_then(|ap| ap.rsplit(':').next()) {
+            if let Some(name) = j
+                .get("AttachParent")
+                .and_then(|v| v.as_str())
+                .and_then(|ap| ap.rsplit(':').next())
+            {
                 if let Some(pi) = pkg.find_export(name) {
-                    parent = rel_xf(&pkg.read_export(pi).map_err(|e| e.to_string())?.props.to_json(&pkg));
+                    parent = rel_xf(
+                        &pkg.read_export(pi)
+                            .map_err(|e| e.to_string())?
+                            .props
+                            .to_json(&pkg),
+                    );
                 }
             }
-            let seed = j.get("InstancingRandomSeed").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+            let seed = j
+                .get("InstancingRandomSeed")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0) as i32;
             let rnd = random_fractions(seed, mats.len());
             // child (instance) -> component -> parent (actor root) -> level
             let to_world = compose(compose(comp, parent), lv.xf);
@@ -174,10 +227,23 @@ pub fn gather(src: &Source) -> Result<Vec<Component>, String> {
                 .zip(&rnd)
                 .map(|(m, r)| {
                     let w = compose(matrix_to_xf(m), to_world);
-                    WorldInst { t: [w.t[0] as f32, w.t[1] as f32, w.t[2] as f32], q: [w.q[0] as f32, w.q[1] as f32, w.q[2] as f32, w.q[3] as f32], s: [w.s[0] as f32, w.s[1] as f32, w.s[2] as f32], random: *r }
+                    WorldInst {
+                        t: [w.t[0] as f32, w.t[1] as f32, w.t[2] as f32],
+                        q: [w.q[0] as f32, w.q[1] as f32, w.q[2] as f32, w.q[3] as f32],
+                        s: [w.s[0] as f32, w.s[1] as f32, w.s[2] as f32],
+                        random: *r,
+                    }
                 })
                 .collect();
-            out.push(Component { level: lv.package.clone(), export: i, props: j, seed, parent, level_xf: lv.xf, instances });
+            out.push(Component {
+                level: lv.package.clone(),
+                export: i,
+                props: j,
+                seed,
+                parent,
+                level_xf: lv.xf,
+                instances,
+            });
         }
     }
     Ok(out)
@@ -185,7 +251,8 @@ pub fn gather(src: &Source) -> Result<Vec<Component>, String> {
 
 pub fn inspect(src: &Source, _a: &PropsArgs) -> Result<(), String> {
     let comps = gather(src)?;
-    let (mut n, mut max_tilt, mut smin, mut smax, mut aniso) = (0usize, 0f64, f32::MAX, f32::MIN, 0f32);
+    let (mut n, mut max_tilt, mut smin, mut smax, mut aniso) =
+        (0usize, 0f64, f32::MAX, f32::MIN, 0f32);
     let mut tilts = vec![];
     let mut keys: BTreeMap<String, usize> = BTreeMap::new();
     for c in &comps {
@@ -204,9 +271,18 @@ pub fn inspect(src: &Source, _a: &PropsArgs) -> Result<(), String> {
                 smin = smin.min(s);
                 smax = smax.max(s);
             }
-            aniso = aniso.max((w.s[0] - w.s[1]).abs().max((w.s[1] - w.s[2]).abs()) / w.s[0].abs().max(1e-6));
+            aniso = aniso
+                .max((w.s[0] - w.s[1]).abs().max((w.s[1] - w.s[2]).abs()) / w.s[0].abs().max(1e-6));
         }
-        println!("{} {}: {} instances seed {} parent t={:?} first {:?}", c.level, c.export, c.instances.len(), c.seed, c.parent.t, c.instances.first().map(|w| (w.t, w.s, w.random)));
+        println!(
+            "{} {}: {} instances seed {} parent t={:?} first {:?}",
+            c.level,
+            c.export,
+            c.instances.len(),
+            c.seed,
+            c.parent.t,
+            c.instances.first().map(|w| (w.t, w.s, w.random))
+        );
     }
     tilts.sort_by(|a, b| a.partial_cmp(b).unwrap());
     println!("TOTAL {n} instances; scale {smin}..{smax}; max anisotropy {aniso}; tilt max {max_tilt:.2} p50 {:.2} p90 {:.2} p99 {:.2}", tilts[tilts.len() / 2], tilts[tilts.len() * 9 / 10], tilts[tilts.len() * 99 / 100]);
@@ -261,21 +337,37 @@ fn leaf(p: &str) -> &str {
     p.rsplit(|c| c == '/' || c == '.').next().unwrap_or(p)
 }
 
-fn export_texture(src: &Source, path: &str, png_name: &str, dir: &std::path::Path) -> Result<TexMeta, String> {
+fn export_texture(
+    src: &Source,
+    path: &str,
+    png_name: &str,
+    dir: &std::path::Path,
+) -> Result<TexMeta, String> {
     let pkg = super::bp::package_of(path);
     let raw = src.load_raw(pkg)?;
-    let tex = Texture2D::from_files(&raw.uasset, &raw.uexp, &raw.ubulk).map_err(|e| format!("{path}: {e}"))?;
-    let mip = tex.mip_for_max_dimension(2048).ok_or_else(|| format!("{path}: no mip with data"))?;
-    let img = tex.decode(mip, DecodeOptions::default()).map_err(|e| format!("{path}: {e}"))?;
+    let tex = Texture2D::from_files(&raw.uasset, &raw.uexp, &raw.ubulk)
+        .map_err(|e| format!("{path}: {e}"))?;
+    let mip = tex
+        .mip_for_max_dimension(2048)
+        .ok_or_else(|| format!("{path}: no mip with data"))?;
+    let img = tex
+        .decode(mip, DecodeOptions::default())
+        .map_err(|e| format!("{path}: {e}"))?;
     let has_alpha = !img.is_opaque();
     let grey = tex.compression_settings == "TC_Default" && {
         let px = img.to_rgba8();
         let n = (px.len() / 4).max(1);
-        let chroma: f64 = px.chunks_exact(4).step_by(7).map(|p| (p[0].max(p[1]).max(p[2]) - p[0].min(p[1]).min(p[2])) as f64 / 255.0).sum::<f64>() / (n / 7 + 1) as f64;
+        let chroma: f64 = px
+            .chunks_exact(4)
+            .step_by(7)
+            .map(|p| (p[0].max(p[1]).max(p[2]) - p[0].min(p[1]).min(p[2])) as f64 / 255.0)
+            .sum::<f64>()
+            / (n / 7 + 1) as f64;
         chroma < 0.06
     };
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-    img.write_png(dir.join(png_name)).map_err(|e| format!("{path}: {e}"))?;
+    img.write_png(dir.join(png_name))
+        .map_err(|e| format!("{path}: {e}"))?;
     Ok(TexMeta {
         name: tex.name.clone(),
         png: png_name.to_string(),
@@ -298,15 +390,41 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
     let out = a.out.join("foliage");
     let comps = gather(src)?;
     let n: usize = comps.iter().map(|c| c.instances.len()).sum();
-    println!("{} foliage components, {n} instances ({:.1}s)", comps.len(), t0.elapsed().as_secs_f32());
+    println!(
+        "{} foliage components, {n} instances ({:.1}s)",
+        comps.len(),
+        t0.elapsed().as_secs_f32()
+    );
 
     // one mesh / one set of cull distances for the whole map (asserted)
-    let first = comps.iter().find(|c| !c.instances.is_empty()).ok_or("no foliage instances")?;
-    let mesh_path = first.props.get("StaticMesh").and_then(|v| v.as_str()).ok_or("component has no StaticMesh")?.to_string();
-    let (start, end) = (first.props["InstanceStartCullDistance"].as_f64().unwrap_or(0.0), first.props["InstanceEndCullDistance"].as_f64().unwrap_or(0.0));
+    let first = comps
+        .iter()
+        .find(|c| !c.instances.is_empty())
+        .ok_or("no foliage instances")?;
+    let mesh_path = first
+        .props
+        .get("StaticMesh")
+        .and_then(|v| v.as_str())
+        .ok_or("component has no StaticMesh")?
+        .to_string();
+    let (start, end) = (
+        first.props["InstanceStartCullDistance"]
+            .as_f64()
+            .unwrap_or(0.0),
+        first.props["InstanceEndCullDistance"]
+            .as_f64()
+            .unwrap_or(0.0),
+    );
     for c in &comps {
-        let m = c.props.get("StaticMesh").and_then(|v| v.as_str()).unwrap_or("");
-        let (s, e) = (c.props["InstanceStartCullDistance"].as_f64().unwrap_or(0.0), c.props["InstanceEndCullDistance"].as_f64().unwrap_or(0.0));
+        let m = c
+            .props
+            .get("StaticMesh")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let (s, e) = (
+            c.props["InstanceStartCullDistance"].as_f64().unwrap_or(0.0),
+            c.props["InstanceEndCullDistance"].as_f64().unwrap_or(0.0),
+        );
         if m != mesh_path || s != start || e != end {
             return Err(format!("{} uses a different mesh / cull distance ({m}, {s}, {e}): the exporter handles one", c.level));
         }
@@ -320,9 +438,15 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
     let mut ext_bounds = Value::Null;
     if let Ok(pd) = PackageData::load(&src.set, &pkg_path) {
         if let Ok(p) = pd.package() {
-            if let Some(i) = (0..p.exports.len()).find(|&i| p.export_class_name(i) == "StaticMesh") {
+            if let Some(i) = (0..p.exports.len()).find(|&i| p.export_class_name(i) == "StaticMesh")
+            {
                 if let Ok(o) = p.read_export(i) {
-                    ext_bounds = o.props.to_json(&p).get("ExtendedBounds").cloned().unwrap_or(Value::Null);
+                    ext_bounds = o
+                        .props
+                        .to_json(&p)
+                        .get("ExtendedBounds")
+                        .cloned()
+                        .unwrap_or(Value::Null);
                 }
             }
         }
@@ -331,7 +455,10 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
     // materials + textures
     let mut resolved = vec![];
     for sm in &mesh.materials {
-        let path = sm.material.clone().ok_or_else(|| format!("mesh slot {} has no material", sm.slot_name))?;
+        let path = sm
+            .material
+            .clone()
+            .ok_or_else(|| format!("mesh slot {} has no material", sm.slot_name))?;
         resolved.push(material::resolve(&src.set, &path)?);
     }
     let tex_dir = out.join("textures");
@@ -354,10 +481,26 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
     let mut mat_entries = vec![];
     for (i, (r, sm)) in resolved.iter().zip(&mesh.materials).enumerate() {
         let rel = format!("materials/{}.mat.json", r.name);
-        write_file(&kind_dir.join(&rel), serde_json::to_string_pretty(&mat_json(r, &tex_meta, "../../textures")).unwrap().as_bytes())?;
+        write_file(
+            &kind_dir.join(&rel),
+            serde_json::to_string_pretty(&mat_json(r, &tex_meta, "../../textures"))
+                .unwrap()
+                .as_bytes(),
+        )?;
         let sc = material::choose_slots(r, &tex_meta);
-        let uri = |p: &Option<String>| p.as_ref().and_then(|pn| r.textures.get(pn)).and_then(|t| tex_meta.get(t)).map(|m| format!("../textures/{}", m.png));
-        let alpha_mode = if r.blend_mode.contains("Masked") { "MASK" } else if r.blend_mode.contains("Translucent") || r.blend_mode.contains("Additive") { "BLEND" } else { "OPAQUE" };
+        let uri = |p: &Option<String>| {
+            p.as_ref()
+                .and_then(|pn| r.textures.get(pn))
+                .and_then(|t| tex_meta.get(t))
+                .map(|m| format!("../textures/{}", m.png))
+        };
+        let alpha_mode = if r.blend_mode.contains("Masked") {
+            "MASK"
+        } else if r.blend_mode.contains("Translucent") || r.blend_mode.contains("Additive") {
+            "BLEND"
+        } else {
+            "OPAQUE"
+        };
         prop_mats.push(PropMaterial {
             name: r.name.clone(),
             slot_name: sm.slot_name.clone(),
@@ -372,7 +515,8 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
         });
         mat_entries.push(json!({"slot": i, "slot_name": sm.slot_name, "name": r.name, "ue_path": r.ue_path, "mat_json": rel, "chain": r.chain, "root_material": r.root, "wpo_connected": r.wpo, "blend_mode": r.blend_mode}));
     }
-    fn_mesh::export_static_mesh_lods(&mesh, &kind_dir, &mesh_name, &prop_mats).map_err(|e| e.to_string())?;
+    fn_mesh::export_static_mesh_lods(&mesh, &kind_dir, &mesh_name, &prop_mats)
+        .map_err(|e| e.to_string())?;
     let (bmin, bmax) = mesh.bounds.box_min_max();
 
     // instances
@@ -400,7 +544,16 @@ pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
                       "components": per_level},
         "unit_note": "positions in UE world cm (left handed, Z up); the runtime maps (x, y, z) cm -> (x, z, y) m and the quaternion (x, y, z, w) -> (-x, -z, -y, w)",
     });
-    write_file(&out.join("foliage.json"), serde_json::to_string_pretty(&doc).unwrap().as_bytes())?;
-    println!("wrote {} ({} bytes, {} instances, {:.1}s)", out.display(), bin.len(), n, t0.elapsed().as_secs_f32());
+    write_file(
+        &out.join("foliage.json"),
+        serde_json::to_string_pretty(&doc).unwrap().as_bytes(),
+    )?;
+    println!(
+        "wrote {} ({} bytes, {} instances, {:.1}s)",
+        out.display(),
+        bin.len(),
+        n,
+        t0.elapsed().as_secs_f32()
+    );
     Ok(())
 }
