@@ -30,37 +30,120 @@ struct Gun {
     prev_pos: Option<Vec3>,
 }
 
-struct State { catalog: Arc<Catalog>, guns: Vec<Gun>, fires: Vec<usize>, scope: bool, now: f32, gpu: crate::particles::Gpu, log: Vec<String> }
+struct State {
+    catalog: Arc<Catalog>,
+    guns: Vec<Gun>,
+    fires: Vec<usize>,
+    scope: bool,
+    now: f32,
+    gpu: crate::particles::Gpu,
+    log: Vec<String>,
+}
 
 static STATE: Mutex<Option<State>> = Mutex::new(None);
-fn logline(st: &mut State, s: String) { if st.log.len() < 2000 { eprintln!("[muzzle] {s}"); st.log.push(s); } }
+fn logline(st: &mut State, s: String) {
+    if st.log.len() < 2000 {
+        eprintln!("[muzzle] {s}");
+        st.log.push(s);
+    }
+}
 
 /// Loads `<root>/particles-muzzle` (or `FN_MUZZLE_DIR`) of the first asset root that has a `muzzle.json`. Returns false (silently) without it: the guns then have no muzzle flash.
 pub fn init(roots: &[PathBuf]) -> bool {
-    let dir = std::env::var_os("FN_MUZZLE_DIR").map(PathBuf::from).filter(|d| d.join("muzzle.json").is_file()).or_else(|| roots.iter().map(|r| r.join("particles-muzzle")).find(|d| d.join("muzzle.json").is_file()));
-    let Some(dir) = dir else { eprintln!("[muzzle] no `particles-muzzle` folder with a muzzle.json in the asset roots (run fn-vfx-export): the firearms have no muzzle flash"); return false };
-    let (table, catalog) = match (MuzzleTable::load(&dir.join("muzzle.json")), Catalog::load(&dir)) { (Ok(t), Ok(c)) => (t, c), (Err(e), _) | (_, Err(e)) => { eprintln!("[muzzle] cannot load {}: {e}", dir.display()); return false } };
+    let dir = std::env::var_os("FN_MUZZLE_DIR")
+        .map(PathBuf::from)
+        .filter(|d| d.join("muzzle.json").is_file())
+        .or_else(|| {
+            roots
+                .iter()
+                .map(|r| r.join("particles-muzzle"))
+                .find(|d| d.join("muzzle.json").is_file())
+        });
+    let Some(dir) = dir else {
+        eprintln!("[muzzle] no `particles-muzzle` folder with a muzzle.json in the asset roots (run fn-vfx-export): the firearms have no muzzle flash");
+        return false;
+    };
+    let (table, catalog) = match (
+        MuzzleTable::load(&dir.join("muzzle.json")),
+        Catalog::load(&dir),
+    ) {
+        (Ok(t), Ok(c)) => (t, c),
+        (Err(e), _) | (_, Err(e)) => {
+            eprintln!("[muzzle] cannot load {}: {e}", dir.display());
+            return false;
+        }
+    };
     let catalog = Arc::new(catalog);
-    let guns: Vec<Gun> = fn_pose::loadout::ITEMS.iter().take(3).enumerate().map(|(i, wid)| {
-        let w = table.weapon(wid);
-        let flash = w.and_then(|w| w.muzzle_system.as_deref()).and_then(|s| catalog.system(s)).map(|sys| MuzzleFlash::new(sys, 0x6D75_7A7A ^ i as u64));
-        Gun { wid: wid.to_string(), flash, socket: w.and_then(|w| w.socket.clone()), persistent_fire: w.map_or(false, |w| w.persistent_fire), xf: None, prev_pos: None }
-    }).collect();
-    eprintln!("[muzzle] {} weapons in the table, flashes: {}", table.weapons.len(), guns.iter().map(|g| format!("{} -> {}", g.wid.rsplit('/').next().unwrap_or(""), g.flash.as_ref().map_or("none".to_string(), |f| f.system().name.clone()))).collect::<Vec<_>>().join(", "));
-    *STATE.lock().unwrap() = Some(State { catalog, guns, fires: vec![], scope: false, now: 0.0, gpu: Default::default(), log: vec![] });
+    let guns: Vec<Gun> = fn_pose::loadout::ITEMS
+        .iter()
+        .take(3)
+        .enumerate()
+        .map(|(i, wid)| {
+            let w = table.weapon(wid);
+            let flash = w
+                .and_then(|w| w.muzzle_system.as_deref())
+                .and_then(|s| catalog.system(s))
+                .map(|sys| MuzzleFlash::new(sys, 0x6D75_7A7A ^ i as u64));
+            Gun {
+                wid: wid.to_string(),
+                flash,
+                socket: w.and_then(|w| w.socket.clone()),
+                persistent_fire: w.map_or(false, |w| w.persistent_fire),
+                xf: None,
+                prev_pos: None,
+            }
+        })
+        .collect();
+    eprintln!(
+        "[muzzle] {} weapons in the table, flashes: {}",
+        table.weapons.len(),
+        guns.iter()
+            .map(|g| format!(
+                "{} -> {}",
+                g.wid.rsplit('/').next().unwrap_or(""),
+                g.flash
+                    .as_ref()
+                    .map_or("none".to_string(), |f| f.system().name.clone())
+            ))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    *STATE.lock().unwrap() = Some(State {
+        catalog,
+        guns,
+        fires: vec![],
+        scope: false,
+        now: 0.0,
+        gpu: Default::default(),
+        log: vec![],
+    });
     true
 }
 
 /// A shot of firearm `gun` (loadout index) was fired this frame (`AFortWeapon::PlayWeaponFireFX` -> Blueprint event `OnPlayWeaponFireFX`).
-pub fn push_fire(gun: usize) { if let Ok(mut g) = STATE.lock() { if let Some(st) = g.as_mut() { st.fires.push(gun); } } }
+pub fn push_fire(gun: usize) {
+    if let Ok(mut g) = STATE.lock() {
+        if let Some(st) = g.as_mut() {
+            st.fires.push(gun);
+        }
+    }
+}
 /// The ADS driver's scope view state (`IsUsingScope` stand-in).
-pub fn set_scope(on: bool) { if let Ok(mut g) = STATE.lock() { if let Some(st) = g.as_mut() { st.scope = on; } } }
+pub fn set_scope(on: bool) {
+    if let Ok(mut g) = STATE.lock() {
+        if let Some(st) = g.as_mut() {
+            st.scope = on;
+        }
+    }
+}
 
 /// Pose of the held firearm `gun` this frame: `attach` = world * RightHand socket (the weapon's attach matrix), `bone` = gun-space (`bone_mesh`) matrix of a weapon bone by name.
 pub fn on_gun_pose(gun: usize, attach: Mat4, bone: &dyn Fn(&str) -> Option<Mat4>) {
     let Ok(mut g) = STATE.lock() else { return };
     let Some(st) = g.as_mut() else { return };
-    let Some(gn) = st.guns.get_mut(gun) else { return };
+    let Some(gn) = st.guns.get_mut(gun) else {
+        return;
+    };
     let Some(s) = gn.socket.as_ref() else { return };
     let Some(b) = bone(&s.bone) else { return };
     gn.xf = Some(fn_vfx::socket::muzzle_transform(attach * b, s));
@@ -75,51 +158,110 @@ pub fn frame(renderer: &mut Renderer, camera: &CameraParams, dt: f32) -> Option<
     let eye_ue = fn_particles::sim::game_to_ue(eye);
     for idx in std::mem::take(&mut st.fires) {
         let (scope, now) = (st.scope, st.now);
-        let Some(gun) = st.guns.get_mut(idx) else { continue };
-        let (Some(flash), Some(xf)) = (gun.flash.as_mut(), gun.xf) else { continue };
+        let Some(gun) = st.guns.get_mut(idx) else {
+            continue;
+        };
+        let (Some(flash), Some(xf)) = (gun.flash.as_mut(), gun.xf) else {
+            continue;
+        };
         let dist_cm = (xf.pos - eye_ue).length();
-        let ctx = FireContext { using_scope: scope, camera_distance_cm: dist_cm, now, magazine_ammo: 0, time_to_next_fire: 0.0 };
-        let played = flash.on_play_weapon_fire_fx(gun.persistent_fire, gun.persistent_fire, &ctx, xf);
-        let line = format!("t{:.2} gun {idx} {}: {} (scale {:.2}, lod {}, {:.2} m)", now, gun.wid.rsplit('/').next().unwrap_or(""), if played { "flash" } else { "suppressed (scope)" }, flash.rel_scale, flash.system().lod_for_distance(dist_cm), dist_cm / 100.);
+        let ctx = FireContext {
+            using_scope: scope,
+            camera_distance_cm: dist_cm,
+            now,
+            magazine_ammo: 0,
+            time_to_next_fire: 0.0,
+        };
+        let played =
+            flash.on_play_weapon_fire_fx(gun.persistent_fire, gun.persistent_fire, &ctx, xf);
+        let line = format!(
+            "t{:.2} gun {idx} {}: {} (scale {:.2}, lod {}, {:.2} m)",
+            now,
+            gun.wid.rsplit('/').next().unwrap_or(""),
+            if played {
+                "flash"
+            } else {
+                "suppressed (scope)"
+            },
+            flash.rel_scale,
+            flash.system().lod_for_distance(dist_cm),
+            dist_cm / 100.
+        );
         logline(st, line);
     }
     let ground = |_x: f32, _y: f32| 0.0f32;
-    let env = Env { ground: Some(&ground) };
+    let env = Env {
+        ground: Some(&ground),
+    };
     let mut draws: Vec<EmitterDraw> = vec![];
     for gun in st.guns.iter_mut() {
-        let (Some(flash), Some(xf)) = (gun.flash.as_mut(), gun.xf) else { continue };
+        let (Some(flash), Some(xf)) = (gun.flash.as_mut(), gun.xf) else {
+            continue;
+        };
         // PartSysVelocity: the component's own movement (UE cm/s, world)
-        let vel = match (gun.prev_pos, dt > 1e-5) { (Some(p), true) => (xf.pos - p) / dt, _ => Vec3::ZERO };
+        let vel = match (gun.prev_pos, dt > 1e-5) {
+            (Some(p), true) => (xf.pos - p) / dt,
+            _ => Vec3::ZERO,
+        };
         gun.prev_pos = Some(xf.pos);
         flash.set_socket(xf, vel);
         flash.tick(dt, &env);
         flash.draw(eye, &mut draws);
     }
     if std::env::var_os("FNRT_MUZZLE_DEBUG").is_some() {
-        let s = renderer.particle_stats().clone(); eprintln!("[muzzle debug] renderer particle stats of the previous frame: {} draw calls, {} sprites, {} mesh instances, {} skipped", s.draw_calls, s.sprites, s.mesh_instances, s.skipped);
-        for d in &draws { if let Some(p) = d.particles.first() {
-            let c = (camera.proj_matrix() * camera.view_matrix()) * glam::Vec4::new(p.pos[0], p.pos[1], p.pos[2], 1.);
-            eprintln!("[muzzle debug] t{:.3} {}/{} {:?} mat {} n={} pos=({:.3},{:.3},{:.3}) size=({:.3},{:.3},{:.3}) color={:?} sub={:.1} ndc=({:.2},{:.2}) w={:.2} eye=({:.2},{:.2},{:.2})", st.now, d.system, d.emitter, d.kind, d.material.rsplit('/').next().unwrap_or(""), d.particles.len(), p.pos[0], p.pos[1], p.pos[2], p.size[0], p.size[1], p.size[2], p.color, p.sub_image, c.x / c.w, c.y / c.w, c.w, eye[0], eye[1], eye[2]);
-        } }
+        let s = renderer.particle_stats().clone();
+        eprintln!("[muzzle debug] renderer particle stats of the previous frame: {} draw calls, {} sprites, {} mesh instances, {} skipped", s.draw_calls, s.sprites, s.mesh_instances, s.skipped);
+        for d in &draws {
+            if let Some(p) = d.particles.first() {
+                let c = (camera.proj_matrix() * camera.view_matrix())
+                    * glam::Vec4::new(p.pos[0], p.pos[1], p.pos[2], 1.);
+                eprintln!("[muzzle debug] t{:.3} {}/{} {:?} mat {} n={} pos=({:.3},{:.3},{:.3}) size=({:.3},{:.3},{:.3}) color={:?} sub={:.1} ndc=({:.2},{:.2}) w={:.2} eye=({:.2},{:.2},{:.2})", st.now, d.system, d.emitter, d.kind, d.material.rsplit('/').next().unwrap_or(""), d.particles.len(), p.pos[0], p.pos[1], p.pos[2], p.size[0], p.size[1], p.size[2], p.color, p.sub_image, c.x / c.w, c.y / c.w, c.w, eye[0], eye[1], eye[2]);
+            }
+        }
     }
-    if draws.is_empty() { return None; }
+    if draws.is_empty() {
+        return None;
+    }
     let mut frame = ParticleFrame::default();
     let cat = st.catalog.clone();
-    for d in &draws { crate::particles::batches(renderer, &cat, &mut st.gpu, d, &mut frame); }
+    for d in &draws {
+        crate::particles::batches(renderer, &cat, &mut st.gpu, d, &mut frame);
+    }
     Some(frame)
 }
 
 /// Dynamic particle lights of the live flashes (game space). Not drawn yet: the in-game renderer has no dynamic point lights (pending renderer work).
 pub fn lights() -> Vec<ParticleLight> {
     let Ok(g) = STATE.lock() else { return vec![] };
-    g.as_ref().map(|st| st.guns.iter().filter_map(|g| g.flash.as_ref()).flat_map(|f| f.lights()).collect()).unwrap_or_default()
+    g.as_ref()
+        .map(|st| {
+            st.guns
+                .iter()
+                .filter_map(|g| g.flash.as_ref())
+                .flat_map(|f| f.lights())
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// `(gun, flash live particles)` for scripted-run reports.
 pub fn report() -> String {
-    let Ok(g) = STATE.lock() else { return String::new() };
-    let Some(st) = g.as_ref() else { return String::new() };
+    let Ok(g) = STATE.lock() else {
+        return String::new();
+    };
+    let Some(st) = g.as_ref() else {
+        return String::new();
+    };
     let mut s = String::new();
-    for (i, gun) in st.guns.iter().enumerate() { if let Some(f) = &gun.flash { s.push_str(&format!("muzzle: gun {i} {} flashes played {} suppressed {}\n", f.system().name, f.played, f.suppressed)); } }
+    for (i, gun) in st.guns.iter().enumerate() {
+        if let Some(f) = &gun.flash {
+            s.push_str(&format!(
+                "muzzle: gun {i} {} flashes played {} suppressed {}\n",
+                f.system().name,
+                f.played,
+                f.suppressed
+            ));
+        }
+    }
     s
 }

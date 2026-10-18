@@ -72,3 +72,53 @@
   but no serialized `Grip` socket/marker. A hand-to-gun-grip distance cannot be
   truthfully defined from the packages without inventing a mesh point; this is
   recorded rather than tuned by eye.
+
+## 2026-10-17 - pak-only start-up: manifest, Metal, UI fonts, trackpad look, real terrain
+
+- Added `fn-manifest` (`crates/fn-manifest`): regenerates `tools/asset-manifest.json` from a Fortnite install, driven by
+  the runtime's own lists — the UI texture table (`crates/fn-ui/data/ui-texture-map.tsv`, 202 entries), the sky pass'
+  textures (`fn_render::sky::TEXTURES`, exported under `sky/`), the character packages of `fn_pose::loader` and
+  `fn_legacy::prototype_clip_names()` (plus `M_Melee_TwoHanded`). Animation names resolve to packages the same way the
+  runtime's clip loader does (`fortnitegame/content/**/<name>.uasset`, first hit in glob order); ambiguous names are
+  reported. Generated against the 1.8 install: 202 textures, 4 meshes, 197 clips.
+- Verified the manifest end to end: `fn-export --md5 all` with it exports 202/202 textures, 14/14 meshes (incl. the sky
+  meshes) and 197/197 clips with 0 failures (~6 s), and `fortnite-rs --paks <Paks>` now reaches the world with
+  `RESULT: ok` on the start-up capture.
+- The app now finds the manifest at `tools/asset-manifest.json` (cwd) and `fn-export` in the sibling cargo profile
+  directories (`FN_EXPORT` overrides); previously both had to sit beside the executable.
+- `fn-render::gpu`: the default backend set is platform-aware (Metal on macOS, Vulkan + DX12 elsewhere), so enabling the
+  `metal` wgpu feature is enough (`FN_BACKEND` = `vulkan|dx12|metal|gles` still forces one).
+- The UI asset source layers the pak-backed `fn_ui::pak_assets::PakAssets` when the game runs from `--paks`: fonts
+  (`NotoSans-*.ufont`) only exist in the paks, so the UI previously failed with "no usable UI font".
+- `platform::recenter`: the hidden pointer is only warped when the OS can report its position (Windows). winit's macOS
+  `set_cursor_position` re-associates the mouse with the cursor; the per-frame warp fought the trackpad and the view
+  snapped back after every movement. Off Windows the `Locked` grab already pins the pointer.
+- `fn-export terrain` (new stage): reads `Athena_Terrain` + `Maps/Landscape/Athena_Terrain_LS_00..05`, decodes each
+  `LandscapeComponent`'s heightmap and stitches the global height grid (`terrain/heightmap.png`, `coverage.png`,
+  `terrain.json`). 94 components, one global 1525 x 1525 grid (3060 m at 200.7874 cm/quad), heights -141..111 m.
+  Tile placement: `SectionBase` is already the global quad coordinate (adding the actor origins scatters the sections —
+  every level package tiles the same grid). The cooked streamed-section heightmaps are 4-byte textures, not `PF_G16`;
+  the 16-bit sample's byte pair is chosen per component by fitting the decoded heights inside that component's serialized
+  `CachedLocalBox` (all 94 components pass), never guessed. The stitched island silhouette matches the shipped
+  `MiniMapAthena` texture.
+- Wired the terrain into the game. `fn-movement::terrain::HeightField` samples it bilinearly in the movement scene's own
+  units, and `Scene::probe_dir`/`Scene::line_down` use it in place of the baseplate plane wherever it covers the capsule
+  (uncovered cells and partial cells stay the plane, so a capsule that walks off the island still finds a floor and the
+  two surfaces never mix inside one bilinear patch); the slope normal matters for walkability, so it comes from the
+  height gradient. `Controller.terrain` hands the field to the collision scene on every step (a flat `Scene::default()`
+  stays the default, so the existing movement tests are untouched).
+- `fn-render` draws the island: `RendererAssets::terrain` is a `TerrainMesh` (vertex + 32-bit index buffer, drawn with
+  the ground pipeline, whose normals come from screen-space derivatives) and replaces the flat plate and its ring.
+- `fn-app` loads `terrain/{terrain.json,heightmap.png,coverage.png}` from the asset roots, centres the island and sets its
+  height under the spawn to the baseplate height. The renderer and `GameSim` use the same height field.
+- Fixed camera clipping below the island: `GameSim::camera_world` now sphere-traces the sampled terrain and uses the flat
+  baseplate only where the landscape has no covered cell. Before this, the controller stayed grounded but the camera boom
+  collided against `Y = 0` instead of the lower terrain, snapping the view beneath the island.
+- On `--paks`, missing optional world assets are exported into `assets-cache/props`: the placed tree/rock catalog and the
+  map's baked `S_WavyGrass_01` instances. Existing `fn-app` loaders render nearby real props and cull the grass spatially.
+  This is vegetation, not buildings: POI/static-mesh actors in the streamed map levels still need a world-geometry exporter
+  and placement renderer.
+- Verified: the terrain exporter reads all 94 components into 1525x1525 samples (1.5 M covered quads, -141..111 m); the
+  1.8 prop export writes 85/85 kinds, 261 textures and 72 materials; foliage export records 555,419 instances. A real-props
+  startup capture draws 308 nearby props and 35,141 visible grass instances (`RESULT: ok`). The 10-second walk smoke ends
+  grounded (`air 0`); the terrain-camera regression tests pass, including a below-baseplate valley and a rising slope.

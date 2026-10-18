@@ -12,9 +12,21 @@ use std::path::Path;
 const SKY_DIR: &str = "Packages/Fortress_Sky";
 /// (package path below Content, old pskx path below assets/sky, old SKYM bin if any)
 const MESHES: &[(&str, &str, Option<&str>)] = &[
-    ("Packages/Fortress_Sky/Mesh_NoLOD/FortniteSkyDome_Optimized", "Game/Packages/Fortress_Sky/Mesh_NoLOD/FortniteSkyDome_Optimized.pskx", Some("dome_optimized.bin")),
-    ("Packages/Fortress_Sky/Mesh_NoLOD/FortniteSkyDome_Highpoly", "Game/Packages/Fortress_Sky/Mesh_NoLOD/FortniteSkyDome_Highpoly.pskx", None),
-    ("Packages/Fortress_Sky/MaterialInstance/Arid/SM_FlatSunMoon_Arid", "Game/Packages/Fortress_Sky/MaterialInstance/Arid/SM_FlatSunMoon_Arid.pskx", Some("sunmoon.bin")),
+    (
+        "Packages/Fortress_Sky/Mesh_NoLOD/FortniteSkyDome_Optimized",
+        "Game/Packages/Fortress_Sky/Mesh_NoLOD/FortniteSkyDome_Optimized.pskx",
+        Some("dome_optimized.bin"),
+    ),
+    (
+        "Packages/Fortress_Sky/Mesh_NoLOD/FortniteSkyDome_Highpoly",
+        "Game/Packages/Fortress_Sky/Mesh_NoLOD/FortniteSkyDome_Highpoly.pskx",
+        None,
+    ),
+    (
+        "Packages/Fortress_Sky/MaterialInstance/Arid/SM_FlatSunMoon_Arid",
+        "Game/Packages/Fortress_Sky/MaterialInstance/Arid/SM_FlatSunMoon_Arid.pskx",
+        Some("sunmoon.bin"),
+    ),
 ];
 
 /// Minimal PSK/PSKX chunk reader.
@@ -29,7 +41,9 @@ impl Psk {
         let mut chunks = HashMap::new();
         let mut o = 0;
         while o + 32 <= data.len() {
-            let id = String::from_utf8_lossy(&data[o..o + 20]).trim_end_matches('\0').to_string();
+            let id = String::from_utf8_lossy(&data[o..o + 20])
+                .trim_end_matches('\0')
+                .to_string();
             let size = i32::from_le_bytes(data[o + 24..o + 28].try_into().unwrap()) as usize;
             let count = i32::from_le_bytes(data[o + 28..o + 32].try_into().unwrap()) as usize;
             o += 32;
@@ -54,7 +68,12 @@ fn prop_vec(props: &str, key: &str) -> Option<[f32; 3]> {
     let s = &props[i..];
     let num = |tag: &str| -> f32 {
         let j = s.find(tag).unwrap() + tag.len();
-        s[j..].split(|c: char| c == ' ' || c == ',' || c == '}').next().unwrap().parse().unwrap()
+        s[j..]
+            .split(|c: char| c == ' ' || c == ',' || c == '}')
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap()
     };
     Some([num("X="), num("Y="), num("Z=")])
 }
@@ -67,7 +86,10 @@ fn static_meshes_match_old_pskx_and_skym() {
     };
     let _ = SKY_DIR;
     println!("\nstatic mesh vs old PSKX / SKYM");
-    println!("{:<28} {:>5} {:>7} {:>7} {:>9} {:>9} {:>9} {:>6} {:>6} {:>10}", "mesh", "lods", "verts", "tris", "pos err", "uv err", "idx", "mats", "bbox", "SKYM bytes");
+    println!(
+        "{:<28} {:>5} {:>7} {:>7} {:>9} {:>9} {:>9} {:>6} {:>6} {:>10}",
+        "mesh", "lods", "verts", "tris", "pos err", "uv err", "idx", "mats", "bbox", "SKYM bytes"
+    );
     for (pkg_path, psk_path, skym_path) in MESHES {
         let pkg = load_package(&td.join(pkg_path));
         let mesh = StaticMesh::parse(&pkg).unwrap();
@@ -75,7 +97,12 @@ fn static_meshes_match_old_pskx_and_skym() {
         let psk = Psk::load(&sky.join(psk_path));
 
         // vertices (wedges)
-        let (wo, wsize, wcount) = psk.chunks.get("VTXW3200").or_else(|| psk.chunks.get("VTXW0000")).copied().unwrap();
+        let (wo, wsize, wcount) = psk
+            .chunks
+            .get("VTXW3200")
+            .or_else(|| psk.chunks.get("VTXW0000"))
+            .copied()
+            .unwrap();
         let wide = psk.chunks.contains_key("VTXW3200");
         assert_eq!(wcount, l.positions.len(), "{pkg_path}: wedge count");
         let (po, _, pcount) = psk.chunks["PNTS0000"];
@@ -85,9 +112,17 @@ fn static_meshes_match_old_pskx_and_skym() {
         let mut bbox_max = [f32::MIN; 3];
         for i in 0..wcount {
             let w = wo + i * wsize;
-            let pi = if wide { psk.i32(w) as usize } else { psk.u16(w) as usize };
+            let pi = if wide {
+                psk.i32(w) as usize
+            } else {
+                psk.u16(w) as usize
+            };
             assert!(pi < pcount);
-            let p = [psk.f32(po + pi * 12), psk.f32(po + pi * 12 + 4), psk.f32(po + pi * 12 + 8)];
+            let p = [
+                psk.f32(po + pi * 12),
+                psk.f32(po + pi * 12 + 4),
+                psk.f32(po + pi * 12 + 8),
+            ];
             // PSK mirrors Y
             let mine = [l.positions[i][0], -l.positions[i][1], l.positions[i][2]];
             for c in 0..3 {
@@ -99,7 +134,9 @@ fn static_meshes_match_old_pskx_and_skym() {
             let u = [psk.f32(w + 4), psk.f32(w + 8)];
             let mine_uv = [l.uvs[0][i][0], l.uvs[0][i][1]];
             let mine_uv_legacy = [gltf_legacy(mine_uv[0]), gltf_legacy(mine_uv[1])];
-            uv_err = uv_err.max((u[0] - mine_uv_legacy[0]).abs()).max((u[1] - mine_uv_legacy[1]).abs());
+            uv_err = uv_err
+                .max((u[0] - mine_uv_legacy[0]).abs())
+                .max((u[1] - mine_uv_legacy[1]).abs());
             assert!((u[0] - mine_uv[0]).abs() < 3.2e-5 && (u[1] - mine_uv[1]).abs() < 3.2e-5);
         }
         // extra UV chunks
@@ -109,7 +146,10 @@ fn static_meshes_match_old_pskx_and_skym() {
             for i in 0..wcount {
                 let u = [psk.f32(eo + i * 8), psk.f32(eo + i * 8 + 4)];
                 for c in 0..2 {
-                    assert!((u[c] - l.uvs[ch][i][c]).abs() < 3.2e-5, "{pkg_path}: uv{ch} vertex {i}");
+                    assert!(
+                        (u[c] - l.uvs[ch][i][c]).abs() < 3.2e-5,
+                        "{pkg_path}: uv{ch} vertex {i}"
+                    );
                     uv_err = uv_err.max((u[c] - gltf_legacy(l.uvs[ch][i][c])).abs());
                 }
             }
@@ -119,14 +159,33 @@ fn static_meshes_match_old_pskx_and_skym() {
             assert_eq!(ccount, wcount);
             assert_eq!(l.colors.len(), wcount);
             for i in 0..wcount {
-                let c = [psk.data[co + i * 4], psk.data[co + i * 4 + 1], psk.data[co + i * 4 + 2], psk.data[co + i * 4 + 3]];
-                assert_eq!(c, [l.colors[i][2], l.colors[i][1], l.colors[i][0], l.colors[i][3]], "{pkg_path}: colour {i}");
+                let c = [
+                    psk.data[co + i * 4],
+                    psk.data[co + i * 4 + 1],
+                    psk.data[co + i * 4 + 2],
+                    psk.data[co + i * 4 + 3],
+                ];
+                assert_eq!(
+                    c,
+                    [
+                        l.colors[i][2],
+                        l.colors[i][1],
+                        l.colors[i][0],
+                        l.colors[i][3]
+                    ],
+                    "{pkg_path}: colour {i}"
+                );
             }
         } else {
             assert!(l.colors.is_empty());
         }
         // faces: per section in order, first two wedge indices swapped
-        let (fo, fsize, fcount) = psk.chunks.get("FACE3200").or_else(|| psk.chunks.get("FACE0000")).copied().unwrap();
+        let (fo, fsize, fcount) = psk
+            .chunks
+            .get("FACE3200")
+            .or_else(|| psk.chunks.get("FACE0000"))
+            .copied()
+            .unwrap();
         let wide_f = psk.chunks.contains_key("FACE3200");
         let tris: usize = l.sections.iter().map(|s| s.num_triangles as usize).sum();
         assert_eq!(fcount, tris, "{pkg_path}: face count");
@@ -135,7 +194,19 @@ fn static_meshes_match_old_pskx_and_skym() {
         for (si, s) in l.sections.iter().enumerate() {
             for t in 0..s.num_triangles as usize {
                 let o = fo + f * fsize;
-                let w: [u32; 3] = if wide_f { [psk.i32(o) as u32, psk.i32(o + 4) as u32, psk.i32(o + 8) as u32] } else { [psk.u16(o) as u32, psk.u16(o + 2) as u32, psk.u16(o + 4) as u32] };
+                let w: [u32; 3] = if wide_f {
+                    [
+                        psk.i32(o) as u32,
+                        psk.i32(o + 4) as u32,
+                        psk.i32(o + 8) as u32,
+                    ]
+                } else {
+                    [
+                        psk.u16(o) as u32,
+                        psk.u16(o + 2) as u32,
+                        psk.u16(o + 4) as u32,
+                    ]
+                };
                 let a = s.first_index as usize + t * 3;
                 let mine = [l.indices[a + 1], l.indices[a], l.indices[a + 2]];
                 if w != mine {
@@ -152,8 +223,14 @@ fn static_meshes_match_old_pskx_and_skym() {
         let mut mats_ok = true;
         for i in 0..mcount {
             let raw = &psk.data[mo + i * msize..mo + i * msize + 64];
-            let name = String::from_utf8_lossy(raw).trim_end_matches('\0').to_string();
-            let mine = mesh.materials.get(l.sections[i].material_index as usize).and_then(|m| m.material_name.clone()).unwrap_or(format!("material_{i}"));
+            let name = String::from_utf8_lossy(raw)
+                .trim_end_matches('\0')
+                .to_string();
+            let mine = mesh
+                .materials
+                .get(l.sections[i].material_index as usize)
+                .and_then(|m| m.material_name.clone())
+                .unwrap_or(format!("material_{i}"));
             // the old UEViewer decode lost the material reference of the sky meshes (placeholder `material_N`)
             if name != mine && name != format!("material_{i}") {
                 mats_ok = false;
@@ -167,7 +244,10 @@ fn static_meshes_match_old_pskx_and_skym() {
             if let (Some(o), Some(e)) = (prop_vec(&p, "Origin"), prop_vec(&p, "BoxExtent")) {
                 for c in 0..3 {
                     // props.txt prints 6 significant digits
-                    bbox_ok &= (o[c] - mesh.bounds.origin[c]).abs() <= 1e-5 * mesh.bounds.origin[c].abs().max(10.0) && (e[c] - mesh.bounds.extent[c]).abs() <= 1e-5 * mesh.bounds.extent[c].abs().max(10.0);
+                    bbox_ok &= (o[c] - mesh.bounds.origin[c]).abs()
+                        <= 1e-5 * mesh.bounds.origin[c].abs().max(10.0)
+                        && (e[c] - mesh.bounds.extent[c]).abs()
+                            <= 1e-5 * mesh.bounds.extent[c].abs().max(10.0);
                 }
             }
         }
@@ -178,7 +258,14 @@ fn static_meshes_match_old_pskx_and_skym() {
         }
 
         // SKYM bytes
-        let skym = static_mesh_to_skym(&mesh, 0, &Options { legacy_uev_half_uv: true }).unwrap();
+        let skym = static_mesh_to_skym(
+            &mesh,
+            0,
+            &Options {
+                legacy_uev_half_uv: true,
+            },
+        )
+        .unwrap();
         let skym_state = match skym_path {
             Some(p) => {
                 let old = std::fs::read(sky.join(p)).unwrap();
@@ -199,7 +286,11 @@ fn static_meshes_match_old_pskx_and_skym() {
             tris,
             pos_err,
             uv_err,
-            if idx_bad == 0 { "identical".to_string() } else { format!("{idx_bad} bad") },
+            if idx_bad == 0 {
+                "identical".to_string()
+            } else {
+                format!("{idx_bad} bad")
+            },
             mats_ok,
             bbox_ok,
             skym_state
@@ -210,7 +301,10 @@ fn static_meshes_match_old_pskx_and_skym() {
         assert!(mats_ok, "{pkg_path}: materials");
         assert!(bbox_ok, "{pkg_path}: bounds");
         if skym_path.is_some() {
-            assert_eq!(skym_state, "identical", "{pkg_path}: SKYM differs from the old file");
+            assert_eq!(
+                skym_state, "identical",
+                "{pkg_path}: SKYM differs from the old file"
+            );
         }
 
         // glTF export sanity (static layout)
@@ -222,7 +316,12 @@ fn static_meshes_match_old_pskx_and_skym() {
         for (pi, p) in prims.iter().enumerate() {
             let (n, _) = g.values(p["attributes"]["POSITION"].as_u64().unwrap() as usize);
             assert_eq!(n, 3);
-            let uvk = p["attributes"].as_object().unwrap().keys().filter(|k| k.starts_with("TEXCOORD_")).count();
+            let uvk = p["attributes"]
+                .as_object()
+                .unwrap()
+                .keys()
+                .filter(|k| k.starts_with("TEXCOORD_"))
+                .count();
             assert_eq!(uvk, l.num_tex_coords);
             let ic = g.accessor(p["indices"].as_u64().unwrap() as usize).1;
             assert_eq!(ic, l.sections[pi].num_triangles as usize * 3);

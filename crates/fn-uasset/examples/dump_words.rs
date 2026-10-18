@@ -4,7 +4,8 @@ use fn_pak::PakSet;
 use fn_uasset::PackageData;
 fn main() {
     let a: Vec<String> = std::env::args().collect();
-    let root = std::env::var("FN_ROOT").unwrap_or_else(|_| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
+    let root = std::env::var("FN_ROOT")
+        .unwrap_or_else(|_| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
     let set = PakSet::open_install(&root).unwrap();
     let d = PackageData::load(&set, &a[1]).unwrap();
     let p = d.package().unwrap();

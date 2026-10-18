@@ -63,43 +63,72 @@ pub mod engine {
 /// `depth = (2^(slice / S) - O) / B` and `slice = log2(depth * B + O) * S`.
 /// The (B, O) construction is the engine's C++ (`GetVolumetricFogGridZParams`, RECALLED from the 4.16 source; the shaders only consume it and a static scan of the exe did not
 /// locate the writer; consistent with the disassembled inverse above):`O = (F - N * 2^((GridSizeZ - 1) / S)) / (F - N)`, `B = (1 - O) / N`.
-pub fn grid_z_params(near_cm: f32, far_cm: f32, grid_size_z: u32, depth_distribution_scale: f32) -> [f32; 3] {
+pub fn grid_z_params(
+    near_cm: f32,
+    far_cm: f32,
+    grid_size_z: u32,
+    depth_distribution_scale: f32,
+) -> [f32; 3] {
     let far = far_cm.max(near_cm + 1.0);
-    let o = (far - near_cm * ((grid_size_z as f32 - 1.0) / depth_distribution_scale).exp2()) / (far - near_cm);
+    let o = (far - near_cm * ((grid_size_z as f32 - 1.0) / depth_distribution_scale).exp2())
+        / (far - near_cm);
     let b = (1.0 - o) / near_cm;
     [b, o, depth_distribution_scale]
 }
 /// View-space depth (cm) of a (possibly fractional) Z slice: `FVolumetric*CS` `div / exp / add / div` sequence.
-pub fn depth_from_slice(z: [f32; 3], slice: f32) -> f32 { ((slice / z[2]).exp2() - z[1]) / z[0] }
+pub fn depth_from_slice(z: [f32; 3], slice: f32) -> f32 {
+    ((slice / z[2]).exp2() - z[1]) / z[0]
+}
 /// Z texture coordinate (0..1 over the grid) of a view-space depth, as the fog pixel shader computes it (`log`, `mul cb1[176].z`, `mul cb1[175].z`).
-pub fn volume_w_from_depth(z: [f32; 3], depth_cm: f32, grid_size_z: u32) -> f32 { (depth_cm * z[0] + z[1]).max(1e-30).log2() * z[2] / grid_size_z as f32 }
+pub fn volume_w_from_depth(z: [f32; 3], depth_cm: f32, grid_size_z: u32) -> f32 {
+    (depth_cm * z[0] + z[1]).max(1e-30).log2() * z[2] / grid_size_z as f32
+}
 /// Grid size in voxels for a viewport (`GridPixelSize` 16, `GridSizeZ` 64).
 pub fn grid_size(width: u32, height: u32) -> [u32; 3] {
-    [width.div_ceil(engine::GRID_PIXEL_SIZE), height.div_ceil(engine::GRID_PIXEL_SIZE), engine::GRID_SIZE_Z]
+    [
+        width.div_ceil(engine::GRID_PIXEL_SIZE),
+        height.div_ceil(engine::GRID_PIXEL_SIZE),
+        engine::GRID_SIZE_Z,
+    ]
 }
 
 /// `FVolumetricFogMaterialSetupCS` (exact): global fog density at world Z `z_cm`, scattering (grey) and absorption written to VBufferA.
 /// `cb0[2].x * 0.5 * 2^(-(z - FogHeight) * Falloff)`; scattering = d * ScatteringScale (rgb), absorption = d * AbsorptionScale (a).
 /// `density` / `falloff` are the component values after the engine remap (see `engine::DENSITY_REMAP`).
-pub fn material_setup(z_cm: f32, density: f32, falloff: f32, fog_height_cm: f32, scattering_scale: f32, absorption_scale: f32) -> ([f32; 3], f32) {
+pub fn material_setup(
+    z_cm: f32,
+    density: f32,
+    falloff: f32,
+    fog_height_cm: f32,
+    scattering_scale: f32,
+    absorption_scale: f32,
+) -> ([f32; 3], f32) {
     let d = ((z_cm - fog_height_cm) * -falloff).exp2() * (density * 0.5);
     ([d * scattering_scale; 3], d * absorption_scale)
 }
 /// UE `Luminance` weights used by the scattering shader for extinction = luma(scattering) + absorption.
-pub fn ue_luma(c: [f32; 3]) -> f32 { c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11 }
+pub fn ue_luma(c: [f32; 3]) -> f32 {
+    c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11
+}
 
 /// `FVolumetricFogFinalIntegrationCS` (exact): integrate the per-voxel (scattering rgb light, extinction) slices front to back.
 /// `slices[i] = (in-scattered light rgb, extinction per cm)`, `step_cm[i]` = world distance between the previous and this slice centre.
 /// Returns (accumulated light rgb, transmittance) AFTER each slice (what the CS stores).
 pub fn final_integration(slices: &[([f32; 3], f32)], step_cm: &[f32]) -> Vec<([f32; 3], f32)> {
     let (mut light, mut trans) = ([0f32; 3], 1f32);
-    slices.iter().zip(step_cm).map(|(&(s, ext), &len)| {
-        let t = (-ext * len * 1.442_695).exp2();
-        let k = ext.max(0.00001);
-        for i in 0..3 { light[i] += (s[i] - s[i] * t) / k * trans; }
-        trans *= t;
-        (light, trans)
-    }).collect()
+    slices
+        .iter()
+        .zip(step_cm)
+        .map(|(&(s, ext), &len)| {
+            let t = (-ext * len * 1.442_695).exp2();
+            let k = ext.max(0.00001);
+            for i in 0..3 {
+                light[i] += (s[i] - s[i] * t) / k * trans;
+            }
+            trans *= t;
+            (light, trans)
+        })
+        .collect()
 }
 
 /// Henyey-Greenstein phase exactly as the light scattering CS evaluates it (`cos_theta = dot(L_to_light, -view_ray)`).
@@ -111,8 +140,20 @@ pub fn hg_phase(g: f32, cos_theta: f32) -> f32 {
 /// `light_color` already includes the light's `VolumetricScatteringIntensity`; with `bOverrideLightColorsWithFogInscatteringColors` the colour is
 /// `luma(light_color) * DirectionalInscatteringColor` (SETTLED from the disassembly of the light scattering CS: `dp3(cb2[5].xyz, luma) * cb3[6].xyz` when `cb0[84].x` is set,
 /// cb3[6] = `HeightFogDirectionalLightInscatteringColor`; `cb2[5].w` is the light's `VolumetricScatteringIntensity`), otherwise `light_color`.
-pub fn directional_inscatter(light_color: [f32; 3], override_color: Option<[f32; 3]>, visibility: f32, g: f32, cos_theta: f32) -> [f32; 3] {
-    let c = match override_color { Some(oc) => { let l = ue_luma(light_color); [l * oc[0], l * oc[1], l * oc[2]] } None => light_color };
+pub fn directional_inscatter(
+    light_color: [f32; 3],
+    override_color: Option<[f32; 3]>,
+    visibility: f32,
+    g: f32,
+    cos_theta: f32,
+) -> [f32; 3] {
+    let c = match override_color {
+        Some(oc) => {
+            let l = ue_luma(light_color);
+            [l * oc[0], l * oc[1], l * oc[2]]
+        }
+        None => light_color,
+    };
     let k = visibility * hg_phase(g, cos_theta);
     [c[0] * k, c[1] * k, c[2] * k]
 }
@@ -120,7 +161,10 @@ pub fn directional_inscatter(light_color: [f32; 3], override_color: Option<[f32;
 /// Sky-light term of `TVolumetricFogLightScatteringCS`, SETTLED from the disassembly (`cb0[80].x * max(cb3[5] * 0.282095, 0)` when `cb0[84].x` is set, i.e. the
 /// `bOverrideLightColorsWithFogInscatteringColors` bit): a flat `FogInscatteringColor * Y00` scaled by `SkyLightVolumetricScatteringIntensity`
 /// (no SH evaluation, no sun, no occlusion).
-pub fn sky_scatter_override(fog_inscattering_color: [f32; 3], sky_volumetric_intensity: f32) -> [f32; 3] {
+pub fn sky_scatter_override(
+    fog_inscattering_color: [f32; 3],
+    sky_volumetric_intensity: f32,
+) -> [f32; 3] {
     fog_inscattering_color.map(|c| sky_volumetric_intensity * (c * 0.282_095).max(0.0))
 }
 
@@ -144,15 +188,32 @@ impl HeightFogPs {
     /// The Athena Day values (remapped as the engine does).
     pub fn athena_day(volumetric: bool) -> Self {
         HeightFogPs {
-            density: day::FOG_DENSITY * engine::DENSITY_REMAP, falloff: day::FOG_HEIGHT_FALLOFF * engine::DENSITY_REMAP, fog_height_cm: day::HEIGHT_FOG_Z_OFFSET,
-            max_opacity: day::FOG_MAX_OPACITY, start_distance_cm: day::START_DISTANCE, cutoff_distance_cm: 0.0, fog_color: day::FOG_INSCATTERING_COLOR,
-            dir_color: day::DIRECTIONAL_INSCATTERING_COLOR, dir_exponent: day::DIRECTIONAL_INSCATTERING_EXPONENT, dir_start_cm: day::DIRECTIONAL_INSCATTERING_START_DISTANCE,
-            volumetric_max_distance_cm: if volumetric { day::VOLUMETRIC_FOG_DISTANCE } else { 0.0 },
+            density: day::FOG_DENSITY * engine::DENSITY_REMAP,
+            falloff: day::FOG_HEIGHT_FALLOFF * engine::DENSITY_REMAP,
+            fog_height_cm: day::HEIGHT_FOG_Z_OFFSET,
+            max_opacity: day::FOG_MAX_OPACITY,
+            start_distance_cm: day::START_DISTANCE,
+            cutoff_distance_cm: 0.0,
+            fog_color: day::FOG_INSCATTERING_COLOR,
+            dir_color: day::DIRECTIONAL_INSCATTERING_COLOR,
+            dir_exponent: day::DIRECTIONAL_INSCATTERING_EXPONENT,
+            dir_start_cm: day::DIRECTIONAL_INSCATTERING_START_DISTANCE,
+            volumetric_max_distance_cm: if volumetric {
+                day::VOLUMETRIC_FOG_DISTANCE
+            } else {
+                0.0
+            },
         }
     }
     /// Exact port of the disassembled pixel shader. `cam_to_receiver_cm` = receiver - camera (Z up), `view_forward` unit camera forward,
     /// `to_sun` unit vector towards the light, `camera_z_cm` world Z of the camera. Returns (inscatter rgb, transmittance) BEFORE the volumetric combine.
-    pub fn eval(&self, cam_to_receiver_cm: [f32; 3], view_forward: [f32; 3], to_sun: [f32; 3], camera_z_cm: f32) -> ([f32; 3], f32) {
+    pub fn eval(
+        &self,
+        cam_to_receiver_cm: [f32; 3],
+        view_forward: [f32; 3],
+        to_sun: [f32; 3],
+        camera_z_cm: f32,
+    ) -> ([f32; 3], f32) {
         let c = cam_to_receiver_cm;
         let len = (c[0] * c[0] + c[1] * c[1] + c[2] * c[2]).sqrt().max(1e-6);
         let along = c[0] * view_forward[0] + c[1] * view_forward[1] + c[2] * view_forward[2];
@@ -164,12 +225,16 @@ impl HeightFogPs {
             let t = exclude * inv_len; // ExcludeIntersectionTime
             let to_excl_z = c[2] * t;
             let excl_z = camera_z_cm + to_excl_z;
-            origin_density = (self.falloff * (excl_z - self.fog_height_cm)).max(-127.0).neg_exp2() * self.density;
+            origin_density = (self.falloff * (excl_z - self.fog_height_cm))
+                .max(-127.0)
+                .neg_exp2()
+                * self.density;
             ray_len = len * (1.0 - t);
             dz = c[2] - to_excl_z;
         } else {
             // cb0[0].x = RayOriginTerms (density at the camera)
-            origin_density = self.density * (-(self.falloff * (camera_z_cm - self.fog_height_cm)).max(-127.0)).exp2();
+            origin_density = self.density
+                * (-(self.falloff * (camera_z_cm - self.fog_height_cm)).max(-127.0)).exp2();
             ray_len = len;
             dz = c[2];
         }
@@ -180,20 +245,51 @@ impl HeightFogPs {
         let dir = [c[0] * inv_len, c[1] * inv_len, c[2] * inv_len];
         let cosl = (dir[0] * to_sun[0] + dir[1] * to_sun[1] + dir[2] * to_sun[2]).clamp(0.0, 1.0);
         let dir_gain = cosl.powf(self.dir_exponent);
-        let dir_factor = 1.0 - (-((ray_len - self.dir_start_cm).max(0.0) * line)).exp2().min(1.0);
-        let dir_in = [self.dir_color[0] * dir_gain * dir_factor, self.dir_color[1] * dir_gain * dir_factor, self.dir_color[2] * dir_gain * dir_factor];
+        let dir_factor = 1.0
+            - (-((ray_len - self.dir_start_cm).max(0.0) * line))
+                .exp2()
+                .min(1.0);
+        let dir_in = [
+            self.dir_color[0] * dir_gain * dir_factor,
+            self.dir_color[1] * dir_gain * dir_factor,
+            self.dir_color[2] * dir_gain * dir_factor,
+        ];
         let trans = (-optical).exp2().min(1.0).max(1.0 - self.max_opacity);
-        let (dir_in, trans) = if self.cutoff_distance_cm > 0.0 && self.cutoff_distance_cm < len { ([0.0; 3], 1.0) } else { (dir_in, trans) };
+        let (dir_in, trans) = if self.cutoff_distance_cm > 0.0 && self.cutoff_distance_cm < len {
+            ([0.0; 3], 1.0)
+        } else {
+            (dir_in, trans)
+        };
         let a = 1.0 - trans;
-        ([self.fog_color[0] * a + dir_in[0], self.fog_color[1] * a + dir_in[1], self.fog_color[2] * a + dir_in[2]], trans)
+        (
+            [
+                self.fog_color[0] * a + dir_in[0],
+                self.fog_color[1] * a + dir_in[1],
+                self.fog_color[2] * a + dir_in[2],
+            ],
+            trans,
+        )
     }
 }
-trait NegExp2 { fn neg_exp2(self) -> f32; }
-impl NegExp2 for f32 { fn neg_exp2(self) -> f32 { (-self).exp2() } }
+trait NegExp2 {
+    fn neg_exp2(self) -> f32;
+}
+impl NegExp2 for f32 {
+    fn neg_exp2(self) -> f32 {
+        (-self).exp2()
+    }
+}
 
 /// `CombineVolumetricFog` at the end of the pixel shader: `rgb' = rgb * V.a + V.rgb`, `a' = a * V.a`.
 pub fn combine_volumetric(fog: ([f32; 3], f32), vol: ([f32; 3], f32)) -> ([f32; 3], f32) {
-    ([fog.0[0] * vol.1 + vol.0[0], fog.0[1] * vol.1 + vol.0[1], fog.0[2] * vol.1 + vol.0[2]], fog.1 * vol.1)
+    (
+        [
+            fog.0[0] * vol.1 + vol.0[0],
+            fog.0[1] * vol.1 + vol.0[1],
+            fog.0[2] * vol.1 + vol.0[2],
+        ],
+        fog.1 * vol.1,
+    )
 }
 
 #[cfg(test)]
@@ -203,7 +299,11 @@ mod tests {
     #[test]
     fn z_params_round_trip_and_end_at_the_volume_distance() {
         let z = grid_z_params(10.0, day::VOLUMETRIC_FOG_DISTANCE, 64, 64.0);
-        assert!((depth_from_slice(z, 63.0) - day::VOLUMETRIC_FOG_DISTANCE).abs() < 1.0, "{}", depth_from_slice(z, 63.0));
+        assert!(
+            (depth_from_slice(z, 63.0) - day::VOLUMETRIC_FOG_DISTANCE).abs() < 1.0,
+            "{}",
+            depth_from_slice(z, 63.0)
+        );
         assert!((depth_from_slice(z, 0.0) - 10.0).abs() < 1e-2);
         for d in [20.0f32, 300.0, 4000.0] {
             let slice = volume_w_from_depth(z, d, 64) * 64.0;

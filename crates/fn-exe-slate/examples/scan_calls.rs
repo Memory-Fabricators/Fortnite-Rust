@@ -2,7 +2,9 @@
 use fn_exe_slate::*;
 use iced_x86::{Decoder, DecoderOptions, FlowControl, Instruction};
 
-fn hex(s: &str) -> u64 { u64::from_str_radix(s.trim_start_matches("0x"), 16).unwrap() }
+fn hex(s: &str) -> u64 {
+    u64::from_str_radix(s.trim_start_matches("0x"), 16).unwrap()
+}
 
 fn main() {
     let a: Vec<String> = std::env::args().skip(1).collect();
@@ -14,7 +16,11 @@ fn main() {
     let mut ins = Instruction::default();
     while dec.can_decode() {
         dec.decode_out(&mut ins);
-        if matches!(ins.flow_control(), FlowControl::Call | FlowControl::UnconditionalBranch) && ins.near_branch_target() == pe.image_base + target as u64 {
+        if matches!(
+            ins.flow_control(),
+            FlowControl::Call | FlowControl::UnconditionalBranch
+        ) && ins.near_branch_target() == pe.image_base + target as u64
+        {
             let r = (ins.ip() - pe.image_base) as u32;
             let fb = pe.func_group(r).map(|x| x.0).unwrap_or(0);
             println!("{r:08x}  in func {fb:x}  {:?}", ins.mnemonic());

@@ -1,8 +1,8 @@
 //! `catalog.json` + per-kind `props.json`.
 use crate::collision::Collision;
+use crate::layout::Layout;
 use crate::material::Material;
 use crate::mesh::{load_lods, LodMesh};
-use crate::layout::Layout;
 use crate::util::*;
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -138,7 +138,11 @@ impl PropKind {
 
     /// Decode the `.mat.json` of material slot `slot` (textures are not decoded until requested).
     pub fn load_material(&self, slot: usize) -> Result<Material> {
-        let m = self.materials.iter().find(|m| m.slot == slot).ok_or_else(|| Error::Schema(format!("{}: no material slot {slot}", self.id)))?;
+        let m = self
+            .materials
+            .iter()
+            .find(|m| m.slot == slot)
+            .ok_or_else(|| Error::Schema(format!("{}: no material slot {slot}", self.id)))?;
         Material::load(&self.dir.join(&m.mat_json))
     }
 
@@ -156,10 +160,17 @@ impl PropKind {
 
     fn from_json(dir: &Path, j: &Value) -> Result<PropKind> {
         let id = req_str(j, "id", "props.json")?;
-        let mesh = j.get("mesh").ok_or_else(|| Error::Schema(format!("{id}: no mesh")))?;
+        let mesh = j
+            .get("mesh")
+            .ok_or_else(|| Error::Schema(format!("{id}: no mesh")))?;
         let bounds = mesh.get("bounds_cm");
         let mut lods = vec![];
-        for l in mesh.get("lods").and_then(|x| x.as_array()).map(|a| a.as_slice()).unwrap_or(&[]) {
+        for l in mesh
+            .get("lods")
+            .and_then(|x| x.as_array())
+            .map(|a| a.as_slice())
+            .unwrap_or(&[])
+        {
             lods.push(LodInfo {
                 vertices: u32_of(l, "vertices").unwrap_or(0) as usize,
                 triangles: u32_of(l, "triangles").unwrap_or(0) as usize,
@@ -169,12 +180,26 @@ impl PropKind {
                 sections: l
                     .get("sections")
                     .and_then(|x| x.as_array())
-                    .map(|a| a.iter().map(|s| (u32_of(s, "material_slot").unwrap_or(0) as usize, u32_of(s, "triangles").unwrap_or(0) as usize)).collect())
+                    .map(|a| {
+                        a.iter()
+                            .map(|s| {
+                                (
+                                    u32_of(s, "material_slot").unwrap_or(0) as usize,
+                                    u32_of(s, "triangles").unwrap_or(0) as usize,
+                                )
+                            })
+                            .collect()
+                    })
                     .unwrap_or_default(),
             });
         }
         let mut materials = vec![];
-        for m in j.get("materials").and_then(|x| x.as_array()).map(|a| a.as_slice()).unwrap_or(&[]) {
+        for m in j
+            .get("materials")
+            .and_then(|x| x.as_array())
+            .map(|a| a.as_slice())
+            .unwrap_or(&[])
+        {
             materials.push(MaterialSlot {
                 slot: u32_of(m, "slot").unwrap_or(0) as usize,
                 slot_name: str_of(m, "slot_name").unwrap_or_default(),
@@ -187,7 +212,9 @@ impl PropKind {
         let collision = Collision::load(&dir.join(&collision_file))?;
         let h = j.get("health");
         let res = j.get("resource");
-        let pair = |v: Option<&Value>, a: &str, b: &str| -> Option<(f32, f32)> { Some((f32_of(v?, a)?, f32_of(v?, b)?)) };
+        let pair = |v: Option<&Value>, a: &str, b: &str| -> Option<(f32, f32)> {
+            Some((f32_of(v?, a)?, f32_of(v?, b)?))
+        };
         let d = j.get("destruction");
         let ds = |k: &str| d.and_then(|d| str_of(d, k)).filter(|s| !s.is_empty());
         let r = j.get("render");
@@ -197,28 +224,47 @@ impl PropKind {
             blueprint: str_of(j, "blueprint").unwrap_or_default(),
             mesh_name: str_of(mesh, "name").unwrap_or_default(),
             mesh_ue_path: str_of(mesh, "ue_path").unwrap_or_default(),
-            bounds_origin_cm: bounds.and_then(|b| arr_f32::<3>(b.get("origin"))).unwrap_or([0.0; 3]),
-            bounds_extent_cm: bounds.and_then(|b| arr_f32::<3>(b.get("extent"))).unwrap_or([0.0; 3]),
+            bounds_origin_cm: bounds
+                .and_then(|b| arr_f32::<3>(b.get("origin")))
+                .unwrap_or([0.0; 3]),
+            bounds_extent_cm: bounds
+                .and_then(|b| arr_f32::<3>(b.get("extent")))
+                .unwrap_or([0.0; 3]),
             lods,
             materials,
             collision,
             health: h.and_then(|h| f32_of(h, "max")).unwrap_or(0.0),
-            health_row: h.and_then(|h| str_of(h, "attribute_row")).unwrap_or_default(),
+            health_row: h
+                .and_then(|h| str_of(h, "attribute_row"))
+                .unwrap_or_default(),
             resource: ResourceInfo {
                 kind: ResourceKind::parse(&res.and_then(|r| str_of(r, "type")).unwrap_or_default()),
-                amount_row: res.and_then(|r| str_of(r, "amount_row")).filter(|s| !s.is_empty()),
+                amount_row: res
+                    .and_then(|r| str_of(r, "amount_row"))
+                    .filter(|s| !s.is_empty()),
                 rates: pair(res, "rate_t0", "rate_t1"),
                 athena_rates: pair(res, "athena_rate_t0", "athena_rate_t1"),
             },
-            destruction: Destruction { death_particles: ds("death_particles"), death_sound: ds("death_sound"), hit_sound: ds("hit_sound"), loot_tier_group: ds("loot_tier_group"), replacement_class: ds("replacement_class") },
+            destruction: Destruction {
+                death_particles: ds("death_particles"),
+                death_sound: ds("death_sound"),
+                hit_sound: ds("hit_sound"),
+                loot_tier_group: ds("loot_tier_group"),
+                replacement_class: ds("replacement_class"),
+            },
             render: RenderInfo {
                 cull_distance_cm: r.and_then(|r| f32_of(r, "cull_distance_cm")).unwrap_or(0.0),
                 random_scale: r.and_then(|r| bool_of(r, "random_scale")).unwrap_or(false),
-                random_scale_range: r.and_then(|r| arr_f32::<2>(r.get("random_scale_range"))).map(|a| (a[0], a[1])),
+                random_scale_range: r
+                    .and_then(|r| arr_f32::<2>(r.get("random_scale_range")))
+                    .map(|a| (a[0], a[1])),
                 random_yaw: r.and_then(|r| bool_of(r, "random_yaw")).unwrap_or(false),
                 cast_shadow: r.and_then(|r| bool_of(r, "cast_shadow")).unwrap_or(true),
             },
-            placed_in_map: j.get("placement").and_then(|p| u32_of(p, "athena_terrain_count")).unwrap_or(0),
+            placed_in_map: j
+                .get("placement")
+                .and_then(|p| u32_of(p, "athena_terrain_count"))
+                .unwrap_or(0),
             gltf: str_of(mesh, "gltf").ok_or_else(|| Error::Schema(format!("{id}: mesh.gltf")))?,
             dir: dir.to_path_buf(),
             raw: j.clone(),
@@ -243,16 +289,26 @@ impl PropCatalog {
         let cat = read_json(&dir.join("catalog.json"))?;
         let schema_v = cat.get("schema").and_then(|x| x.as_u64()).unwrap_or(0);
         if schema_v != 1 {
-            return schema(format!("catalog.json schema {schema_v}, this loader reads 1"));
+            return schema(format!(
+                "catalog.json schema {schema_v}, this loader reads 1"
+            ));
         }
         let mut kinds = vec![];
-        for e in cat.get("kinds").and_then(|x| x.as_array()).ok_or_else(|| Error::Schema("catalog: kinds".into()))? {
+        for e in cat
+            .get("kinds")
+            .and_then(|x| x.as_array())
+            .ok_or_else(|| Error::Schema("catalog: kinds".into()))?
+        {
             let id = req_str(e, "id", "catalog kind")?;
             let sub = dir.join(req_str(e, "dir", &id)?);
             let j = read_json(&sub.join("props.json"))?;
             kinds.push(PropKind::from_json(&sub, &j)?);
         }
-        let by_id = kinds.iter().enumerate().map(|(i, k)| (k.id.clone(), i)).collect();
+        let by_id = kinds
+            .iter()
+            .enumerate()
+            .map(|(i, k)| (k.id.clone(), i))
+            .collect();
         Ok(PropCatalog { dir, kinds, by_id })
     }
 

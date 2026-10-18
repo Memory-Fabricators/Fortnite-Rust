@@ -32,7 +32,18 @@ fn build_pak(version: u32, mount: &str, ents: &[Ent]) -> Vec<u8> {
         let mut blocks: Vec<(u64, u64)> = Vec::new();
         let mut payload: Vec<u8> = Vec::new();
         let method: u32 = if e.compress { 1 } else { 0 };
-        let header_len = 8 + 8 + 8 + 4 + 20 + if e.compress { 4 + 16 * e.data.len().div_ceil(block_size as usize).max(1) } else { 0 } + 1 + 4;
+        let header_len = 8
+            + 8
+            + 8
+            + 4
+            + 20
+            + if e.compress {
+                4 + 16 * e.data.len().div_ceil(block_size as usize).max(1)
+            } else {
+                0
+            }
+            + 1
+            + 4;
         if e.compress {
             let mut pos = offset + header_len as u64;
             for chunk in e.data.chunks(block_size as usize) {
@@ -48,7 +59,11 @@ fn build_pak(version: u32, mount: &str, ents: &[Ent]) -> Vec<u8> {
         } else {
             payload.extend(&e.data);
         }
-        let compressed_size = if e.compress { payload.len() as u64 } else { e.data.len() as u64 };
+        let compressed_size = if e.compress {
+            payload.len() as u64
+        } else {
+            e.data.len() as u64
+        };
         let mut h: Vec<u8> = Vec::new();
         h.extend(offset.to_le_bytes());
         h.extend(compressed_size.to_le_bytes());
@@ -58,7 +73,11 @@ fn build_pak(version: u32, mount: &str, ents: &[Ent]) -> Vec<u8> {
         if e.compress {
             h.extend((blocks.len() as u32).to_le_bytes());
             for (s, en) in &blocks {
-                let (s, en) = if version >= 5 { (s - offset, en - offset) } else { (*s, *en) };
+                let (s, en) = if version >= 5 {
+                    (s - offset, en - offset)
+                } else {
+                    (*s, *en)
+                };
                 h.extend(s.to_le_bytes());
                 h.extend(en.to_le_bytes());
             }
@@ -92,12 +111,34 @@ fn tmp(name: &str) -> PathBuf {
 }
 
 fn sample() -> Vec<Ent> {
-    let big: Vec<u8> = (0..200_000u32).map(|i| ((i * 7) ^ (i >> 5)) as u8).collect();
+    let big: Vec<u8> = (0..200_000u32)
+        .map(|i| ((i * 7) ^ (i >> 5)) as u8)
+        .collect();
     vec![
-        Ent { name: "FortniteGame/Content/Plain.uasset", data: b"hello stored world".to_vec(), compress: false, encrypted: false },
-        Ent { name: "FortniteGame/Content/Big.bin", data: big, compress: true, encrypted: false },
-        Ent { name: "FortniteGame/Content/Small.bin", data: vec![42; 10], compress: true, encrypted: false },
-        Ent { name: "FortniteGame/Config/Secret.ini", data: vec![1, 2, 3], compress: false, encrypted: true },
+        Ent {
+            name: "FortniteGame/Content/Plain.uasset",
+            data: b"hello stored world".to_vec(),
+            compress: false,
+            encrypted: false,
+        },
+        Ent {
+            name: "FortniteGame/Content/Big.bin",
+            data: big,
+            compress: true,
+            encrypted: false,
+        },
+        Ent {
+            name: "FortniteGame/Content/Small.bin",
+            data: vec![42; 10],
+            compress: true,
+            encrypted: false,
+        },
+        Ent {
+            name: "FortniteGame/Config/Secret.ini",
+            data: vec![1, 2, 3],
+            compress: false,
+            encrypted: true,
+        },
     ]
 }
 
@@ -127,12 +168,38 @@ fn zlib_blocks_and_versions() {
 #[test]
 fn mount_points_and_override_order() {
     // two paks, the later (higher chunk) one overrides; a non-default mount point prefixes entry names
-    let a = vec![Ent { name: "Foo/Bar.txt", data: b"old".to_vec(), compress: false, encrypted: false }, Ent { name: "Only/InA.txt", data: b"a".to_vec(), compress: false, encrypted: false }];
-    let b = vec![Ent { name: "Bar.txt", data: b"new".to_vec(), compress: true, encrypted: false }];
+    let a = vec![
+        Ent {
+            name: "Foo/Bar.txt",
+            data: b"old".to_vec(),
+            compress: false,
+            encrypted: false,
+        },
+        Ent {
+            name: "Only/InA.txt",
+            data: b"a".to_vec(),
+            compress: false,
+            encrypted: false,
+        },
+    ];
+    let b = vec![Ent {
+        name: "Bar.txt",
+        data: b"new".to_vec(),
+        compress: true,
+        encrypted: false,
+    }];
     let dir = tmp("set");
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::write(dir.join("pakchunk1-WindowsClient.pak"), build_pak(3, "../../../", &a)).unwrap();
-    std::fs::write(dir.join("pakchunk0_s1-WindowsClient.pak"), build_pak(4, "../../../Foo/", &b)).unwrap();
+    std::fs::write(
+        dir.join("pakchunk1-WindowsClient.pak"),
+        build_pak(3, "../../../", &a),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("pakchunk0_s1-WindowsClient.pak"),
+        build_pak(4, "../../../Foo/", &b),
+    )
+    .unwrap();
     let set = PakSet::open_dir(&dir).unwrap();
     // order: chunk0_s1 < chunk1  => chunk1 wins
     assert_eq!(set.paks()[0].name, "pakchunk0_s1-WindowsClient.pak");
@@ -146,8 +213,16 @@ fn mount_points_and_override_order() {
     // reversed priority: put the compressed one in a later chunk
     let dir2 = tmp("set2");
     std::fs::create_dir_all(&dir2).unwrap();
-    std::fs::write(dir2.join("pakchunk0-WindowsClient.pak"), build_pak(3, "../../../", &a)).unwrap();
-    std::fs::write(dir2.join("pakchunk0_s1-WindowsClient.pak"), build_pak(4, "../../../Foo/", &b)).unwrap();
+    std::fs::write(
+        dir2.join("pakchunk0-WindowsClient.pak"),
+        build_pak(3, "../../../", &a),
+    )
+    .unwrap();
+    std::fs::write(
+        dir2.join("pakchunk0_s1-WindowsClient.pak"),
+        build_pak(4, "../../../Foo/", &b),
+    )
+    .unwrap();
     let set2 = PakSet::open_dir(&dir2).unwrap();
     assert_eq!(&set2.read("Foo/Bar.txt").unwrap()[..], b"new");
 }

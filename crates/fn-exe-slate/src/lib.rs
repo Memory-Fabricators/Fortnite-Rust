@@ -1,4 +1,4 @@
-﻿//! Static, read-only analysis of the 1.8 client EXE (UE 4.16, x64 PE). The EXE is NEVER executed; it is only parsed and disassembled.
+//! Static, read-only analysis of the 1.8 client EXE (UE 4.16, x64 PE). The EXE is NEVER executed; it is only parsed and disassembled.
 //!
 //! * [`pe::Pe`]      sections, image base, RVA <-> file offset, `.pdata` function table, string reads (ASCII / UTF-16).
 //! * [`xref`]        RIP-relative reference finder, call graph, function lookup.
@@ -11,13 +11,17 @@ pub mod slate;
 pub mod xref;
 
 pub use pe::{Pe, Section};
-pub use xref::{Xref, XrefKind, XrefIndex};
+pub use xref::{Xref, XrefIndex, XrefKind};
 
 /// Default location of the analysed binary (override with `FN_EXE`).
 pub const DEFAULT_EXE: &str = r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame\Binaries\Win64\FortniteClient-Win64-Shipping.exe";
 
 /// Path of the EXE: `FN_EXE` env var or [`DEFAULT_EXE`].
-pub fn exe_path() -> std::path::PathBuf { std::env::var_os("FN_EXE").map(Into::into).unwrap_or_else(|| DEFAULT_EXE.into()) }
+pub fn exe_path() -> std::path::PathBuf {
+    std::env::var_os("FN_EXE")
+        .map(Into::into)
+        .unwrap_or_else(|| DEFAULT_EXE.into())
+}
 
 /// The string FILE OFFSETS the user supplied (name, offset, hint of encoding is probed at runtime).
 pub const USER_STRING_OFFSETS: &[(&str, u64)] = &[
@@ -35,6 +39,3 @@ pub const USER_STRING_OFFSETS: &[(&str, u64)] = &[
     ("SFortLoadingScreen.cpp", 0x4B3F980),
     ("FortLoadingScreenManager.cpp", 0x412D5F0),
 ];
-
-
-

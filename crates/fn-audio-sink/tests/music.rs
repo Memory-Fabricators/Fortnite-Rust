@@ -11,13 +11,23 @@ const RATE: usize = 48000;
 
 fn root() -> Option<String> {
     let r = std::env::var("FN_ROOT").unwrap_or_else(|_| ROOT.to_string());
-    Path::new(&r).join("Content").join("Paks").exists().then_some(r)
+    Path::new(&r)
+        .join("Content")
+        .join("Paks")
+        .exists()
+        .then_some(r)
 }
 
 /// rms of the stereo block `[from, to)` seconds of a render
 fn rms(o: &[f32], from: f32, to: f32) -> f32 {
-    let (a, b) = ((from * RATE as f32) as usize * 2, (to * RATE as f32) as usize * 2);
-    let s: f64 = o[a..b.min(o.len())].iter().map(|&x| (x as f64) * (x as f64)).sum();
+    let (a, b) = (
+        (from * RATE as f32) as usize * 2,
+        (to * RATE as f32) as usize * 2,
+    );
+    let s: f64 = o[a..b.min(o.len())]
+        .iter()
+        .map(|&x| (x as f64) * (x as f64))
+        .sum();
     (s / (b.min(o.len()) - a) as f64).sqrt() as f32
 }
 fn peak(o: &[f32]) -> f32 {
@@ -28,7 +38,9 @@ fn secs(eng: &mut AudioEngine, s: f32) -> Vec<f32> {
 }
 
 /// A sink whose loader (the game's worker thread) ran `load_music`; requests made BEFORE it finished are carried out when it does.
-fn sink_with_music(requests_first: impl FnOnce(&mut EngineSink)) -> Option<(AudioEngine, EngineSink)> {
+fn sink_with_music(
+    requests_first: impl FnOnce(&mut EngineSink),
+) -> Option<(AudioEngine, EngineSink)> {
     let r = root()?;
     let mut eng = AudioEngine::new(RATE as u32);
     let mut sink = EngineSink::new(eng.handle());
@@ -38,9 +50,15 @@ fn sink_with_music(requests_first: impl FnOnce(&mut EngineSink)) -> Option<(Audi
     let t = std::thread::spawn(move || {
         let mut lib = Library::open(r).unwrap();
         let missing = loader.load_music(&mut lib);
-        assert!(lib.is_streamed("/Game/Sounds/Fort_Music/Menu/fort_lobby_music_athena"), "the 115 s lobby track is streamed, not decoded whole on the loader");
+        assert!(
+            lib.is_streamed("/Game/Sounds/Fort_Music/Menu/fort_lobby_music_athena"),
+            "the 115 s lobby track is streamed, not decoded whole on the loader"
+        );
         assert!(lib.is_streamed("/Game/Sounds/Fort_Music/Menu/fortnite_login_screen"));
-        assert!(!lib.is_streamed("/Game/Sounds/Fort_Ambient_Looping/Mountain_Exterior/Mountain_Wind06"), "the 9 s wind loop decodes whole");
+        assert!(
+            !lib.is_streamed("/Game/Sounds/Fort_Ambient_Looping/Mountain_Exterior/Mountain_Wind06"),
+            "the 9 s wind loop decodes whole"
+        );
         missing
     });
     let missing = t.join().unwrap();
@@ -51,7 +69,10 @@ fn sink_with_music(requests_first: impl FnOnce(&mut EngineSink)) -> Option<(Audi
 
 #[test]
 fn lobby_music_requested_before_the_loader_finishes_plays_once_it_is_ready() {
-    let Some((mut eng, mut sink)) = sink_with_music(|s| s.set_music(Some(MusicCue::LobbyAthena))) else { return eprintln!("SKIP: no install") };
+    let Some((mut eng, mut sink)) = sink_with_music(|s| s.set_music(Some(MusicCue::LobbyAthena)))
+    else {
+        return eprintln!("SKIP: no install");
+    };
     assert_eq!(sink.music_status(), (true, true, false));
     let o = secs(&mut eng, 3.0);
     let p = peak(&o);
@@ -72,22 +93,42 @@ fn music_slider_master_slider_and_the_sfx_slider() {
         secs(&mut eng, 1.0);
         Some(rms(&secs(&mut eng, 1.0), 0.25, 1.0))
     };
-    let Some(base) = level(1.0, 1.0, 1.0, 1.0, 1.0) else { return eprintln!("SKIP: no install") };
+    let Some(base) = level(1.0, 1.0, 1.0, 1.0, 1.0) else {
+        return eprintln!("SKIP: no install");
+    };
     assert!(base > 1e-3, "{base}");
     let half = level(1.0, 0.5, 1.0, 1.0, 1.0).unwrap(); // Music slider 0.5
-    assert!((half / base - 0.5).abs() < 0.1, "music slider 0.5 -> x{}", half / base);
+    assert!(
+        (half / base - 0.5).abs() < 0.1,
+        "music slider 0.5 -> x{}",
+        half / base
+    );
     let other = level(1.0, 1.0, 0.0, 0.0, 0.0).unwrap(); // SFX / Dialog / Voice chat sliders do not touch music
-    assert!((other / base - 1.0).abs() < 0.1, "other sliders: x{}", other / base);
+    assert!(
+        (other / base - 1.0).abs() < 0.1,
+        "other sliders: x{}",
+        other / base
+    );
     let master = level(0.5, 1.0, 1.0, 1.0, 1.0).unwrap(); // Master 0.5
-    assert!((master / base - 0.5).abs() < 0.1, "master 0.5 -> x{}", master / base);
-    let (mut eng, mut sink) = sink_with_music(|s| s.set_music(Some(MusicCue::LobbyAthena))).unwrap();
+    assert!(
+        (master / base - 0.5).abs() < 0.1,
+        "master 0.5 -> x{}",
+        master / base
+    );
+    let (mut eng, mut sink) =
+        sink_with_music(|s| s.set_music(Some(MusicCue::LobbyAthena))).unwrap();
     sink.set_volumes(1.0, 0.0, 1.0, 1.0, 1.0); // Music 0
-    assert!(peak(&secs(&mut eng, 0.5)) < 1e-6, "music slider 0 is silent");
+    assert!(
+        peak(&secs(&mut eng, 0.5)) < 1e-6,
+        "music slider 0 is silent"
+    );
 }
 
 #[test]
 fn stopping_fades_out_over_one_second_and_a_new_track_crossfades() {
-    let Some((mut eng, mut sink)) = sink_with_music(|_| {}) else { return eprintln!("SKIP: no install") };
+    let Some((mut eng, mut sink)) = sink_with_music(|_| {}) else {
+        return eprintln!("SKIP: no install");
+    };
     sink.set_music(Some(MusicCue::LobbyAthena));
     secs(&mut eng, 1.0);
     let full = rms(&secs(&mut eng, 0.5), 0.0, 0.5);
@@ -95,8 +136,14 @@ fn stopping_fades_out_over_one_second_and_a_new_track_crossfades() {
     let o = secs(&mut eng, 1.3);
     // linear gain 1 -> 0 over FadeOutTime = 1.0 s: the middle of the fade is about half level, the end is silence
     let mid = rms(&o, 0.45, 0.55);
-    assert!(mid > full * 0.25 && mid < full * 0.75, "mid fade {mid} vs full {full}");
-    assert!(peak(&o[(1.1 * RATE as f32) as usize * 2..]) < 1e-5, "silent after the fade");
+    assert!(
+        mid > full * 0.25 && mid < full * 0.75,
+        "mid fade {mid} vs full {full}"
+    );
+    assert!(
+        peak(&o[(1.1 * RATE as f32) as usize * 2..]) < 1e-5,
+        "silent after the fade"
+    );
     assert_eq!(sink.music_status().1, false);
 
     // login -> lobby: the new track is at full level at once, the old one fades under it for 1 s; afterwards only the new one plays
@@ -121,15 +168,24 @@ fn the_loading_screen_mix_silences_music_with_the_recovered_fades() {
     assert_eq!(sink.music_status(), (true, true, true));
     // Fort_Loading_Mix: Music -> 0.0, fade in 0.5 s: audible at the very start, gone after the fade, silent while the screen is up
     let o = secs(&mut eng, 1.5);
-    assert!(rms(&o, 0.0, 0.1) > 1e-3, "starts audible (the mix fades in over 0.5 s)");
-    assert!(peak(&o[(0.6 * RATE as f32) as usize * 2..]) < 1e-5, "loading screen: music is silent");
+    assert!(
+        rms(&o, 0.0, 0.1) > 1e-3,
+        "starts audible (the mix fades in over 0.5 s)"
+    );
+    assert!(
+        peak(&o[(0.6 * RATE as f32) as usize * 2..]) < 1e-5,
+        "loading screen: music is silent"
+    );
     // popped: fade out 1.0 s -> the music comes back linearly
     sink.set_loading_screen(false);
     let o = secs(&mut eng, 1.5);
     let early = rms(&o, 0.0, 0.1);
     let mid = rms(&o, 0.45, 0.55);
     let late = rms(&o, 1.2, 1.5);
-    assert!(early < mid && mid < late, "music returns over the 1.0 s fade: {early} < {mid} < {late}");
+    assert!(
+        early < mid && mid < late,
+        "music returns over the 1.0 s fade: {early} < {mid} < {late}"
+    );
     assert!(late > 1e-3);
     assert_eq!(sink.music_status().2, false);
     // pushing twice / popping twice is harmless

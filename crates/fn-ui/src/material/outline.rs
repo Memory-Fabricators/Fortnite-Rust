@@ -20,10 +20,21 @@
 pub use super::types::{PanelKind, ProcStyle, Vis};
 
 /// Linear -> sRGB transfer (UE FLinearColor::ToFColor(true)).
-pub fn srgb(c: f32) -> f32 { let c = c.clamp(0., 1.); if c <= 0.003_130_8 { c * 12.92 } else { 1.055 * c.powf(1. / 2.4) - 0.055 } }
-pub fn lin_to_srgb(c: [f32; 3]) -> [f32; 3] { [srgb(c[0]), srgb(c[1]), srgb(c[2])] }
-fn rgba(c: [f32; 3], a: f32) -> [f32; 4] { let s = lin_to_srgb(c); [s[0], s[1], s[2], a] }
-
+pub fn srgb(c: f32) -> f32 {
+    let c = c.clamp(0., 1.);
+    if c <= 0.003_130_8 {
+        c * 12.92
+    } else {
+        1.055 * c.powf(1. / 2.4) - 0.055
+    }
+}
+pub fn lin_to_srgb(c: [f32; 3]) -> [f32; 3] {
+    [srgb(c[0]), srgb(c[1]), srgb(c[2])]
+}
+fn rgba(c: [f32; 3], a: f32) -> [f32; 4] {
+    let s = lin_to_srgb(c);
+    [s[0], s[1], s[2], a]
+}
 
 // ---- M_MenuButton_Master instances (linear colours; values are the `effective` parameters in menu-widgets.json) ----
 pub const OUTLINE_BASE_COLOR: [f32; 3] = [0., 0.002125, 0.017642];
@@ -42,9 +53,15 @@ pub const OUTLINE_SHADE_MARGIN: (f32, f32) = (0.25, 0.1);
 /// Effective parameters of one material instance of the Outline family.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MatLook {
-    pub primary: [f32; 3], pub base: [f32; 3], pub dark_base_alpha: f32,
-    pub gradient_alpha: f32, pub gradient_min_alpha: f32, pub outline_alpha: f32,
-    pub inner_fill_offset: f32, pub switch_offset: f32, pub box_size: f32,
+    pub primary: [f32; 3],
+    pub base: [f32; 3],
+    pub dark_base_alpha: f32,
+    pub gradient_alpha: f32,
+    pub gradient_min_alpha: f32,
+    pub outline_alpha: f32,
+    pub inner_fill_offset: f32,
+    pub switch_offset: f32,
+    pub box_size: f32,
 }
 
 /// Material parameters for a state of an Outline-family style (see the style assets: Red uses the plain Outline
@@ -54,23 +71,57 @@ pub fn look(style: ProcStyle, vis: Vis) -> MatLook {
     let (primary, outline_alpha, ga, gm) = match vis {
         Vis::Normal => (if red { OUTLINE_RED } else { OUTLINE_BLUE }, 0.8, 0.4, 0.75),
         Vis::Hover => (OUTLINE_YELLOW_HOVER, 1., 0.4, 0.75),
-        Vis::Pressed => (if red { OUTLINE_RED } else { OUTLINE_BLUE_PRESSED }, 1., 0.8, 1.),
+        Vis::Pressed => (
+            if red {
+                OUTLINE_RED
+            } else {
+                OUTLINE_BLUE_PRESSED
+            },
+            1.,
+            0.8,
+            1.,
+        ),
         Vis::Disabled => (OUTLINE_BLUE, 0.4, 0.2, 0.75),
     };
-    MatLook { primary, base: OUTLINE_BASE_COLOR, dark_base_alpha: 0.6, gradient_alpha: ga, gradient_min_alpha: gm, outline_alpha,
-        inner_fill_offset: if shade { 0.5 } else { 0. }, switch_offset: if shade { 1. } else { 0. }, box_size: OUTLINE_BOX_SIZE }
+    MatLook {
+        primary,
+        base: OUTLINE_BASE_COLOR,
+        dark_base_alpha: 0.6,
+        gradient_alpha: ga,
+        gradient_min_alpha: gm,
+        outline_alpha,
+        inner_fill_offset: if shade { 0.5 } else { 0. },
+        switch_offset: if shade { 1. } else { 0. },
+        box_size: OUTLINE_BOX_SIZE,
+    }
 }
 
-fn smooth01(x: f32) -> f32 { let x = x.clamp(0., 1.); x * x * (3. - 2. * x) }
-fn lerp3(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] { [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t] }
-fn lerp1(a: f32, b: f32, t: f32) -> f32 { a + (b - a) * t }
+fn smooth01(x: f32) -> f32 {
+    let x = x.clamp(0., 1.);
+    x * x * (3. - 2. * x)
+}
+fn lerp3(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
+    [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+    ]
+}
+fn lerp1(a: f32, b: f32, t: f32) -> f32 {
+    a + (b - a) * t
+}
 
 /// Slate 9-slice UV along one axis for a pixel centre `p` (pixels from the element's start) in an element of `size` pixels: the two margin
 /// bands cover `margin_uv` of UV over `margin_px` pixels each (never more than half the element), the middle stretches over the rest.
 pub fn slice_uv(p: f32, size: f32, margin_px: f32, margin_uv: f32) -> f32 {
     let m = margin_px.min(size * 0.5).max(1e-4);
-    if p < m { p / m * margin_uv } else if p > size - m { 1. - (size - p) / m * margin_uv } else {
-        let mid = (size - 2. * m).max(1e-4); margin_uv + (p - m) / mid * (1. - 2. * margin_uv)
+    if p < m {
+        p / m * margin_uv
+    } else if p > size - m {
+        1. - (size - p) / m * margin_uv
+    } else {
+        let mid = (size - 2. * m).max(1e-4);
+        margin_uv + (p - m) / mid * (1. - 2. * margin_uv)
     }
 }
 
@@ -85,12 +136,25 @@ pub fn outline_pixel(l: &MatLook, u: f32, v: f32) -> [f32; 4] {
     let (cx, cy) = ((u - 0.5).abs() - l.box_size, (v - 0.5).abs() - l.box_size);
     let ceil01 = |x: f32| if x > 0. { 1.0f32 } else { 0.0 };
     let band = (ceil01(cx).hypot(ceil01(cy))).min(1.);
-    let fill = if u > l.inner_fill_offset { 1. - l.switch_offset } else { l.switch_offset };
+    let fill = if u > l.inner_fill_offset {
+        1. - l.switch_offset
+    } else {
+        l.switch_offset
+    };
     let s = smooth01(v);
     let g = (1. - s) + l.gradient_min_alpha * s;
     let a0 = (1. - band) * g * l.gradient_alpha + band * l.outline_alpha;
-    let rgb = lin_to_srgb(lerp3(l.primary, l.base, (1. - band) * s * l.dark_base_alpha));
-    [rgb[0], rgb[1], rgb[2], ((band + fill).clamp(0., 1.) * a0).clamp(0., 1.)]
+    let rgb = lin_to_srgb(lerp3(
+        l.primary,
+        l.base,
+        (1. - band) * s * l.dark_base_alpha,
+    ));
+    [
+        rgb[0],
+        rgb[1],
+        rgb[2],
+        ((band + fill).clamp(0., 1.) * a0).clamp(0., 1.),
+    ]
 }
 
 // ---- M-Button-Master permutation of the Primary-M style (primary.plain.asm; cbuffers.json slots in brackets) -------------------
@@ -114,7 +178,9 @@ pub fn primary_pixel(vis: Vis, u: f32, v: f32, v1: f32) -> [f32; 4] {
     let (px, py) = (u - 0.5, v - 0.5);
     let sdf = |ex: f32, ey: f32| ((px.abs() - ex).max(0.)).hypot((py.abs() - ey).max(0.));
     let inv = |d: f32| smooth01((d - PM_SS_MIN) / (PM_SS_MAX - PM_SS_MIN));
-    let shadow_mix = (1. - inv(sdf(PM_SIZE, PM_SHADOW_DIST))) * if v + 0.7 >= 1. { 1. } else { 0. } * PM_SHADOW_ALPHA;
+    let shadow_mix = (1. - inv(sdf(PM_SIZE, PM_SHADOW_DIST)))
+        * if v + 0.7 >= 1. { 1. } else { 0. }
+        * PM_SHADOW_ALPHA;
     let face = inv(sdf(PM_SIZE, PM_SIZE));
     let g = smooth01((v1 - PM_LG.0) / (PM_LG.1 - PM_LG.0));
     let base = lerp3(rgba0, rgba1, g);
@@ -141,7 +207,10 @@ pub const PANEL_LG: (f32, f32) = (0., 1.);
 pub const PANEL_GLOBAL_ALPHA: f32 = 1.;
 
 /// Linear gradient direction (cb[3].xy of M_UI_GradientPanel) for a Rotation parameter.
-pub fn panel_direction(rotation: f32) -> [f32; 2] { let a = rotation * PANEL_ROTATION_SCALE; [a.cos(), -a.sin()] }
+pub fn panel_direction(rotation: f32) -> [f32; 2] {
+    let a = rotation * PANEL_ROTATION_SCALE;
+    [a.cos(), -a.sin()]
+}
 
 /// One pixel of a gradient panel at TexCoord1 `(u, v)` (0..1 stretched over the element). STRAIGHT-alpha sRGB RGBA.
 pub fn panel_pixel(kind: PanelKind, u: f32, v: f32) -> [f32; 4] {
@@ -152,13 +221,31 @@ pub fn panel_pixel(kind: PanelKind, u: f32, v: f32) -> [f32; 4] {
             let n = 1. - d / UBER_RADIUS;
             let y = (n * UBER_DENSITY).powi(2) * 1.442_695;
             let w = (1. - 1. / y.exp()).max(1e-6);
-            let lg = if n >= 0. && n.abs() > 1e-5 { w.ln() } else { -19.931_568 };
+            let lg = if n >= 0. && n.abs() > 1e-5 {
+                w.ln()
+            } else {
+                -19.931_568
+            };
             let t = ((lg * UBER_CONTRAST).exp() * UBER_MULT).clamp(0., 1.);
-            let rgb = lin_to_srgb(lerp3([UBER_RGBA0[0], UBER_RGBA0[1], UBER_RGBA0[2]], [UBER_RGBA1[0], UBER_RGBA1[1], UBER_RGBA1[2]], t));
-            [rgb[0], rgb[1], rgb[2], (lerp1(UBER_RGBA0[3], UBER_RGBA1[3], t).clamp(0., 1.) * UBER_GLOBAL_ALPHA).clamp(0., 1.)]
+            let rgb = lin_to_srgb(lerp3(
+                [UBER_RGBA0[0], UBER_RGBA0[1], UBER_RGBA0[2]],
+                [UBER_RGBA1[0], UBER_RGBA1[1], UBER_RGBA1[2]],
+                t,
+            ));
+            [
+                rgb[0],
+                rgb[1],
+                rgb[2],
+                (lerp1(UBER_RGBA0[3], UBER_RGBA1[3], t).clamp(0., 1.) * UBER_GLOBAL_ALPHA)
+                    .clamp(0., 1.),
+            ]
         }
         PanelKind::ModalPanel | PanelKind::ModalHeader => {
-            let (c0, c1) = if kind == PanelKind::ModalPanel { (MODAL_RGBA0, MODAL_RGBA1) } else { (HEADER_RGBA0, HEADER_RGBA1) };
+            let (c0, c1) = if kind == PanelKind::ModalPanel {
+                (MODAL_RGBA0, MODAL_RGBA1)
+            } else {
+                (HEADER_RGBA0, HEADER_RGBA1)
+            };
             let dir = panel_direction(PANEL_ROTATION);
             let x = dir[0] * (u - 0.5) + dir[1] * (v - 0.5) + 0.5;
             let t = smooth01((x - PANEL_LG.0) / (PANEL_LG.1 - PANEL_LG.0));
@@ -171,10 +258,16 @@ pub fn panel_pixel(kind: PanelKind, u: f32, v: f32) -> [f32; 4] {
 /// RGBA8 (STRAIGHT alpha) bitmap of a panel kind evaluated on a `w` x `h` grid of pixel centres (the renderer stretches it with linear filtering).
 pub fn panel_bitmap(kind: PanelKind, w: usize, h: usize) -> Vec<u8> {
     let mut out = Vec::with_capacity(w * h * 4);
-    for y in 0..h { for x in 0..w {
-        let c = panel_pixel(kind, (x as f32 + 0.5) / w as f32, (y as f32 + 0.5) / h as f32);
-        out.extend(c.map(|k| (k.clamp(0., 1.) * 255. + 0.5) as u8));
-    } }
+    for y in 0..h {
+        for x in 0..w {
+            let c = panel_pixel(
+                kind,
+                (x as f32 + 0.5) / w as f32,
+                (y as f32 + 0.5) / h as f32,
+            );
+            out.extend(c.map(|k| (k.clamp(0., 1.) * 255. + 0.5) as u8));
+        }
+    }
     out
 }
 
@@ -182,10 +275,25 @@ pub fn panel_bitmap(kind: PanelKind, w: usize, h: usize) -> Vec<u8> {
 /// (RGBA0, RGBA1, drop shadow, alpha) per state, from M-Button-Primary-M-{Base,Hovered,Pressed,Disabled}.
 pub fn primary_m_look(vis: Vis) -> ([f32; 3], [f32; 3], [f32; 3], f32) {
     match vis {
-        Vis::Normal => ([0.723055, 0.799103, 0.913099], [0.417885, 0.571125, 0.799103], [0.097587, 0.162029, 0.332452], 1.),
-        Vis::Hover => ([1., 0.955973, 0.445201], [1., 0.879622, 0.076185], [0.323143, 0.238398, 0.012983], 1.),
+        Vis::Normal => (
+            [0.723055, 0.799103, 0.913099],
+            [0.417885, 0.571125, 0.799103],
+            [0.097587, 0.162029, 0.332452],
+            1.,
+        ),
+        Vis::Hover => (
+            [1., 0.955973, 0.445201],
+            [1., 0.879622, 0.076185],
+            [0.323143, 0.238398, 0.012983],
+            1.,
+        ),
         Vis::Pressed => ([1., 1., 1.], [0.973445, 1., 0.651406], [1., 1., 0.], 1.),
-        Vis::Disabled => ([0.254152, 0.423268, 0.715694], [0.093059, 0.158961, 0.332452], [0., 0., 0.], 0.6),
+        Vis::Disabled => (
+            [0.254152, 0.423268, 0.715694],
+            [0.093059, 0.158961, 0.332452],
+            [0., 0., 0.],
+            0.6,
+        ),
     }
 }
 /// TextStyle-Button-Primary-M colour (linear 0.008023, 0.01096, 0.026241) and its Disabled alpha 0.498.
@@ -202,4 +310,6 @@ pub const HEADER_RGBA1: [f32; 3] = [0.017642, 0.022174, 0.049707];
 pub const TEXT_BLACK: [f32; 3] = [0., 0., 0.];
 pub const TEXT_BLUE_GRAY: [f32; 3] = [0.520996, 0.552012, 0.745404];
 
-pub fn srgba(c: [f32; 3], a: f32) -> [f32; 4] { rgba(c, a) }
+pub fn srgba(c: [f32; 3], a: f32) -> [f32; 4] {
+    rgba(c, a)
+}

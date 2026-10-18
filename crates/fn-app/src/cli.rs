@@ -42,7 +42,7 @@ pub struct Options {
     /// Deterministic capture of the whole start-up flow (see `startup::capture`).
     pub startup_capture: bool,
     /// Game picker between start-up and level travel. This is part of a normal launch; `--game-picker` remains accepted for compatibility.
-pub game_picker: bool,
+    pub game_picker: bool,
     /// Interactive code path exercised on a schedule by window operations / handler calls (see `app.rs`).
     pub live_test: bool,
     /// `--props real|sandbox|none`: overrides what fills the world (default: the real 1.8 props in the live game and for `--screenshot`, the script's own `props` line for scripts).
@@ -61,24 +61,56 @@ pub game_picker: bool,
 impl Default for Options {
     fn default() -> Self {
         Self {
-            assets: None, paks: None, manifest: None, script: None, smoke: false, screenshot: None, out: None, size: None,
-            window_mode: None, no_settings: false, no_gamepad: false, no_vsync: false, vsync: false, compare_sim: false,
-            frames: None, quick: false, skip_loading: false, startup_capture: false, game_picker: true, live_test: false,
-            props: None, prop_radius: None, assume_unrecovered: false, standin_gun_material: false, original_gun_material: false, help: false,
+            assets: None,
+            paks: None,
+            manifest: None,
+            script: None,
+            smoke: false,
+            screenshot: None,
+            out: None,
+            size: None,
+            window_mode: None,
+            no_settings: false,
+            no_gamepad: false,
+            no_vsync: false,
+            vsync: false,
+            compare_sim: false,
+            frames: None,
+            quick: false,
+            skip_loading: false,
+            startup_capture: false,
+            game_picker: true,
+            live_test: false,
+            props: None,
+            prop_radius: None,
+            assume_unrecovered: false,
+            standin_gun_material: false,
+            original_gun_material: false,
+            help: false,
         }
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PropsChoice { Real, Sandbox, None }
+pub enum PropsChoice {
+    Real,
+    Sandbox,
+    None,
+}
 
 impl Options {
     /// Scripted / diagnostic runs: fixed time step, no mouse capture, defaults instead of the user's settings.
-    pub fn scripted(&self) -> bool { self.smoke || self.script.is_some() || self.screenshot.is_some() }
+    pub fn scripted(&self) -> bool {
+        self.smoke || self.script.is_some() || self.screenshot.is_some()
+    }
     /// Runs that never show the start-up flow: every scripted / diagnostic mode (they start straight in the load) and an explicit `--skip-loading`.
-    pub fn skips_flow(&self) -> bool { self.skip_loading || self.scripted() || self.live_test }
+    pub fn skips_flow(&self) -> bool {
+        self.skip_loading || self.scripted() || self.live_test
+    }
     /// Automated runs use defaults and never touch the user's settings file.
-    pub fn uses_user_settings(&self) -> bool { !self.no_settings && !self.scripted() && !self.live_test && !self.startup_capture }
+    pub fn uses_user_settings(&self) -> bool {
+        !self.no_settings && !self.scripted() && !self.live_test && !self.startup_capture
+    }
 }
 
 pub const USAGE: &str = "fortnite-rs [--assets DIR] [--paks DIR] [--smoke-test] [--script FILE|builtin:NAME] [--screenshot OUT.png] [--out DIR] [--size WxH]\n\
@@ -87,16 +119,32 @@ pub const USAGE: &str = "fortnite-rs [--assets DIR] [--paks DIR] [--smoke-test] 
     builtin scripts: smoke, pickaxe, walk";
 
 pub fn parse_size(s: &str) -> Result<(u32, u32), String> {
-    let (w, h) = s.split_once(['x', 'X']).ok_or_else(|| format!("expected WxH, got {s:?}"))?;
-    let (w, h): (u32, u32) = (w.trim().parse().map_err(|_| format!("bad width in {s:?}"))?, h.trim().parse().map_err(|_| format!("bad height in {s:?}"))?);
-    if w == 0 || h == 0 { return Err(format!("size {s:?} must be positive")); }
+    let (w, h) = s
+        .split_once(['x', 'X'])
+        .ok_or_else(|| format!("expected WxH, got {s:?}"))?;
+    let (w, h): (u32, u32) = (
+        w.trim()
+            .parse()
+            .map_err(|_| format!("bad width in {s:?}"))?,
+        h.trim()
+            .parse()
+            .map_err(|_| format!("bad height in {s:?}"))?,
+    );
+    if w == 0 || h == 0 {
+        return Err(format!("size {s:?} must be positive"));
+    }
     Ok((w, h))
 }
 
 pub fn parse(args: &[String]) -> Result<Options, String> {
     let mut o = Options::default();
     let mut i = 0;
-    let value = |i: &mut usize, name: &str| -> Result<String, String> { *i += 1; args.get(*i).cloned().ok_or_else(|| format!("{name} needs a value")) };
+    let value = |i: &mut usize, name: &str| -> Result<String, String> {
+        *i += 1;
+        args.get(*i)
+            .cloned()
+            .ok_or_else(|| format!("{name} needs a value"))
+    };
     while i < args.len() {
         let a = args[i].clone();
         match a.as_str() {
@@ -111,7 +159,9 @@ pub fn parse(args: &[String]) -> Result<Options, String> {
             "--window-mode" => {
                 o.window_mode = Some(match value(&mut i, &a)?.to_ascii_lowercase().as_str() {
                     "windowed" => fn_settings::WindowMode::Windowed,
-                    "borderless" | "windowedfullscreen" | "windowed-fullscreen" => fn_settings::WindowMode::WindowedFullscreen,
+                    "borderless" | "windowedfullscreen" | "windowed-fullscreen" => {
+                        fn_settings::WindowMode::WindowedFullscreen
+                    }
                     "fullscreen" | "exclusive" => fn_settings::WindowMode::Fullscreen,
                     other => return Err(format!("unknown window mode {other:?}")),
                 })
@@ -121,7 +171,13 @@ pub fn parse(args: &[String]) -> Result<Options, String> {
             "--no-vsync" => o.no_vsync = true,
             "--vsync" => o.vsync = true,
             "--compare-sim" => o.compare_sim = true,
-            "--frames" => o.frames = Some(value(&mut i, &a)?.parse().map_err(|_| "--frames needs a number".to_owned())?),
+            "--frames" => {
+                o.frames = Some(
+                    value(&mut i, &a)?
+                        .parse()
+                        .map_err(|_| "--frames needs a number".to_owned())?,
+                )
+            }
             "--quick" => o.quick = true,
             "--skip-loading" => o.skip_loading = true,
             "--startup-capture" => o.startup_capture = true,
@@ -130,8 +186,27 @@ pub fn parse(args: &[String]) -> Result<Options, String> {
             "--assume-unrecovered" => o.assume_unrecovered = true,
             "--standin-gun-material" => o.standin_gun_material = true,
             "--original-gun-material" => o.original_gun_material = true, // GUN MATERIAL HOOK
-            "--props" => o.props = Some(match value(&mut i, &a)?.to_ascii_lowercase().as_str() { "real" => PropsChoice::Real, "sandbox" => PropsChoice::Sandbox, "none" => PropsChoice::None, other => return Err(format!("--props: unknown value {other:?} (real, sandbox, none)")) }),
-            "--prop-radius" => { let r: f32 = value(&mut i, &a)?.parse().map_err(|_| "--prop-radius needs a number of metres".to_owned())?; if !(5. ..=250.).contains(&r) { return Err("--prop-radius must be 5..250 metres".into()); } o.prop_radius = Some(r); }
+            "--props" => {
+                o.props = Some(match value(&mut i, &a)?.to_ascii_lowercase().as_str() {
+                    "real" => PropsChoice::Real,
+                    "sandbox" => PropsChoice::Sandbox,
+                    "none" => PropsChoice::None,
+                    other => {
+                        return Err(format!(
+                            "--props: unknown value {other:?} (real, sandbox, none)"
+                        ))
+                    }
+                })
+            }
+            "--prop-radius" => {
+                let r: f32 = value(&mut i, &a)?
+                    .parse()
+                    .map_err(|_| "--prop-radius needs a number of metres".to_owned())?;
+                if !(5. ..=250.).contains(&r) {
+                    return Err("--prop-radius must be 5..250 metres".into());
+                }
+                o.prop_radius = Some(r);
+            }
             "--help" | "-h" | "/?" => o.help = true,
             other => return Err(format!("unknown option {other}")),
         }
@@ -143,26 +218,68 @@ pub fn parse(args: &[String]) -> Result<Options, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn a(s: &str) -> Vec<String> { s.split_whitespace().map(String::from).collect() }
-    #[test] fn parses_flags_and_values() {
-        let o = parse(&a("--assets x --smoke-test --size 800x600 --window-mode borderless --frames 5 --no-vsync")).unwrap();
+    fn a(s: &str) -> Vec<String> {
+        s.split_whitespace().map(String::from).collect()
+    }
+    #[test]
+    fn parses_flags_and_values() {
+        let o = parse(&a(
+            "--assets x --smoke-test --size 800x600 --window-mode borderless --frames 5 --no-vsync",
+        ))
+        .unwrap();
         assert_eq!(o.assets.as_deref().map(|p| p.to_str().unwrap()), Some("x"));
         assert!(o.smoke && o.no_vsync && o.scripted() && !o.uses_user_settings());
-        assert_eq!(o.size, Some((800, 600))); assert_eq!(o.frames, Some(5));
-        assert_eq!(o.window_mode, Some(fn_settings::WindowMode::WindowedFullscreen));
+        assert_eq!(o.size, Some((800, 600)));
+        assert_eq!(o.frames, Some(5));
+        assert_eq!(
+            o.window_mode,
+            Some(fn_settings::WindowMode::WindowedFullscreen)
+        );
     }
-    #[test] fn rejects_garbage() { assert!(parse(&a("--size 12")).is_err()); assert!(parse(&a("--bogus")).is_err()); assert!(parse(&a("--assets")).is_err()); assert!(parse(&a("--window-mode x")).is_err()); assert!(parse(&a("--size 0x5")).is_err()); }
-    #[test] fn game_picker_is_part_of_a_normal_launch() {
-        assert!(parse(&[]).unwrap().game_picker, "the default flow includes the picker");
-        let o = parse(&a("--game-picker")).unwrap(); assert!(o.game_picker && !o.skips_flow());
+    #[test]
+    fn rejects_garbage() {
+        assert!(parse(&a("--size 12")).is_err());
+        assert!(parse(&a("--bogus")).is_err());
+        assert!(parse(&a("--assets")).is_err());
+        assert!(parse(&a("--window-mode x")).is_err());
+        assert!(parse(&a("--size 0x5")).is_err());
     }
-    #[test] fn skip_loading_and_startup_capture_flags() {
-        let o = parse(&a("--skip-loading")).unwrap(); assert!(o.skip_loading && o.skips_flow() && o.uses_user_settings());
-        assert!(!parse(&[]).unwrap().skips_flow(), "the default launch shows the whole flow");
-        for f in ["--smoke-test", "--live-test", "--screenshot x.png", "--script builtin:walk"] { assert!(parse(&a(f)).unwrap().skips_flow(), "{f}"); }
-        let c = parse(&a("--startup-capture --out d --size 800x600")).unwrap(); assert!(c.startup_capture && !c.skips_flow() && !c.uses_user_settings() && c.size == Some((800, 600)));
+    #[test]
+    fn game_picker_is_part_of_a_normal_launch() {
+        assert!(
+            parse(&[]).unwrap().game_picker,
+            "the default flow includes the picker"
+        );
+        let o = parse(&a("--game-picker")).unwrap();
+        assert!(o.game_picker && !o.skips_flow());
     }
-    #[test] fn plain_run_uses_the_user_settings() { assert!(parse(&[]).unwrap().uses_user_settings()); assert!(!parse(&a("--no-settings")).unwrap().uses_user_settings()); }
+    #[test]
+    fn skip_loading_and_startup_capture_flags() {
+        let o = parse(&a("--skip-loading")).unwrap();
+        assert!(o.skip_loading && o.skips_flow() && o.uses_user_settings());
+        assert!(
+            !parse(&[]).unwrap().skips_flow(),
+            "the default launch shows the whole flow"
+        );
+        for f in [
+            "--smoke-test",
+            "--live-test",
+            "--screenshot x.png",
+            "--script builtin:walk",
+        ] {
+            assert!(parse(&a(f)).unwrap().skips_flow(), "{f}");
+        }
+        let c = parse(&a("--startup-capture --out d --size 800x600")).unwrap();
+        assert!(
+            c.startup_capture
+                && !c.skips_flow()
+                && !c.uses_user_settings()
+                && c.size == Some((800, 600))
+        );
+    }
+    #[test]
+    fn plain_run_uses_the_user_settings() {
+        assert!(parse(&[]).unwrap().uses_user_settings());
+        assert!(!parse(&a("--no-settings")).unwrap().uses_user_settings());
+    }
 }
-
-

@@ -47,7 +47,10 @@
 //! `range / 131070` per component (rotations: range <= 2 -> <= 1.6e-5).
 
 use crate::retarget;
-use crate::sequence::{nlerp, AdditiveAnimType, AnimSequence, CurveKey, FloatCurve, Interpolation, Notify, RefPoseType, SyncMarker};
+use crate::sequence::{
+    nlerp, AdditiveAnimType, AnimSequence, CurveKey, FloatCurve, Interpolation, Notify,
+    RefPoseType, SyncMarker,
+};
 use crate::skeleton::{BoneTransform, SkeletonInfo, TranslationRetarget};
 use crate::{err, Result};
 
@@ -172,16 +175,28 @@ fn write_channel<const C: usize>(out: &mut Vec<u8>, keys: &[[f32; C]], precision
     for k in keys {
         for c in 0..C {
             let range = maxs[c] - mins[c];
-            let q = if range > 0.0 { ((k[c] - mins[c]) / range * 65535.0).round().clamp(0.0, 65535.0) as u16 } else { 0 };
+            let q = if range > 0.0 {
+                ((k[c] - mins[c]) / range * 65535.0)
+                    .round()
+                    .clamp(0.0, 65535.0) as u16
+            } else {
+                0
+            };
             out.extend_from_slice(&q.to_le_bytes());
         }
     }
 }
 
-fn read_channel<const C: usize>(c: &mut Cur, precision: Precision, num_frames: usize) -> Result<Vec<[f32; C]>> {
+fn read_channel<const C: usize>(
+    c: &mut Cur,
+    precision: Precision,
+    num_frames: usize,
+) -> Result<Vec<[f32; C]>> {
     let n = c.u32()? as usize;
     if n != 1 && n != num_frames {
-        return err(format!("fnanim: channel has {n} keys, expected 1 or {num_frames}"));
+        return err(format!(
+            "fnanim: channel has {n} keys, expected 1 or {num_frames}"
+        ));
     }
     let mut out = Vec::with_capacity(n);
     if precision == Precision::F32 || n == 1 {
@@ -212,7 +227,13 @@ fn read_channel<const C: usize>(c: &mut Cur, precision: Precision, num_frames: u
 
 /// Collapse `keys` to a single key when all are exactly equal.
 fn collapse<const C: usize>(keys: Vec<[f32; C]>) -> Vec<[f32; C]> {
-    if keys.len() > 1 && keys.iter().all(|k| k.iter().zip(&keys[0]).all(|(a, b)| a.to_bits() == b.to_bits())) {
+    if keys.len() > 1
+        && keys.iter().all(|k| {
+            k.iter()
+                .zip(&keys[0])
+                .all(|(a, b)| a.to_bits() == b.to_bits())
+        })
+    {
         vec![keys[0]]
     } else {
         keys
@@ -228,9 +249,18 @@ impl FnAnim {
         let nf = seq.num_frames.max(1);
         let bones = (0..skel.num_bones())
             .map(|b| {
-                let mut fb = FnBone { name: skel.bone_names[b].clone(), retarget: rts[b].mode, retarget_source: rts[b].source, pos: None, rot: None, scale: None };
+                let mut fb = FnBone {
+                    name: skel.bone_names[b].clone(),
+                    retarget: rts[b].mode,
+                    retarget_source: rts[b].source,
+                    pos: None,
+                    rot: None,
+                    scale: None,
+                };
                 if let Some(t) = seq.find_track(b) {
-                    let samples: Vec<_> = (0..nf).map(|f| t.sample(seq.num_frames, f as f32, step)).collect();
+                    let samples: Vec<_> = (0..nf)
+                        .map(|f| t.sample(seq.num_frames, f as f32, step))
+                        .collect();
                     if !t.pos.is_empty() {
                         fb.pos = Some(collapse(samples.iter().map(|s| s.pos.unwrap()).collect()));
                     }
@@ -238,7 +268,8 @@ impl FnAnim {
                         fb.rot = Some(collapse(samples.iter().map(|s| s.rot.unwrap()).collect()));
                     }
                     if !t.scale.is_empty() {
-                        fb.scale = Some(collapse(samples.iter().map(|s| s.scale.unwrap()).collect()));
+                        fb.scale =
+                            Some(collapse(samples.iter().map(|s| s.scale.unwrap()).collect()));
                     }
                 }
                 fb
@@ -279,7 +310,10 @@ impl FnAnim {
     pub fn write(&self, out: &mut Vec<u8>, precision: Precision) {
         out.extend_from_slice(MAGIC);
         out.extend_from_slice(&VERSION.to_le_bytes());
-        let flags = (self.additive as u16) | ((self.retarget_base as u16) << 1) | ((self.root_motion as u16) << 2) | ((self.step as u16) << 3);
+        let flags = (self.additive as u16)
+            | ((self.retarget_base as u16) << 1)
+            | ((self.root_motion as u16) << 2)
+            | ((self.step as u16) << 3);
         out.extend_from_slice(&flags.to_le_bytes());
         put_u32(out, self.num_frames as u32);
         put_u32(out, self.bones.len() as u32);
@@ -297,7 +331,11 @@ impl FnAnim {
         put_str(out, &self.ref_pose_seq);
         for b in &self.bones {
             put_str(out, &b.name);
-            out.push(b.pos.is_some() as u8 | (b.rot.is_some() as u8) << 1 | (b.scale.is_some() as u8) << 2);
+            out.push(
+                b.pos.is_some() as u8
+                    | (b.rot.is_some() as u8) << 1
+                    | (b.scale.is_some() as u8) << 2,
+            );
             out.push(b.retarget as u8);
             for v in b.retarget_source {
                 put_f32(out, v);
@@ -384,7 +422,14 @@ impl FnAnim {
             let mode = TranslationRetarget::from_u8(c.u8()?);
             let src = [c.f32()?, c.f32()?, c.f32()?];
             chan.push(ch);
-            bones.push(FnBone { name, retarget: mode, retarget_source: src, pos: None, rot: None, scale: None });
+            bones.push(FnBone {
+                name,
+                retarget: mode,
+                retarget_source: src,
+                pos: None,
+                rot: None,
+                scale: None,
+            });
         }
         for (b, ch) in bones.iter_mut().zip(chan) {
             if ch & 1 != 0 {
@@ -406,12 +451,23 @@ impl FnAnim {
             let dur = c.f32()?;
             let chance = c.f32()?;
             let track = c.i32()?;
-            notifies.push(Notify { notify_name: nm, notify_class: if cls.is_empty() { None } else { Some(cls) }, link_value: t, duration: dur, notify_trigger_chance: chance, track_index: track, ..Default::default() });
+            notifies.push(Notify {
+                notify_name: nm,
+                notify_class: if cls.is_empty() { None } else { Some(cls) },
+                link_value: t,
+                duration: dur,
+                notify_trigger_chance: chance,
+                track_index: track,
+                ..Default::default()
+            });
         }
         let n = c.u32()? as usize;
         let mut sync_markers = Vec::new();
         for _ in 0..n {
-            sync_markers.push(SyncMarker { name: c.str()?, time: c.f32()? });
+            sync_markers.push(SyncMarker {
+                name: c.str()?,
+                time: c.f32()?,
+            });
         }
         let n = c.u32()? as usize;
         let mut curves = Vec::new();
@@ -422,9 +478,20 @@ impl FnAnim {
             let nk = c.u32()? as usize;
             let mut keys = Vec::new();
             for _ in 0..nk {
-                keys.push(CurveKey { time: c.f32()?, value: c.f32()?, arrive_tangent: c.f32()?, leave_tangent: c.f32()?, interp_mode: c.u8()? });
+                keys.push(CurveKey {
+                    time: c.f32()?,
+                    value: c.f32()?,
+                    arrive_tangent: c.f32()?,
+                    leave_tangent: c.f32()?,
+                    interp_mode: c.u8()?,
+                });
             }
-            curves.push(FloatCurve { name, flags, default_value, keys });
+            curves.push(FloatCurve {
+                name,
+                flags,
+                default_value,
+                keys,
+            });
         }
         if c.take(4)? != b"ENDF" {
             return err("fnanim: bad trailer");
@@ -475,7 +542,11 @@ impl FnAnim {
                 let pick3 = |k: &Vec<[f32; 3]>| {
                     let (x, y) = (k[i0.min(k.len() - 1)], k[i1.min(k.len() - 1)]);
                     if a > 0.0 && k.len() > 1 {
-                        [x[0] + (y[0] - x[0]) * a, x[1] + (y[1] - x[1]) * a, x[2] + (y[2] - x[2]) * a]
+                        [
+                            x[0] + (y[0] - x[0]) * a,
+                            x[1] + (y[1] - x[1]) * a,
+                            x[2] + (y[2] - x[2]) * a,
+                        ]
                     } else {
                         x
                     }
@@ -488,7 +559,11 @@ impl FnAnim {
                 }
                 if let Some(k) = &b.rot {
                     let (x, y) = (k[i0.min(k.len() - 1)], k[i1.min(k.len() - 1)]);
-                    t.rotation = if a > 0.0 && k.len() > 1 { nlerp(x, y, a) } else { x };
+                    t.rotation = if a > 0.0 && k.len() > 1 {
+                        nlerp(x, y, a)
+                    } else {
+                        x
+                    };
                 }
                 t
             })
@@ -497,13 +572,19 @@ impl FnAnim {
 
     /// Pose at `time` seconds (clamped), using UE's `(NumFrames - 1) / length` key spacing.
     pub fn pose_at(&self, time: f32, defaults: &[BoneTransform]) -> Vec<BoneTransform> {
-        let f = if self.num_frames > 1 && self.length > 0.0 { time / self.length * (self.num_frames - 1) as f32 } else { 0.0 };
+        let f = if self.num_frames > 1 && self.length > 0.0 {
+            time / self.length * (self.num_frames - 1) as f32
+        } else {
+            0.0
+        };
         self.pose_at_frame(f, defaults)
     }
 
     /// All frames: `[frame][bone]`.
     pub fn bake_frames(&self, defaults: &[BoneTransform]) -> Vec<Vec<BoneTransform>> {
-        (0..self.num_frames).map(|f| self.pose_at_frame(f as f32, defaults)).collect()
+        (0..self.num_frames)
+            .map(|f| self.pose_at_frame(f as f32, defaults))
+            .collect()
     }
 }
 
@@ -546,15 +627,55 @@ mod tests {
                     name: "root".into(),
                     retarget: TranslationRetarget::Animation,
                     retarget_source: [0.0; 3],
-                    pos: Some((0..n).map(|i| [i as f32 * 10.0, 5.0, -(i as f32)]).collect()),
+                    pos: Some(
+                        (0..n)
+                            .map(|i| [i as f32 * 10.0, 5.0, -(i as f32)])
+                            .collect(),
+                    ),
                     rot: Some(vec![[0.0, 0.0, 0.0, 1.0]]),
                     scale: None,
                 },
-                FnBone { name: "arm".into(), retarget: TranslationRetarget::AnimationScaled, retarget_source: [1.0, 2.0, 3.0], pos: None, rot: Some((0..n).map(|i| { let a = i as f32 * 0.1; [0.0, a.sin(), 0.0, a.cos()] }).collect()), scale: Some(vec![[1.0, 1.0, 2.0]]) },
+                FnBone {
+                    name: "arm".into(),
+                    retarget: TranslationRetarget::AnimationScaled,
+                    retarget_source: [1.0, 2.0, 3.0],
+                    pos: None,
+                    rot: Some(
+                        (0..n)
+                            .map(|i| {
+                                let a = i as f32 * 0.1;
+                                [0.0, a.sin(), 0.0, a.cos()]
+                            })
+                            .collect(),
+                    ),
+                    scale: Some(vec![[1.0, 1.0, 2.0]]),
+                },
             ],
-            notifies: vec![Notify { notify_name: "Step".into(), notify_class: Some("AnimNotify_FootStep_Left_C".into()), link_value: 0.25, duration: 0.0, notify_trigger_chance: 1.0, track_index: 2, ..Default::default() }],
-            sync_markers: vec![SyncMarker { name: "LeftPlant".into(), time: 0.5 }],
-            curves: vec![FloatCurve { name: "Alpha".into(), flags: 4, default_value: 0.0, keys: vec![CurveKey { time: 0.0, value: 1.0, arrive_tangent: 0.0, leave_tangent: 0.5, interp_mode: 2 }] }],
+            notifies: vec![Notify {
+                notify_name: "Step".into(),
+                notify_class: Some("AnimNotify_FootStep_Left_C".into()),
+                link_value: 0.25,
+                duration: 0.0,
+                notify_trigger_chance: 1.0,
+                track_index: 2,
+                ..Default::default()
+            }],
+            sync_markers: vec![SyncMarker {
+                name: "LeftPlant".into(),
+                time: 0.5,
+            }],
+            curves: vec![FloatCurve {
+                name: "Alpha".into(),
+                flags: 4,
+                default_value: 0.0,
+                keys: vec![CurveKey {
+                    time: 0.0,
+                    value: 1.0,
+                    arrive_tangent: 0.0,
+                    leave_tangent: 0.5,
+                    interp_mode: 2,
+                }],
+            }],
         }
     }
 
@@ -585,7 +706,12 @@ mod tests {
                     assert!((p.translation[k] - q.translation[k]).abs() <= 40.0 / 131070.0 + 1e-5);
                 }
                 for k in 0..4 {
-                    assert!((p.rotation[k] - q.rotation[k]).abs() < 2e-5, "{:?} {:?}", p.rotation, q.rotation);
+                    assert!(
+                        (p.rotation[k] - q.rotation[k]).abs() < 2e-5,
+                        "{:?} {:?}",
+                        p.rotation,
+                        q.rotation
+                    );
                 }
             }
         }

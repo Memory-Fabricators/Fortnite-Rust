@@ -22,7 +22,11 @@ fn dev_err(e: impl std::fmt::Display) -> AudioError {
     AudioError::Device(e.to_string())
 }
 
-fn build<T>(device: &cpal::Device, config: &cpal::StreamConfig, mut mixer: Mixer) -> Result<cpal::Stream>
+fn build<T>(
+    device: &cpal::Device,
+    config: &cpal::StreamConfig,
+    mut mixer: Mixer,
+) -> Result<cpal::Stream>
 where
     T: SizedSample + FromSample<f32>,
 {
@@ -61,7 +65,9 @@ where
 /// Open the default output device. Returns the command handle and the running stream.
 pub fn open_default() -> Result<(EngineHandle, DeviceStream)> {
     let host = cpal::default_host();
-    let device = host.default_output_device().ok_or_else(|| AudioError::Device("no default output device".into()))?;
+    let device = host
+        .default_output_device()
+        .ok_or_else(|| AudioError::Device("no default output device".into()))?;
     let name = device.name().unwrap_or_else(|_| "<unnamed>".into());
     let supported = device.default_output_config().map_err(dev_err)?;
     let format = supported.sample_format();
@@ -72,8 +78,20 @@ pub fn open_default() -> Result<(EngineHandle, DeviceStream)> {
         SampleFormat::I16 => build::<i16>(&device, &config, mixer)?,
         SampleFormat::U16 => build::<u16>(&device, &config, mixer)?,
         SampleFormat::I32 => build::<i32>(&device, &config, mixer)?,
-        other => return Err(AudioError::Device(format!("unsupported sample format {other:?}"))),
+        other => {
+            return Err(AudioError::Device(format!(
+                "unsupported sample format {other:?}"
+            )))
+        }
     };
     stream.play().map_err(dev_err)?;
-    Ok((handle, DeviceStream { _stream: stream, device_name: name, sample_rate: config.sample_rate.0, channels: config.channels }))
+    Ok((
+        handle,
+        DeviceStream {
+            _stream: stream,
+            device_name: name,
+            sample_rate: config.sample_rate.0,
+            channels: config.channels,
+        },
+    ))
 }

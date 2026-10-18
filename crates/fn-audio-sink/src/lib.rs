@@ -17,15 +17,15 @@
 //! `Player_Equip_Melee_Cue`, menu events -> the `Fort_UI_Sounds` cues, ambience -> `Temperate_Grasslands_Hills_Day_Athena_Cue`.
 
 use fn_audio::events;
-use fn_audio::weapon_events;
 use fn_audio::library::Library;
 use fn_audio::mixer::{EngineHandle, PlayId, PlayParams, Vec3};
 use fn_audio::soundclass::{Bus, SoundMix};
+use fn_audio::weapon_events;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 
-pub mod music; // MUSIC HOOK: front-end music + loading-screen sound mix
-mod ambient_rt; // AMBIENCE HOOK: executes the fn_audio::ambient director's acts on the engine
+mod ambient_rt;
+pub mod music; // MUSIC HOOK: front-end music + loading-screen sound mix // AMBIENCE HOOK: executes the fn_audio::ambient director's acts on the engine
 pub use music::MusicCue;
 
 /// Which footstep cue variant plays (`PlayerPawn_Athena_C` `Default{,Fast,Crouched,CrouchSprint}FootstepSound`).
@@ -55,41 +55,76 @@ pub enum Surface {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum SoundEvent {
     /// Legacy: walk / sprint footstep (= `Step`).
-    Footstep { sprint: bool },
+    Footstep {
+        sprint: bool,
+    },
     /// A foot plant (an `AnimNotify_FootStep` of the locomotion clip), 2D.
-    Step { gait: Gait },
+    Step {
+        gait: Gait,
+    },
     Jump,
     /// Touch-down; `speed` = impact speed in m/s (>= [`HARD_LAND_SPEED`] plays the hard-landing cue).
-    Land { speed: f32 },
+    Land {
+        speed: f32,
+    },
     /// Legacy: swing 1.5 m in front of the listener.
     Swing,
     /// Pickaxe weapon fire (`PrimaryFireSound`) at `pos` (world metres).
-    SwingAt { pos: glam::Vec3 },
+    SwingAt {
+        pos: glam::Vec3,
+    },
     /// Legacy: a tree hit 2.5 m in front of the listener.
     HarvestHit,
     /// A pickaxe hit at `pos` (world metres); `destroyed` on the killing hit.
-    Harvest { surface: Surface, destroyed: bool, pos: glam::Vec3 },
+    Harvest {
+        surface: Surface,
+        destroyed: bool,
+        pos: glam::Vec3,
+    },
     /// Pickaxe equipped.
     Equip,
     // CRACK AUDIO HOOK: the weak-spot effect (`WeakSpot_C`) and the per-prop sounds of a harvest hit.
     /// A weak spot was generated at `pos` (world metres): `Crack_Spawn_Cue` (`CrackHitCount` 0).
-    CrackSpawn { pos: glam::Vec3 },
+    CrackSpawn {
+        pos: glam::Vec3,
+    },
     /// A weak spot was hit: `Sound_Crack_Level_0N_Cue` for `level` 0..=8 (clamped) at the spot.
-    CrackLevel { level: u8, pos: glam::Vec3 },
+    CrackLevel {
+        level: u8,
+        pos: glam::Vec3,
+    },
     /// A weak spot was hit: `Crack_Impact_Cue` at the spot.
-    CrackImpact { pos: glam::Vec3 },
+    CrackImpact {
+        pos: glam::Vec3,
+    },
     /// A pickaxe hit on a prop whose `props.json` names its sounds: the pickaxe impact + the prop's `PlayHitSound`, plus its `DeathSound` when `destroyed`.
-    PropHit { sound: &'static fn_audio::events::PropSound, destroyed: bool, pos: glam::Vec3 },
+    PropHit {
+        sound: &'static fn_audio::events::PropSound,
+        destroyed: bool,
+        pos: glam::Vec3,
+    },
     // WEAPON AUDIO HOOK: the firearms / consumables of `fn_audio::weapon_events::TABLE` (fire, empty, reload stages, equip, heal, pickup, bullet impact, whip).
     /// A weapon-table sound (`id` = a `weapon_events::TABLE` event id) at `pos` (world metres; `None` = 2D at the listener) with the call's
     /// `volume` multiplier (1.0 except the bullet whip, which scales by closeness). The pitch of the row (the `PitchMultiplier` of the
     /// `AnimNotify_PlaySound` that plays it) is applied.
-    Weapon { id: &'static str, pos: Option<glam::Vec3>, volume: f32 },
+    Weapon {
+        id: &'static str,
+        pos: Option<glam::Vec3>,
+        volume: f32,
+    },
     /// FIRE LOOP: `AFortWeapon::PlayWeaponFireFX` of a persistent-fire weapon (exe vfunc_201 RVA 0x9355d0): starts the weapon-table sound `id` on the fire audio channel `key`
     /// (gun * 3 + channel) ONCE (it keeps running, looping when its cue loops indefinitely); a still-running sound of the same `key` is replaced.
-    WeaponLoop { id: &'static str, key: u32, pos: Option<glam::Vec3>, volume: f32 },
+    WeaponLoop {
+        id: &'static str,
+        key: u32,
+        pos: Option<glam::Vec3>,
+        volume: f32,
+    },
     /// FIRE LOOP stop: `StopWeaponFireFX` (exe vfunc_202 RVA 0x93e020): fades the channel `key` out over `fade` seconds (`PrimaryFireSoundFadeOutTime`). The stop sounds are ordinary `Weapon` events.
-    WeaponLoopStop { key: u32, fade: f32 },
+    WeaponLoopStop {
+        key: u32,
+        fade: f32,
+    },
     MenuOpen,
     MenuClose,
     MenuClick,
@@ -113,7 +148,15 @@ pub trait AudioSink {
     /// Linear listener transform, once per frame (metres, world space, y up).
     fn listener(&mut self, _position: glam::Vec3, _forward: glam::Vec3, _up: glam::Vec3) {}
     /// Audio-tab volumes 0..1 (master, music, sfx, dialog, voice chat).
-    fn set_volumes(&mut self, _master: f32, _music: f32, _sfx: f32, _dialog: f32, _voice_chat: f32) {}
+    fn set_volumes(
+        &mut self,
+        _master: f32,
+        _music: f32,
+        _sfx: f32,
+        _dialog: f32,
+        _voice_chat: f32,
+    ) {
+    }
     /// Focus loss / minimise mutes, regain unmutes.
     fn set_suspended(&mut self, _suspended: bool) {}
     /// Start / stop the in-world ambience bed (starts as soon as its waves are decoded).
@@ -129,7 +172,14 @@ pub trait AudioSink {
     fn ambient_map(&mut self, _center_cm: [f32; 3], _anchor_m: glam::Vec3) {}
     /// AMBIENCE HOOK: once per frame while playing. `pawn` = the pawn's location (game metres), `forward` its horizontal forward; `trace(from_m, dir, len_m)` is a
     /// line trace against world geometry that ignores pawns (used by the bed's "surrounded" test, a few times per 1.5 s).
-    fn ambient_frame(&mut self, _dt: f32, _pawn: glam::Vec3, _forward: glam::Vec3, _trace: &mut dyn FnMut(glam::Vec3, glam::Vec3, f32) -> bool) {}
+    fn ambient_frame(
+        &mut self,
+        _dt: f32,
+        _pawn: glam::Vec3,
+        _forward: glam::Vec3,
+        _trace: &mut dyn FnMut(glam::Vec3, glam::Vec3, f32) -> bool,
+    ) {
+    }
 }
 
 /// Drops everything.
@@ -197,9 +247,16 @@ fn core_cues() -> Vec<&'static str> {
     ]
     .into_iter()
     .chain(events::crack_and_prop_cues()) // CRACK AUDIO HOOK
-    .chain(weapon_events::TABLE.iter().filter(|w| weapon_events::is_played(w)).map(|w| w.cue)) // WEAPON AUDIO HOOK
+    .chain(
+        weapon_events::TABLE
+            .iter()
+            .filter(|w| weapon_events::is_played(w))
+            .map(|w| w.cue),
+    ) // WEAPON AUDIO HOOK
     .chain(weapon_events::bp_played_cues()) // WEAPON BP TABLE: every BR weapon Blueprint's cues + montage-notify cues
-    .collect::<std::collections::BTreeSet<_>>().into_iter().collect()
+    .collect::<std::collections::BTreeSet<_>>()
+    .into_iter()
+    .collect()
 }
 
 /// The cues a weak-spot / prop [`SoundEvent`] starts (the single place that maps them; the sink and the tests use it).
@@ -210,7 +267,9 @@ pub fn crack_event_cues(e: &SoundEvent) -> Vec<&'static str> {
         SoundEvent::CrackSpawn { .. } => vec![events::CRACK_SPAWN],
         SoundEvent::CrackLevel { level, .. } => vec![events::crack_level_cue(level)],
         SoundEvent::CrackImpact { .. } => vec![events::CRACK_IMPACT],
-        SoundEvent::PropHit { sound, destroyed, .. } => {
+        SoundEvent::PropHit {
+            sound, destroyed, ..
+        } => {
             let mut v = vec![events::IMPACT_DEFAULT];
             v.extend(sound.hit);
             if destroyed {
@@ -224,7 +283,8 @@ pub fn crack_event_cues(e: &SoundEvent) -> Vec<&'static str> {
 
 /// `Fort_WeaponMelee_PSM` (the swing cue's SoundClass) carries a `PassiveSoundMixModifier` for this SoundMix: while a
 /// melee sound plays above the class' volume threshold the mix ducks music (x0.5), ambience (x0.5), gadgets, foley, ...
-pub const MELEE_DUCK_MIX: &str = "/Game/Sounds/FortSoundClassesAndModes/Fort_WeaponMelee_Duck_MixMod";
+pub const MELEE_DUCK_MIX: &str =
+    "/Game/Sounds/FortSoundClassesAndModes/Fort_WeaponMelee_Duck_MixMod";
 
 #[derive(Default)]
 struct Amb {
@@ -238,13 +298,17 @@ struct Amb {
 struct Shared {
     duck: OnceLock<SoundMix>,
     amb: Mutex<Amb>,
-    music: music::MusicState, // MUSIC HOOK
+    music: music::MusicState,              // MUSIC HOOK
     ambient: Mutex<ambient_rt::AmbientRt>, // AMBIENCE HOOK: bed / lakes / rivers / emitters director
 }
 
 /// AMBIENCE HOOK: start / stop the whole ambient system at a pose (a disabled system fades its loops out over 3 s).
 fn ambient_enable(shared: &Shared, h: &EngineHandle, on: bool, at: Vec3, fwd: Vec3) {
-    shared.ambient.lock().unwrap_or_else(|p| p.into_inner()).enable(h, on, at, fwd);
+    shared
+        .ambient
+        .lock()
+        .unwrap_or_else(|p| p.into_inner())
+        .enable(h, on, at, fwd);
 }
 
 pub struct EngineSink {
@@ -298,8 +362,17 @@ impl SinkLoader {
             }
         }
         match lib.load_mix(fn_audio::ambient::INSIDE_MIX).ok().flatten() {
-            Some(m) => self.shared.ambient.lock().unwrap_or_else(|p| p.into_inner()).mix = Some(m),
-            None => missing.push((fn_audio::ambient::INSIDE_MIX.to_string(), "SoundMix not found".into())),
+            Some(m) => {
+                self.shared
+                    .ambient
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner())
+                    .mix = Some(m)
+            }
+            None => missing.push((
+                fn_audio::ambient::INSIDE_MIX.to_string(),
+                "SoundMix not found".into(),
+            )),
         }
         lib.stream_min_seconds = prev;
         let mut a = self.shared.amb.lock().unwrap_or_else(|p| p.into_inner());
@@ -307,7 +380,13 @@ impl SinkLoader {
         if a.want && a.playing.is_none() {
             a.playing = Some(0); // "running" marker: the director owns the plays
             drop(a);
-            ambient_enable(&self.shared, &self.handle, true, Vec3::default(), Vec3::new(0.0, 0.0, -1.0));
+            ambient_enable(
+                &self.shared,
+                &self.handle,
+                true,
+                Vec3::default(),
+                Vec3::new(0.0, 0.0, -1.0),
+            );
         }
         missing
     }
@@ -335,11 +414,21 @@ impl SinkLoader {
 impl EngineSink {
     /// A sink on `handle` with nothing loaded yet (see [`EngineSink::loader`]).
     pub fn new(handle: EngineHandle) -> EngineSink {
-        EngineSink { handle, shared: Arc::new(Shared::default()), fire_loops: Default::default(), listener_pos: Vec3::default(), forward: Vec3::new(0.0, 0.0, -1.0), missing: Vec::new() }
+        EngineSink {
+            handle,
+            shared: Arc::new(Shared::default()),
+            fire_loops: Default::default(),
+            listener_pos: Vec3::default(),
+            forward: Vec3::new(0.0, 0.0, -1.0),
+            missing: Vec::new(),
+        }
     }
 
     pub fn loader(&self) -> SinkLoader {
-        SinkLoader { handle: self.handle.clone(), shared: self.shared.clone() }
+        SinkLoader {
+            handle: self.handle.clone(),
+            shared: self.shared.clone(),
+        }
     }
 
     /// Headless: drive an existing engine (tests, offline renders); loads everything before returning.
@@ -355,14 +444,24 @@ impl EngineSink {
 
     fn at(&self, dist_cm: f32) -> Vec3 {
         let f = self.forward;
-        Vec3::new(self.listener_pos.x + f.x * dist_cm, self.listener_pos.y + f.y * dist_cm, self.listener_pos.z + f.z * dist_cm)
+        Vec3::new(
+            self.listener_pos.x + f.x * dist_cm,
+            self.listener_pos.y + f.y * dist_cm,
+            self.listener_pos.z + f.z * dist_cm,
+        )
     }
 
     fn play(&self, cue: &str, position: Option<Vec3>) {
         if cue.is_empty() {
             return;
         }
-        let _ = self.handle.play_cue(cue, PlayParams { position, ..Default::default() });
+        let _ = self.handle.play_cue(
+            cue,
+            PlayParams {
+                position,
+                ..Default::default()
+            },
+        );
     }
 
     fn duck_melee(&self) {
@@ -373,7 +472,11 @@ impl EngineSink {
 
     /// Whether the ambience bed has been decoded (it starts by itself once `set_ambience(true)` was asked for).
     pub fn ambience_ready(&self) -> bool {
-        self.shared.amb.lock().unwrap_or_else(|p| p.into_inner()).ready
+        self.shared
+            .amb
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .ready
     }
 
     /// Play any prepared cue by event id from [`fn_audio::events::TABLE`] (`"harvest.rock.hit"`, ...), 2D.
@@ -418,10 +521,20 @@ impl AudioSink for EngineSink {
     fn event(&mut self, e: SoundEvent) {
         match e {
             // 1P footsteps / jump / land: the local pawn's own non-3P cues, played 2D at the listener
-            SoundEvent::Footstep { sprint } => self.play(step_cue(if sprint { Gait::Sprint } else { Gait::Walk }), None),
+            SoundEvent::Footstep { sprint } => self.play(
+                step_cue(if sprint { Gait::Sprint } else { Gait::Walk }),
+                None,
+            ),
             SoundEvent::Step { gait } => self.play(step_cue(gait), None),
             SoundEvent::Jump => self.play(events::JUMP, None),
-            SoundEvent::Land { speed } => self.play(if speed >= HARD_LAND_SPEED { events::LAND_HARD } else { events::LAND }, None),
+            SoundEvent::Land { speed } => self.play(
+                if speed >= HARD_LAND_SPEED {
+                    events::LAND_HARD
+                } else {
+                    events::LAND
+                },
+                None,
+            ),
             SoundEvent::Swing => {
                 let p = self.at(SWING_DISTANCE_CM);
                 self.play(events::SWING, Some(p));
@@ -436,7 +549,11 @@ impl AudioSink for EngineSink {
                 self.play(events::IMPACT_DEFAULT, Some(p));
                 self.play(events::IMPACT_TREE, Some(p));
             }
-            SoundEvent::Harvest { surface, destroyed, pos } => {
+            SoundEvent::Harvest {
+                surface,
+                destroyed,
+                pos,
+            } => {
                 let p = Some(cm(pos));
                 self.play(events::IMPACT_DEFAULT, p);
                 if let Some(c) = surface_cue(surface) {
@@ -451,7 +568,10 @@ impl AudioSink for EngineSink {
                 self.play(PLAYER_EQUIP_CUE, None);
             }
             // CRACK AUDIO HOOK: positional at the weak spot / prop
-            SoundEvent::CrackSpawn { pos } | SoundEvent::CrackLevel { pos, .. } | SoundEvent::CrackImpact { pos } | SoundEvent::PropHit { pos, .. } => {
+            SoundEvent::CrackSpawn { pos }
+            | SoundEvent::CrackLevel { pos, .. }
+            | SoundEvent::CrackImpact { pos }
+            | SoundEvent::PropHit { pos, .. } => {
                 let p = Some(cm(pos));
                 for c in crack_event_cues(&e) {
                     self.play(c, p);
@@ -460,17 +580,48 @@ impl AudioSink for EngineSink {
             // WEAPON AUDIO HOOK: positional at the weapon / pawn (None = 2D)
             SoundEvent::Weapon { id, pos, volume } => {
                 if let Some(w) = weapon_events::lookup(id) {
-                    let _ = self.handle.play_cue(w.cue, PlayParams { position: pos.map(cm), volume, pitch: w.pitch, ..Default::default() });
+                    let _ = self.handle.play_cue(
+                        w.cue,
+                        PlayParams {
+                            position: pos.map(cm),
+                            volume,
+                            pitch: w.pitch,
+                            ..Default::default()
+                        },
+                    );
                 }
             }
-            SoundEvent::WeaponLoop { id, key, pos, volume } => {
-                if let Some(old) = self.fire_loops.remove(&key) { self.handle.stop(old); }
+            SoundEvent::WeaponLoop {
+                id,
+                key,
+                pos,
+                volume,
+            } => {
+                if let Some(old) = self.fire_loops.remove(&key) {
+                    self.handle.stop(old);
+                }
                 if let Some(w) = weapon_events::lookup(id) {
-                    if let Ok(pid) = self.handle.play_cue(w.cue, PlayParams { position: pos.map(cm), volume, pitch: w.pitch, ..Default::default() }) { self.fire_loops.insert(key, pid); }
+                    if let Ok(pid) = self.handle.play_cue(
+                        w.cue,
+                        PlayParams {
+                            position: pos.map(cm),
+                            volume,
+                            pitch: w.pitch,
+                            ..Default::default()
+                        },
+                    ) {
+                        self.fire_loops.insert(key, pid);
+                    }
                 }
             }
             SoundEvent::WeaponLoopStop { key, fade } => {
-                if let Some(pid) = self.fire_loops.remove(&key) { if fade > 0. { self.handle.fade_play(pid, 0., fade, true) } else { self.handle.stop(pid) } }
+                if let Some(pid) = self.fire_loops.remove(&key) {
+                    if fade > 0. {
+                        self.handle.fade_play(pid, 0., fade, true)
+                    } else {
+                        self.handle.stop(pid)
+                    }
+                }
             }
             SoundEvent::MenuOpen => self.play(events::MENU_OPEN, None),
             SoundEvent::MenuClose => self.play(events::MENU_CLOSE, None),
@@ -488,7 +639,8 @@ impl AudioSink for EngineSink {
         // metres -> UE centimetres; both spaces are used right-handed y-up here
         self.listener_pos = cm(position);
         self.forward = Vec3::new(forward.x, forward.y, forward.z).normalized();
-        self.handle.set_listener(self.listener_pos, self.forward, Vec3::new(up.x, up.y, up.z));
+        self.handle
+            .set_listener(self.listener_pos, self.forward, Vec3::new(up.x, up.y, up.z));
     }
 
     fn set_volumes(&mut self, master: f32, music: f32, sfx: f32, dialog: f32, voice_chat: f32) {
@@ -515,12 +667,24 @@ impl AudioSink for EngineSink {
             (true, false) => {
                 a.playing = Some(0);
                 drop(a);
-                ambient_enable(&self.shared, &self.handle, true, self.listener_pos, self.forward);
+                ambient_enable(
+                    &self.shared,
+                    &self.handle,
+                    true,
+                    self.listener_pos,
+                    self.forward,
+                );
             }
             (false, true) => {
                 a.playing = None;
                 drop(a);
-                ambient_enable(&self.shared, &self.handle, false, self.listener_pos, self.forward);
+                ambient_enable(
+                    &self.shared,
+                    &self.handle,
+                    false,
+                    self.listener_pos,
+                    self.forward,
+                );
             }
             _ => {}
         }
@@ -528,14 +692,51 @@ impl AudioSink for EngineSink {
 
     // AMBIENCE HOOK
     fn ambient_map(&mut self, center_cm: [f32; 3], anchor_m: glam::Vec3) {
-        self.shared.ambient.lock().unwrap_or_else(|p| p.into_inner()).set_map(center_cm, [anchor_m.x * 100.0, anchor_m.y * 100.0, anchor_m.z * 100.0]);
+        self.shared
+            .ambient
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .set_map(
+                center_cm,
+                [anchor_m.x * 100.0, anchor_m.y * 100.0, anchor_m.z * 100.0],
+            );
     }
-    fn ambient_frame(&mut self, dt: f32, pawn: glam::Vec3, forward: glam::Vec3, trace: &mut dyn FnMut(glam::Vec3, glam::Vec3, f32) -> bool) {
-        if !self.shared.amb.lock().unwrap_or_else(|p| p.into_inner()).playing.is_some() {
+    fn ambient_frame(
+        &mut self,
+        dt: f32,
+        pawn: glam::Vec3,
+        forward: glam::Vec3,
+        trace: &mut dyn FnMut(glam::Vec3, glam::Vec3, f32) -> bool,
+    ) {
+        if !self
+            .shared
+            .amb
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .playing
+            .is_some()
+        {
             return;
         }
-        let mut t = |from: Vec3, dir: Vec3, len: f32| trace(glam::Vec3::new(from.x * 0.01, from.y * 0.01, from.z * 0.01), glam::Vec3::new(dir.x, dir.y, dir.z), len * 0.01);
-        self.shared.ambient.lock().unwrap_or_else(|p| p.into_inner()).step(&self.handle, dt, self.listener_pos, cm(pawn), Vec3::new(forward.x, forward.y, forward.z).normalized(), &mut t);
+        let mut t = |from: Vec3, dir: Vec3, len: f32| {
+            trace(
+                glam::Vec3::new(from.x * 0.01, from.y * 0.01, from.z * 0.01),
+                glam::Vec3::new(dir.x, dir.y, dir.z),
+                len * 0.01,
+            )
+        };
+        self.shared
+            .ambient
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .step(
+                &self.handle,
+                dt,
+                self.listener_pos,
+                cm(pawn),
+                Vec3::new(forward.x, forward.y, forward.z).normalized(),
+                &mut t,
+            );
     }
 
     fn set_quality(&mut self, high: bool) {
@@ -592,7 +793,13 @@ impl AudioSink for DeviceSink {
     fn ambient_map(&mut self, center_cm: [f32; 3], anchor_m: glam::Vec3) {
         self.sink.ambient_map(center_cm, anchor_m)
     }
-    fn ambient_frame(&mut self, dt: f32, pawn: glam::Vec3, forward: glam::Vec3, trace: &mut dyn FnMut(glam::Vec3, glam::Vec3, f32) -> bool) {
+    fn ambient_frame(
+        &mut self,
+        dt: f32,
+        pawn: glam::Vec3,
+        forward: glam::Vec3,
+        trace: &mut dyn FnMut(glam::Vec3, glam::Vec3, f32) -> bool,
+    ) {
         self.sink.ambient_frame(dt, pawn, forward, trace)
     }
 }
@@ -623,7 +830,13 @@ impl DeviceSink {
     }
 
     fn wrap(sink: EngineSink, stream: fn_audio::device::DeviceStream) -> DeviceSink {
-        DeviceSink { sink, device_name: stream.device_name.clone(), sample_rate: stream.sample_rate, channels: stream.channels, _device: stream }
+        DeviceSink {
+            sink,
+            device_name: stream.device_name.clone(),
+            sample_rate: stream.sample_rate,
+            channels: stream.channels,
+            _device: stream,
+        }
     }
 
     /// Open the default output device NOW and return at once; a worker thread mounts the install, decodes the gameplay / UI cues and then the
@@ -641,24 +854,39 @@ impl DeviceSink {
                 let mut lib = match Library::open(&root) {
                     Ok(l) => l,
                     Err(e) => {
-                        wlog.push(format!("cannot open the install {}: {e}; audio stays silent", root.display()));
+                        wlog.push(format!(
+                            "cannot open the install {}: {e}; audio stays silent",
+                            root.display()
+                        ));
                         return;
                     }
                 };
-                wlog.push(format!("install mounted in {:.2} s", started.elapsed().as_secs_f32()));
+                wlog.push(format!(
+                    "install mounted in {:.2} s",
+                    started.elapsed().as_secs_f32()
+                ));
                 // MUSIC HOOK: the loading-screen mix + the front-end music first (the first thing the user hears / the loading screen's silence)
                 for (c, why) in loader.load_music(&mut lib) {
                     wlog.push(format!("music {c} unavailable: {why}"));
                 }
-                wlog.push(format!("music ready after {:.2} s", started.elapsed().as_secs_f32()));
+                wlog.push(format!(
+                    "music ready after {:.2} s",
+                    started.elapsed().as_secs_f32()
+                ));
                 for (c, why) in loader.load_core(&mut lib) {
                     wlog.push(format!("cue {c} unavailable: {why}"));
                 }
-                wlog.push(format!("gameplay + UI cues ready after {:.2} s", started.elapsed().as_secs_f32()));
+                wlog.push(format!(
+                    "gameplay + UI cues ready after {:.2} s",
+                    started.elapsed().as_secs_f32()
+                ));
                 for (c, why) in loader.load_ambience(&mut lib) {
                     wlog.push(format!("cue {c} unavailable: {why}"));
                 }
-                wlog.push(format!("ambience ready after {:.2} s", started.elapsed().as_secs_f32()));
+                wlog.push(format!(
+                    "ambience ready after {:.2} s",
+                    started.elapsed().as_secs_f32()
+                ));
             })
             .map_err(|e| fn_audio::AudioError::Device(format!("loader thread: {e}")))?;
         Ok((DeviceSink::wrap(sink, stream), log))
@@ -692,7 +920,11 @@ mod tests {
 
     fn root() -> Option<String> {
         let r = std::env::var("FN_ROOT").unwrap_or_else(|_| ROOT.to_string());
-        Path::new(&r).join("Content").join("Paks").exists().then_some(r)
+        Path::new(&r)
+            .join("Content")
+            .join("Paks")
+            .exists()
+            .then_some(r)
     }
 
     #[test]
@@ -715,7 +947,10 @@ mod tests {
             assert!(step_cue(g).ends_with("Footstep_Cue"), "{g:?}");
         }
         for s in [Surface::Tree, Surface::Rock, Surface::Wood, Surface::Metal] {
-            assert!(surface_cue(s).is_some_and(|c| c.starts_with("/Game/")), "{s:?}");
+            assert!(
+                surface_cue(s).is_some_and(|c| c.starts_with("/Game/")),
+                "{s:?}"
+            );
         }
     }
 
@@ -729,7 +964,11 @@ mod tests {
         let mut eng = AudioEngine::new(48000);
         let mut sink = EngineSink::with_engine(eng.handle(), &mut lib);
         assert!(sink.missing.is_empty(), "{:?}", sink.missing);
-        sink.listener(glam::Vec3::new(10.0, 2.0, -4.0), glam::Vec3::NEG_Z, glam::Vec3::Y);
+        sink.listener(
+            glam::Vec3::new(10.0, 2.0, -4.0),
+            glam::Vec3::NEG_Z,
+            glam::Vec3::Y,
+        );
         let peak = |eng: &mut AudioEngine| {
             let o = eng.render_offline(24000, 9);
             // skip the first 512 samples: suspend / volume changes ramp within the first 64-frame block
@@ -743,18 +982,58 @@ mod tests {
             (SoundEvent::Footstep { sprint: false }, "walk"),
             (SoundEvent::Footstep { sprint: true }, "sprint"),
             (SoundEvent::Step { gait: Gait::Crouch }, "crouch step"),
-            (SoundEvent::Step { gait: Gait::CrouchSprint }, "crouch sprint step"),
+            (
+                SoundEvent::Step {
+                    gait: Gait::CrouchSprint,
+                },
+                "crouch sprint step",
+            ),
             (SoundEvent::Jump, "jump"),
             (SoundEvent::Land { speed: 3.0 }, "land"),
             (SoundEvent::Land { speed: 12.0 }, "hard land"),
             (SoundEvent::Swing, "swing"),
             (SoundEvent::SwingAt { pos: at }, "swing at"),
             (SoundEvent::HarvestHit, "harvest"),
-            (SoundEvent::Harvest { surface: Surface::Tree, destroyed: false, pos: at }, "tree hit"),
-            (SoundEvent::Harvest { surface: Surface::Tree, destroyed: true, pos: at }, "tree destroyed"),
-            (SoundEvent::Harvest { surface: Surface::Rock, destroyed: false, pos: at }, "rock hit"),
-            (SoundEvent::Harvest { surface: Surface::Wood, destroyed: false, pos: at }, "wood hit"),
-            (SoundEvent::Harvest { surface: Surface::Metal, destroyed: false, pos: at }, "metal hit"),
+            (
+                SoundEvent::Harvest {
+                    surface: Surface::Tree,
+                    destroyed: false,
+                    pos: at,
+                },
+                "tree hit",
+            ),
+            (
+                SoundEvent::Harvest {
+                    surface: Surface::Tree,
+                    destroyed: true,
+                    pos: at,
+                },
+                "tree destroyed",
+            ),
+            (
+                SoundEvent::Harvest {
+                    surface: Surface::Rock,
+                    destroyed: false,
+                    pos: at,
+                },
+                "rock hit",
+            ),
+            (
+                SoundEvent::Harvest {
+                    surface: Surface::Wood,
+                    destroyed: false,
+                    pos: at,
+                },
+                "wood hit",
+            ),
+            (
+                SoundEvent::Harvest {
+                    surface: Surface::Metal,
+                    destroyed: false,
+                    pos: at,
+                },
+                "metal hit",
+            ),
             (SoundEvent::Equip, "equip"),
             (SoundEvent::MenuOpen, "menu open"),
             (SoundEvent::MenuClose, "menu close"),
@@ -776,7 +1055,10 @@ mod tests {
         sink.event(SoundEvent::Swing);
         sink.set_volumes(1.0, 1.0, 0.5, 1.0, 1.0);
         let half = peak(&mut eng);
-        assert!(half < full * 0.75, "sfx slider halves the swing ({full} -> {half})");
+        assert!(
+            half < full * 0.75,
+            "sfx slider halves the swing ({full} -> {half})"
+        );
         sink.set_volumes(0.0, 1.0, 1.0, 1.0, 1.0);
         sink.event(SoundEvent::Swing);
         assert_eq!(peak(&mut eng), 0.0, "master 0");
@@ -803,19 +1085,57 @@ mod tests {
     #[test]
     fn crack_events_map_to_their_cues() {
         let pos = glam::Vec3::new(1.0, 1.0, -3.0);
-        assert_eq!(crack_event_cues(&SoundEvent::CrackSpawn { pos }), vec![events::CRACK_SPAWN]);
-        assert_eq!(crack_event_cues(&SoundEvent::CrackImpact { pos }), vec![events::CRACK_IMPACT]);
+        assert_eq!(
+            crack_event_cues(&SoundEvent::CrackSpawn { pos }),
+            vec![events::CRACK_SPAWN]
+        );
+        assert_eq!(
+            crack_event_cues(&SoundEvent::CrackImpact { pos }),
+            vec![events::CRACK_IMPACT]
+        );
         for l in 0..9u8 {
             let c = crack_event_cues(&SoundEvent::CrackLevel { level: l, pos });
             assert_eq!(c.len(), 1);
-            assert!(c[0].ends_with(&format!("Sound_Crack_Level_{:02}_Cue", l + 1)), "{l}: {c:?}");
+            assert!(
+                c[0].ends_with(&format!("Sound_Crack_Level_{:02}_Cue", l + 1)),
+                "{l}: {c:?}"
+            );
         }
-        assert_eq!(crack_event_cues(&SoundEvent::CrackLevel { level: 99, pos }), vec![events::CRACK_LEVELS[8]]);
+        assert_eq!(
+            crack_event_cues(&SoundEvent::CrackLevel { level: 99, pos }),
+            vec![events::CRACK_LEVELS[8]]
+        );
         let oak = events::prop_sound("Athena_Tree_Large_1").unwrap();
-        assert_eq!(crack_event_cues(&SoundEvent::PropHit { sound: oak, destroyed: false, pos }), vec![events::IMPACT_DEFAULT, events::OAK_IMPACT]);
-        assert_eq!(crack_event_cues(&SoundEvent::PropHit { sound: oak, destroyed: true, pos }), vec![events::IMPACT_DEFAULT, events::OAK_IMPACT, events::OAK_DESTROYED]);
+        assert_eq!(
+            crack_event_cues(&SoundEvent::PropHit {
+                sound: oak,
+                destroyed: false,
+                pos
+            }),
+            vec![events::IMPACT_DEFAULT, events::OAK_IMPACT]
+        );
+        assert_eq!(
+            crack_event_cues(&SoundEvent::PropHit {
+                sound: oak,
+                destroyed: true,
+                pos
+            }),
+            vec![
+                events::IMPACT_DEFAULT,
+                events::OAK_IMPACT,
+                events::OAK_DESTROYED
+            ]
+        );
         let pine5 = events::prop_sound("Athena_Tree_Pine_05").unwrap();
-        assert_eq!(crack_event_cues(&SoundEvent::PropHit { sound: pine5, destroyed: true, pos }), vec![events::IMPACT_DEFAULT, events::OAK_DESTROYED], "Pine_05 serialises no PlayHitSound");
+        assert_eq!(
+            crack_event_cues(&SoundEvent::PropHit {
+                sound: pine5,
+                destroyed: true,
+                pos
+            }),
+            vec![events::IMPACT_DEFAULT, events::OAK_DESTROYED],
+            "Pine_05 serialises no PlayHitSound"
+        );
         assert!(crack_event_cues(&SoundEvent::Jump).is_empty());
         let core = core_cues();
         for c in events::crack_and_prop_cues() {
@@ -833,18 +1153,38 @@ mod tests {
         let mut eng = AudioEngine::new(48000);
         let mut sink = EngineSink::with_engine(eng.handle(), &mut lib);
         assert!(sink.missing.is_empty(), "{:?}", sink.missing);
-        sink.listener(glam::Vec3::new(10.0, 2.0, -4.0), glam::Vec3::NEG_Z, glam::Vec3::Y);
+        sink.listener(
+            glam::Vec3::new(10.0, 2.0, -4.0),
+            glam::Vec3::NEG_Z,
+            glam::Vec3::Y,
+        );
         let at = glam::Vec3::new(10.5, 1.2, -6.0);
         let mut cases: Vec<(String, SoundEvent, &'static str)> = vec![
-            ("crack spawn".into(), SoundEvent::CrackSpawn { pos: at }, events::CRACK_SPAWN),
-            ("crack impact".into(), SoundEvent::CrackImpact { pos: at }, events::CRACK_IMPACT),
+            (
+                "crack spawn".into(),
+                SoundEvent::CrackSpawn { pos: at },
+                events::CRACK_SPAWN,
+            ),
+            (
+                "crack impact".into(),
+                SoundEvent::CrackImpact { pos: at },
+                events::CRACK_IMPACT,
+            ),
         ];
         for l in 0..9u8 {
-            cases.push((format!("crack level {}", l + 1), SoundEvent::CrackLevel { level: l, pos: at }, events::CRACK_LEVELS[l as usize]));
+            cases.push((
+                format!("crack level {}", l + 1),
+                SoundEvent::CrackLevel { level: l, pos: at },
+                events::CRACK_LEVELS[l as usize],
+            ));
         }
         for (name, ev, cue) in cases {
             assert_eq!(crack_event_cues(&ev), vec![cue], "{name}");
-            assert_eq!(lib.prepare_cue(sink.handle(), cue).unwrap(), 0, "{name}: every wave of {cue} decodes");
+            assert_eq!(
+                lib.prepare_cue(sink.handle(), cue).unwrap(),
+                0,
+                "{name}: every wave of {cue} decodes"
+            );
             sink.event(ev);
             assert!(crack_sink_peak(&mut eng) > 1e-4, "{name} is silent");
         }
@@ -852,10 +1192,23 @@ mod tests {
         for p in events::PROP_SOUNDS {
             for (what, cue) in [("hit", p.hit), ("death", p.death)] {
                 let Some(cue) = cue else { continue };
-                assert_eq!(lib.prepare_cue(sink.handle(), cue).unwrap(), 0, "{} {what}: {cue}", p.id);
+                assert_eq!(
+                    lib.prepare_cue(sink.handle(), cue).unwrap(),
+                    0,
+                    "{} {what}: {cue}",
+                    p.id
+                );
             }
-            sink.event(SoundEvent::PropHit { sound: p, destroyed: true, pos: at });
-            assert!(crack_sink_peak(&mut eng) > 1e-4, "{} destroyed is silent", p.id);
+            sink.event(SoundEvent::PropHit {
+                sound: p,
+                destroyed: true,
+                pos: at,
+            });
+            assert!(
+                crack_sink_peak(&mut eng) > 1e-4,
+                "{} destroyed is silent",
+                p.id
+            );
         }
     }
 
@@ -873,16 +1226,31 @@ mod tests {
         sink.listener(glam::Vec3::ZERO, glam::Vec3::NEG_Z, glam::Vec3::Y);
         let peak = |o: &[f32]| o.iter().fold(0f32, |a, &b| a.max(b.abs()));
         // Hydraulic Drum: bPersistentFireFX with indefinitely looping fire cues (BP_FIRE_FX): one start runs on
-        sink.event(SoundEvent::WeaponLoop { id: "bp.B_Assault_Hydraulic_Drum_Athena.fire", key: 0, pos: Some(glam::Vec3::new(0., 0., -1.)), volume: 1.0 });
+        sink.event(SoundEvent::WeaponLoop {
+            id: "bp.B_Assault_Hydraulic_Drum_Athena.fire",
+            key: 0,
+            pos: Some(glam::Vec3::new(0., 0., -1.)),
+            volume: 1.0,
+        });
         let o = eng.render_offline(48000 * 6, 11);
-        assert!(peak(&o[o.len() - 48000..]) > 1e-5, "the loop must still sound after 5 s");
+        assert!(
+            peak(&o[o.len() - 48000..]) > 1e-5,
+            "the loop must still sound after 5 s"
+        );
         // a second start on the same channel replaces it (no stacking); the stop fades it out
         sink.event(SoundEvent::WeaponLoopStop { key: 0, fade: 0.15 });
         let o = eng.render_offline(48000, 11);
-        assert!(peak(&o[o.len() - 24000..]) < 1e-6, "silent half a second after the 0.15 s fade-out");
+        assert!(
+            peak(&o[o.len() - 24000..]) < 1e-6,
+            "silent half a second after the 0.15 s fade-out"
+        );
         assert!(sink.fire_loops.is_empty());
         // its stop sound is an ordinary weapon event
-        sink.event(SoundEvent::Weapon { id: "bp.B_Assault_Hydraulic_Drum_Athena.fire.stop", pos: Some(glam::Vec3::new(0., 0., -1.)), volume: 1.0 });
+        sink.event(SoundEvent::Weapon {
+            id: "bp.B_Assault_Hydraulic_Drum_Athena.fire.stop",
+            pos: Some(glam::Vec3::new(0., 0., -1.)),
+            volume: 1.0,
+        });
         assert!(peak(&eng.render_offline(48000, 11)) > 1e-5, "stop sound");
     }
     #[test]
@@ -904,16 +1272,35 @@ mod tests {
         };
         let at = Some(glam::Vec3::new(0.5, 0.0, -1.0));
         let mut n = 0;
-        for w in weapon_events::TABLE.iter().filter(|w| weapon_events::is_played(w)) {
-            sink.event(SoundEvent::Weapon { id: w.event, pos: if w.event.starts_with("weapon.equip") || w.event.starts_with("heal.") { None } else { at }, volume: 1.0 });
+        for w in weapon_events::TABLE
+            .iter()
+            .filter(|w| weapon_events::is_played(w))
+        {
+            sink.event(SoundEvent::Weapon {
+                id: w.event,
+                pos: if w.event.starts_with("weapon.equip") || w.event.starts_with("heal.") {
+                    None
+                } else {
+                    at
+                },
+                volume: 1.0,
+            });
             let o = render(&mut eng, 2);
-            assert!(o.iter().fold(0f32, |a, &b| a.max(b.abs())) > 1e-5, "{} is silent", w.event);
+            assert!(
+                o.iter().fold(0f32, |a, &b| a.max(b.abs())) > 1e-5,
+                "{} is silent",
+                w.event
+            );
             n += 1;
         }
         assert!(n >= 40, "{n} weapon events checked");
         // a shot to the right (+X) is louder in the right channel; to the left in the left channel (interleaved stereo)
         let side = |sink: &mut EngineSink, eng: &mut AudioEngine, x: f32| {
-            sink.event(SoundEvent::Weapon { id: "weapon.ar.fire", pos: Some(glam::Vec3::new(x, 0.0, -1.0)), volume: 1.0 });
+            sink.event(SoundEvent::Weapon {
+                id: "weapon.ar.fire",
+                pos: Some(glam::Vec3::new(x, 0.0, -1.0)),
+                volume: 1.0,
+            });
             let o = render(eng, 1);
             let (mut l, mut r) = (0f64, 0f64);
             for f in o.chunks(2) {
@@ -927,11 +1314,26 @@ mod tests {
         let (l, r) = side(&mut sink, &mut eng, -3.0);
         assert!(l > r * 1.5, "left-hand shot: L {l} R {r}");
         // the whip closeness volume scales the cue
-        sink.event(SoundEvent::Weapon { id: "whip.close", pos: at, volume: 1.0 });
-        let loud = render(&mut eng, 1).iter().fold(0f32, |a, &b| a.max(b.abs()));
-        sink.event(SoundEvent::Weapon { id: "whip.close", pos: at, volume: 0.25 });
-        let quiet = render(&mut eng, 1).iter().fold(0f32, |a, &b| a.max(b.abs()));
-        assert!(quiet < loud * 0.6 && quiet > 0.0, "volume {loud} -> {quiet}");
+        sink.event(SoundEvent::Weapon {
+            id: "whip.close",
+            pos: at,
+            volume: 1.0,
+        });
+        let loud = render(&mut eng, 1)
+            .iter()
+            .fold(0f32, |a, &b| a.max(b.abs()));
+        sink.event(SoundEvent::Weapon {
+            id: "whip.close",
+            pos: at,
+            volume: 0.25,
+        });
+        let quiet = render(&mut eng, 1)
+            .iter()
+            .fold(0f32, |a, &b| a.max(b.abs()));
+        assert!(
+            quiet < loud * 0.6 && quiet > 0.0,
+            "volume {loud} -> {quiet}"
+        );
     }
 
     #[test]
@@ -946,7 +1348,10 @@ mod tests {
         assert!(!sink.ambience_ready());
         // nothing is loaded: events are dropped, no panic
         sink.event(SoundEvent::Jump);
-        let silent = eng.render_offline(4800, 1).iter().fold(0f32, |a, &b| a.max(b.abs()));
+        let silent = eng
+            .render_offline(4800, 1)
+            .iter()
+            .fold(0f32, |a, &b| a.max(b.abs()));
         assert_eq!(silent, 0.0);
         let loader = sink.loader();
         let t = std::thread::spawn(move || {
@@ -957,6 +1362,9 @@ mod tests {
         assert!(missing.is_empty(), "{missing:?}");
         assert!(sink.ambience_ready());
         let o = eng.render_offline(24000, 3);
-        assert!(o.iter().fold(0f32, |a, &b| a.max(b.abs())) > 1e-5, "ambience started by itself");
+        assert!(
+            o.iter().fold(0f32, |a, &b| a.max(b.abs())) > 1e-5,
+            "ambience started by itself"
+        );
     }
 }

@@ -18,9 +18,18 @@ fn main() {
         let pk = d.package().unwrap();
         for i in pk.exports_of_class("SoundClass").collect::<Vec<_>>() {
             let o = pk.read_export(i).unwrap();
-            let parent = o.get("ParentClass").and_then(Value::as_object).map(|i| pk.object_path(i)).unwrap_or_default();
+            let parent = o
+                .get("ParentClass")
+                .and_then(Value::as_object)
+                .map(|i| pk.object_path(i))
+                .unwrap_or_default();
             let props = o.get("Properties");
-            let f = |n: &str| props.and_then(|p| p.field(n)).map(|v| format!("{v:?}")).unwrap_or_default();
+            let f = |n: &str| {
+                props
+                    .and_then(|p| p.field(n))
+                    .map(|v| format!("{v:?}"))
+                    .unwrap_or_default()
+            };
             rows.push(format!(
                 "{:45} parent={:60} vol={} pitch={} ui={} music={} fx={} alwaysplay={} reverb={}",
                 o.name,

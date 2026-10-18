@@ -46,9 +46,15 @@ impl<'a> Reader<'a> {
         self.bytes(n).map(|_| ())
     }
     pub fn bytes(&mut self, n: usize) -> Result<&'a [u8]> {
-        let end = self.pos.checked_add(n).ok_or(Error::Eof { pos: self.pos, wanted: n })?;
+        let end = self.pos.checked_add(n).ok_or(Error::Eof {
+            pos: self.pos,
+            wanted: n,
+        })?;
         if end > self.data.len() {
-            return Err(Error::Eof { pos: self.pos, wanted: n });
+            return Err(Error::Eof {
+                pos: self.pos,
+                wanted: n,
+            });
         }
         let s = &self.data[self.pos..end];
         self.pos = end;
@@ -79,13 +85,24 @@ impl<'a> Reader<'a> {
         }
         if len > 0 {
             let b = self.bytes(len as usize)?;
-            let b = if b.last() == Some(&0) { &b[..b.len() - 1] } else { b };
+            let b = if b.last() == Some(&0) {
+                &b[..b.len() - 1]
+            } else {
+                b
+            };
             Ok(b.iter().map(|&c| c as char).collect())
         } else {
             let n = (-(len as i64)) as usize;
             let b = self.bytes(n * 2)?;
-            let v: Vec<u16> = b.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect();
-            let v = if v.last() == Some(&0) { &v[..v.len() - 1] } else { &v[..] };
+            let v: Vec<u16> = b
+                .chunks_exact(2)
+                .map(|c| u16::from_le_bytes([c[0], c[1]]))
+                .collect();
+            let v = if v.last() == Some(&0) {
+                &v[..v.len() - 1]
+            } else {
+                &v[..]
+            };
             Ok(String::from_utf16_lossy(v))
         }
     }

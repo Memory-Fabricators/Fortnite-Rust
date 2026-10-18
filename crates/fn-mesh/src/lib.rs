@@ -88,11 +88,18 @@ pub mod skeleton;
 pub mod skym;
 pub mod static_mesh;
 
-pub use common::{tangent_sign, unpack_byte_engine, unpack_byte_uev, unpack_normal, unpack_normal_unit, Bounds, Transform};
+pub use common::{
+    tangent_sign, unpack_byte_engine, unpack_byte_uev, unpack_normal, unpack_normal_unit, Bounds,
+    Transform,
+};
 pub use fn_ueio::{Error, Result};
-pub use skeletal::{Influences, LodInfo, Section, SkeletalLod, SkeletalMaterial, SkeletalMesh, UvChannelInfo};
-pub use skeleton::{Bone, CurveMeta, RetargetSource, SlotGroup, Skeleton, Socket, TranslationRetarget, VirtualBone};
 pub use gltf_lods::{export_static_mesh_lods, static_mesh_to_gltf_lods, PropMaterial};
+pub use skeletal::{
+    Influences, LodInfo, Section, SkeletalLod, SkeletalMaterial, SkeletalMesh, UvChannelInfo,
+};
+pub use skeleton::{
+    Bone, CurveMeta, RetargetSource, Skeleton, SlotGroup, Socket, TranslationRetarget, VirtualBone,
+};
 pub use static_mesh::{LodCheck, StaticLod, StaticMaterial, StaticMesh, StaticSection};
 
 #[cfg(test)]
@@ -115,7 +122,11 @@ mod tests {
 
     #[test]
     fn bounds_box() {
-        let b = Bounds { origin: [1.0, 2.0, 3.0], extent: [1.0, 1.0, 2.0], radius: 3.0 };
+        let b = Bounds {
+            origin: [1.0, 2.0, 3.0],
+            extent: [1.0, 1.0, 2.0],
+            radius: 3.0,
+        };
         assert_eq!(b.box_min_max(), ([0.0, 1.0, 1.0], [2.0, 3.0, 5.0]));
     }
 }

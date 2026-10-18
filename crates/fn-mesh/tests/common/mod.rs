@@ -7,7 +7,9 @@ use std::path::{Path, PathBuf};
 
 /// Root of the extracted `FortniteGame/Content` test packages (`FN_TESTDATA` overrides the default).
 pub fn testdata() -> Option<PathBuf> {
-    let root = std::env::var("FN_TESTDATA").map(PathBuf::from).unwrap_or_else(|_| PathBuf::from(r"C:\Users\Brady\AppData\Local\Temp\fn-testdata"));
+    let root = std::env::var("FN_TESTDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(r"C:\Users\Brady\AppData\Local\Temp\fn-testdata"));
     let content = root.join("FortniteGame").join("Content");
     if content.is_dir() {
         Some(content)
@@ -42,7 +44,8 @@ pub fn old_sky() -> Option<PathBuf> {
 
 pub fn load_package(base: &Path) -> fn_ueio::Package {
     let rd = |e: &str| std::fs::read(base.with_extension(e)).unwrap_or_default();
-    fn_ueio::Package::parse(&rd("uasset"), &rd("uexp"), &rd("ubulk")).unwrap_or_else(|e| panic!("{}: {e}", base.display()))
+    fn_ueio::Package::parse(&rd("uasset"), &rd("uexp"), &rd("ubulk"))
+        .unwrap_or_else(|e| panic!("{}: {e}", base.display()))
 }
 
 /// A glTF document + its .bin.
@@ -53,7 +56,10 @@ pub struct Gltf {
 
 impl Gltf {
     pub fn from_parts(json: &str, bin: Vec<u8>) -> Gltf {
-        Gltf { json: serde_json::from_str(json).expect("valid gltf json"), bin }
+        Gltf {
+            json: serde_json::from_str(json).expect("valid gltf json"),
+            bin,
+        }
     }
     pub fn load(base: &Path) -> Gltf {
         let json = std::fs::read_to_string(base.with_extension("gltf")).unwrap();
@@ -71,7 +77,12 @@ impl Gltf {
             t => panic!("type {t}"),
         };
         let view = &self.json["bufferViews"][a["bufferView"].as_u64().unwrap() as usize];
-        (ncomp, a["count"].as_u64().unwrap() as usize, a["componentType"].as_u64().unwrap(), view["byteOffset"].as_u64().unwrap_or(0) as usize)
+        (
+            ncomp,
+            a["count"].as_u64().unwrap() as usize,
+            a["componentType"].as_u64().unwrap(),
+            view["byteOffset"].as_u64().unwrap_or(0) as usize,
+        )
     }
     /// All components as f64 (any component type, no normalisation applied).
     pub fn values(&self, i: usize) -> (usize, Vec<f64>) {
@@ -102,5 +113,8 @@ pub fn max_abs_err(a: &[f64], b: &[f64]) -> f64 {
     if a.len() != b.len() {
         return f64::INFINITY;
     }
-    a.iter().zip(b).map(|(x, y)| (x - y).abs()).fold(0.0, f64::max)
+    a.iter()
+        .zip(b)
+        .map(|(x, y)| (x - y).abs())
+        .fold(0.0, f64::max)
 }

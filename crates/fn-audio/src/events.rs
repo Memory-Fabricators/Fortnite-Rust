@@ -25,16 +25,20 @@ use Source::{Assumed, Recovered};
 pub const SWING: &str = "/Game/Athena/Sounds/Weapons/PickAxe_Swing_Athena_Cue";
 pub const EQUIP_READY: &str = "/Game/Athena/Sounds/Weapons/PickAxe_Ready_Athena_Cue";
 pub const IMPACT_DEFAULT: &str = "/Game/Sounds/Fort_Weapons/PickAxe/PickAxe_Impact_Default_Cue";
-pub const IMPACT_TREE: &str = "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_Tree_Impact_Cue";
+pub const IMPACT_TREE: &str =
+    "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_Tree_Impact_Cue";
 pub const FOOTSTEP_WALK: &str = "/Game/Athena/Sounds/Character/Athena_Character_Walk_Footstep_Cue";
-pub const FOOTSTEP_SPRINT: &str = "/Game/Athena/Sounds/Character/Athena_Character_Sprint_Footstep_Cue";
+pub const FOOTSTEP_SPRINT: &str =
+    "/Game/Athena/Sounds/Character/Athena_Character_Sprint_Footstep_Cue";
 pub const JUMP: &str = "/Game/Athena/Sounds/Character/Athena_Character_Jump_Cue";
 pub const LAND: &str = "/Game/Athena/Sounds/Character/Athena_Character_Land_Cue";
 pub const LAND_HARD: &str = "/Game/Athena/Sounds/Character/Athena_Character_LandHard_Cue";
 pub const MENU_OPEN: &str = "/Game/Sounds/Fort_UI_Sounds/FrontEnd/Fort_UI_MenuOpen_Cue";
-pub const MENU_CLOSE: &str = "/Game/Sounds/Fort_UI_Sounds/FrontEnd/New_FrontEnd/Fortnite_UI_Options_Menu_03_Cue";
+pub const MENU_CLOSE: &str =
+    "/Game/Sounds/Fort_UI_Sounds/FrontEnd/New_FrontEnd/Fortnite_UI_Options_Menu_03_Cue";
 pub const MENU_CLICK: &str = "/Game/Sounds/Fort_UI_Sounds/FrontEnd/Fort_UI_MenuButtonClick_Cue";
-pub const AMBIENCE_DAY: &str = "/Game/Athena/Sounds/Ambient/Temperate_Grasslands_Hills_Day_Athena_Cue";
+pub const AMBIENCE_DAY: &str =
+    "/Game/Athena/Sounds/Ambient/Temperate_Grasslands_Hills_Day_Athena_Cue";
 
 // CRACK AUDIO HOOK: weak-spot (`WeakSpot_C` / `FortCrackEffect`) sounds and the per-prop harvest hit / death sounds.
 pub const CRACK_SPAWN: &str = "/Game/Sounds/Fort_GamePlay_Sounds/Demolition/Crack_Spawn_Cue";
@@ -55,15 +59,24 @@ pub const CRACK_LEVELS: [&str; 9] = [
 pub fn crack_level_cue(level: u8) -> &'static str {
     CRACK_LEVELS[(level as usize).min(CRACK_LEVELS.len() - 1)]
 }
-pub const OAK_IMPACT: &str = "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_OakTree_Impact_Cue";
-pub const OAK_DESTROYED: &str = "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_OakTree_Destroyed_Cue";
-pub const TREE_DESTROYED: &str = "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_Tree_Destroyed_Cue";
-pub const PINE_IMPACT: &str = "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_PineTree_Impact_Cue";
-pub const SMALLTREE_IMPACT: &str = "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_SmallTree_Impact_Cue";
-pub const SMALLTREE_DESTROYED: &str = "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_SmallTree_Destroyed_Cue";
-pub const BUSH_IMPACT: &str = "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_Bush_Impact_Cue";
-pub const BUSH_DESTROYED: &str = "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_Bush_ImpactFinal_Cue";
-pub const JUNK_LARGE: &str = "/Game/Sounds/Fort_Impact_Sounds/Demolition/Exterior_Props/Demo_Junk_Large_Impact_Cue";
+pub const OAK_IMPACT: &str =
+    "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_OakTree_Impact_Cue";
+pub const OAK_DESTROYED: &str =
+    "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_OakTree_Destroyed_Cue";
+pub const TREE_DESTROYED: &str =
+    "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_Tree_Destroyed_Cue";
+pub const PINE_IMPACT: &str =
+    "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_PineTree_Impact_Cue";
+pub const SMALLTREE_IMPACT: &str =
+    "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_SmallTree_Impact_Cue";
+pub const SMALLTREE_DESTROYED: &str =
+    "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_SmallTree_Destroyed_Cue";
+pub const BUSH_IMPACT: &str =
+    "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_Bush_Impact_Cue";
+pub const BUSH_DESTROYED: &str =
+    "/Game/Sounds/Fort_Impact_Sounds/Demolition/Wood/Demo_Bush_ImpactFinal_Cue";
+pub const JUNK_LARGE: &str =
+    "/Game/Sounds/Fort_Impact_Sounds/Demolition/Exterior_Props/Demo_Junk_Large_Impact_Cue";
 
 /// `PlayHitSound` / `DeathSound` of one harvestable prop, as exported in its `props.json` (`destruction.hit_sound` / `destruction.death_sound`).
 /// `None` = the class serialises no such sound (the rocks and bushes serialise neither).
@@ -81,20 +94,64 @@ const fn ps(id: &'static str, hit: Option<&'static str>, death: Option<&'static 
 pub const PROP_SOUNDS: &[PropSound] = &[
     ps("Athena_Tree_Hero_02", Some(OAK_IMPACT), Some(OAK_DESTROYED)),
     ps("Athena_Tree_Large_1", Some(OAK_IMPACT), Some(OAK_DESTROYED)),
-    ps("Athena_Tree_Medium_01_", Some(IMPACT_TREE), Some(TREE_DESTROYED)),
-    ps("Athena_Tree_Medium_03_", Some(IMPACT_TREE), Some(TREE_DESTROYED)),
-    ps("Athena_Tree_Medium_04_", Some(IMPACT_TREE), Some(TREE_DESTROYED)),
-    ps("Athena_Tree_Pine_01", Some(PINE_IMPACT), Some(TREE_DESTROYED)),
+    ps(
+        "Athena_Tree_Medium_01_",
+        Some(IMPACT_TREE),
+        Some(TREE_DESTROYED),
+    ),
+    ps(
+        "Athena_Tree_Medium_03_",
+        Some(IMPACT_TREE),
+        Some(TREE_DESTROYED),
+    ),
+    ps(
+        "Athena_Tree_Medium_04_",
+        Some(IMPACT_TREE),
+        Some(TREE_DESTROYED),
+    ),
+    ps(
+        "Athena_Tree_Pine_01",
+        Some(PINE_IMPACT),
+        Some(TREE_DESTROYED),
+    ),
     ps("Athena_Tree_Pine_05", None, Some(OAK_DESTROYED)),
-    ps("Athena_Tree_Pine_3", Some(IMPACT_TREE), Some(TREE_DESTROYED)),
-    ps("Athena_Tree_WeepingWillow_01", Some(IMPACT_TREE), Some(TREE_DESTROYED)),
+    ps(
+        "Athena_Tree_Pine_3",
+        Some(IMPACT_TREE),
+        Some(TREE_DESTROYED),
+    ),
+    ps(
+        "Athena_Tree_WeepingWillow_01",
+        Some(IMPACT_TREE),
+        Some(TREE_DESTROYED),
+    ),
     ps("Tree_04", Some(IMPACT_TREE), Some(TREE_DESTROYED)),
-    ps("Tree_Bush_1a", Some(SMALLTREE_IMPACT), Some(SMALLTREE_DESTROYED)),
-    ps("Tree_Bush_3", Some(SMALLTREE_IMPACT), Some(SMALLTREE_DESTROYED)),
-    ps("Tree_Small_1", Some(SMALLTREE_IMPACT), Some(SMALLTREE_DESTROYED)),
+    ps(
+        "Tree_Bush_1a",
+        Some(SMALLTREE_IMPACT),
+        Some(SMALLTREE_DESTROYED),
+    ),
+    ps(
+        "Tree_Bush_3",
+        Some(SMALLTREE_IMPACT),
+        Some(SMALLTREE_DESTROYED),
+    ),
+    ps(
+        "Tree_Small_1",
+        Some(SMALLTREE_IMPACT),
+        Some(SMALLTREE_DESTROYED),
+    ),
     ps("Tree_StumpSet02", Some(IMPACT_TREE), Some(OAK_DESTROYED)),
-    ps("Hedge_High_Rectangle", Some(BUSH_IMPACT), Some(BUSH_DESTROYED)),
-    ps("Hedge_Low_Rectangle", Some(BUSH_IMPACT), Some(BUSH_DESTROYED)),
+    ps(
+        "Hedge_High_Rectangle",
+        Some(BUSH_IMPACT),
+        Some(BUSH_DESTROYED),
+    ),
+    ps(
+        "Hedge_Low_Rectangle",
+        Some(BUSH_IMPACT),
+        Some(BUSH_DESTROYED),
+    ),
     ps("ToiletFactory_Frame_01", Some(JUNK_LARGE), Some(JUNK_LARGE)),
     ps("ToiletFactory_Frame_02", Some(JUNK_LARGE), Some(JUNK_LARGE)),
     ps("ToiletFactory_Frame_03", Some(JUNK_LARGE), Some(JUNK_LARGE)),
@@ -175,7 +232,11 @@ mod tests {
         let mut seen = std::collections::HashSet::new();
         for e in TABLE {
             assert!(seen.insert(e.event), "duplicate {}", e.event);
-            assert!(e.cue.starts_with("/Game/") && !e.cue.contains('.'), "{}", e.cue);
+            assert!(
+                e.cue.starts_with("/Game/") && !e.cue.contains('.'),
+                "{}",
+                e.cue
+            );
         }
         assert_eq!(lookup("melee.swing").unwrap().cue, SWING);
     }
@@ -183,8 +244,14 @@ mod tests {
     #[test]
     fn crack_levels_map_one_to_one_and_clamp() {
         for l in 0..9u8 {
-            assert!(crack_level_cue(l).ends_with(&format!("Sound_Crack_Level_{:02}_Cue", l + 1)), "{l}");
-            assert_eq!(lookup(&format!("crack.level.{}", l + 1)).unwrap().cue, crack_level_cue(l));
+            assert!(
+                crack_level_cue(l).ends_with(&format!("Sound_Crack_Level_{:02}_Cue", l + 1)),
+                "{l}"
+            );
+            assert_eq!(
+                lookup(&format!("crack.level.{}", l + 1)).unwrap().cue,
+                crack_level_cue(l)
+            );
         }
         assert_eq!(crack_level_cue(200), CRACK_LEVELS[8]);
         assert_eq!(lookup("crack.spawn").unwrap().cue, CRACK_SPAWN);
@@ -199,7 +266,10 @@ mod tests {
                 assert!(TABLE.iter().any(|e| e.cue == c), "{c} has no TABLE row");
             }
         }
-        assert_eq!(prop_sound("Athena_Tree_Large_1").unwrap().death, Some(OAK_DESTROYED));
+        assert_eq!(
+            prop_sound("Athena_Tree_Large_1").unwrap().death,
+            Some(OAK_DESTROYED)
+        );
         assert!(prop_sound("Prop_Rocks_01").is_none());
         let c = crack_and_prop_cues();
         let mut s = c.clone();

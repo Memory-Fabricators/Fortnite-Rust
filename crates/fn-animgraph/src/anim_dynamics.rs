@@ -22,14 +22,33 @@
 use glam::{Mat3, Quat, Vec3};
 
 /// Evaluator (glTF, metres) component-space transform -> UE (cm) position / rotation.
-pub fn to_ue(p: Vec3, q: Quat) -> (Vec3, Quat) { (Vec3::new(p.x, p.z, p.y) * 100., Quat::from_xyzw(q.x, q.z, q.y, -q.w).normalize()) }
+pub fn to_ue(p: Vec3, q: Quat) -> (Vec3, Quat) {
+    (
+        Vec3::new(p.x, p.z, p.y) * 100.,
+        Quat::from_xyzw(q.x, q.z, q.y, -q.w).normalize(),
+    )
+}
 /// Inverse of [`to_ue`].
-pub fn from_ue(p: Vec3, q: Quat) -> (Vec3, Quat) { (Vec3::new(p.x, p.z, p.y) * 0.01, Quat::from_xyzw(q.x, q.z, q.y, -q.w).normalize()) }
+pub fn from_ue(p: Vec3, q: Quat) -> (Vec3, Quat) {
+    (
+        Vec3::new(p.x, p.z, p.y) * 0.01,
+        Quat::from_xyzw(q.x, q.z, q.y, -q.w).normalize(),
+    )
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum LinearLimitType { Free, #[default] Limited, Locked }
+pub enum LinearLimitType {
+    Free,
+    #[default]
+    Limited,
+    Locked,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum AngularConstraintType { #[default] Angular, Cone }
+pub enum AngularConstraintType {
+    #[default]
+    Angular,
+    Cone,
+}
 
 /// `FAnimPhysConstraintSetup` (angles in degrees, lengths in cm, as serialized).
 #[derive(Clone, Debug, PartialEq)]
@@ -49,8 +68,19 @@ pub struct ConstraintSetup {
 }
 impl Default for ConstraintSetup {
     fn default() -> Self {
-        ConstraintSetup { angular_type: AngularConstraintType::Angular, twist_axis: 1, angular_min: [0.; 3], angular_max: [0.; 3], angular_target: [0.; 3], angular_target_axis: 1, cone_angle: 0.,
-            linear_types: [LinearLimitType::Limited; 3], linear_min: [0.; 3], linear_max: [0.; 3], linear_fully_locked: false }
+        ConstraintSetup {
+            angular_type: AngularConstraintType::Angular,
+            twist_axis: 1,
+            angular_min: [0.; 3],
+            angular_max: [0.; 3],
+            angular_target: [0.; 3],
+            angular_target_axis: 1,
+            cone_angle: 0.,
+            linear_types: [LinearLimitType::Limited; 3],
+            linear_min: [0.; 3],
+            linear_max: [0.; 3],
+            linear_fully_locked: false,
+        }
     }
 }
 
@@ -93,26 +123,70 @@ pub struct AnimDynamicsParams {
 }
 impl Default for AnimDynamicsParams {
     fn default() -> Self {
-        AnimDynamicsParams { bound_bone: String::new(), chain: false, chain_end: None, box_extents: [5.; 3], local_joint_offset: [0.; 3], gravity_scale: 1., linear_spring: false, linear_spring_constant: 0.,
-            angular_spring: false, angular_spring_constant: 0., constraint: ConstraintSetup::default(), pre_iterations: 4, post_iterations: 1, use_planar_limit: true, planar_limit_count: 0,
-            use_spherical_limits: false, spherical_limit_count: 0, enable_wind: false, wind_scale: 1., override_linear_damping: false, linear_damping_override: 0., override_angular_damping: false,
-            angular_damping_override: 0., external_force: [0.; 3], simulation_space_component: true, relative_space_bone: None, lod_threshold: -1, alpha: 1., alpha_scale: 1., alpha_bias: 0., do_update: true, do_eval: true }
+        AnimDynamicsParams {
+            bound_bone: String::new(),
+            chain: false,
+            chain_end: None,
+            box_extents: [5.; 3],
+            local_joint_offset: [0.; 3],
+            gravity_scale: 1.,
+            linear_spring: false,
+            linear_spring_constant: 0.,
+            angular_spring: false,
+            angular_spring_constant: 0.,
+            constraint: ConstraintSetup::default(),
+            pre_iterations: 4,
+            post_iterations: 1,
+            use_planar_limit: true,
+            planar_limit_count: 0,
+            use_spherical_limits: false,
+            spherical_limit_count: 0,
+            enable_wind: false,
+            wind_scale: 1.,
+            override_linear_damping: false,
+            linear_damping_override: 0.,
+            override_angular_damping: false,
+            angular_damping_override: 0.,
+            external_force: [0.; 3],
+            simulation_space_component: true,
+            relative_space_bone: None,
+            lod_threshold: -1,
+            alpha: 1.,
+            alpha_scale: 1.,
+            alpha_bias: 0.,
+            do_update: true,
+            do_eval: true,
+        }
     }
 }
 impl AnimDynamicsParams {
     /// Parts of the node this port does not simulate (non-empty = the data uses something [`AnimDynamicsSim`] ignores).
     pub fn unsupported(&self) -> Vec<String> {
         let mut u = vec![];
-        if self.chain { u.push("bChain".into()); }
-        if self.use_spherical_limits && self.spherical_limit_count > 0 { u.push("spherical limits".into()); }
-        if self.use_planar_limit && self.planar_limit_count > 0 { u.push("planar limits".into()); }
-        if self.constraint.angular_type == AngularConstraintType::Cone { u.push("Cone angular constraint".into()); }
-        if !self.simulation_space_component { u.push("world / bone-relative simulation space".into()); }
-        if self.external_force != [0.; 3] { u.push("ExternalForce".into()); }
+        if self.chain {
+            u.push("bChain".into());
+        }
+        if self.use_spherical_limits && self.spherical_limit_count > 0 {
+            u.push("spherical limits".into());
+        }
+        if self.use_planar_limit && self.planar_limit_count > 0 {
+            u.push("planar limits".into());
+        }
+        if self.constraint.angular_type == AngularConstraintType::Cone {
+            u.push("Cone angular constraint".into());
+        }
+        if !self.simulation_space_component {
+            u.push("world / bone-relative simulation space".into());
+        }
+        if self.external_force != [0.; 3] {
+            u.push("ExternalForce".into());
+        }
         u
     }
     /// `AlphaScaleBias` applied to an Alpha pin value, clamped to 0..1 (`ActualAlpha`).
-    pub fn actual_alpha(&self, alpha: f32) -> f32 { (alpha * self.alpha_scale + self.alpha_bias).clamp(0., 1.) }
+    pub fn actual_alpha(&self, alpha: f32) -> f32 {
+        (alpha * self.alpha_scale + self.alpha_bias).clamp(0., 1.)
+    }
 }
 
 /// Engine constants of the `FAnimPhys` solver that are not in the packages (see the module docs). Reported, never hidden.
@@ -125,57 +199,118 @@ pub struct SolverAssumptions {
     pub gravity_cm_s2: f32,
     pub max_step: f32,
 }
-impl Default for SolverAssumptions { fn default() -> Self { SolverAssumptions { mass: 1., linear_damping: 0.7, angular_damping: 0.7, gravity_cm_s2: -fn_movement::params::WORLD_GRAVITY_Z, max_step: 1. / 30. } } }
+impl Default for SolverAssumptions {
+    fn default() -> Self {
+        SolverAssumptions {
+            mass: 1.,
+            linear_damping: 0.7,
+            angular_damping: 0.7,
+            gravity_cm_s2: -fn_movement::params::WORLD_GRAVITY_Z,
+            max_step: 1. / 30.,
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
-struct Body { p: Vec3, q: Quat, v: Vec3, w: Vec3 }
+struct Body {
+    p: Vec3,
+    q: Quat,
+    v: Vec3,
+    w: Vec3,
+}
 
 /// The simulation state of one node.
 #[derive(Clone, Debug, Default)]
-pub struct AnimDynamicsSim { body: Option<Body> }
+pub struct AnimDynamicsSim {
+    body: Option<Body>,
+}
 
-fn axis(v: [f32; 3], i: usize) -> f32 { v[i] }
+fn axis(v: [f32; 3], i: usize) -> f32 {
+    v[i]
+}
 /// Rotation vector (axis * angle, shortest path) of a quaternion.
 fn rotvec(q: Quat) -> Vec3 {
     let q = if q.w < 0. { -q } else { q };
     let s = Vec3::new(q.x, q.y, q.z);
     let sl = s.length();
-    if sl < 1e-7 { return s * 2.; }
+    if sl < 1e-7 {
+        return s * 2.;
+    }
     s / sl * (2. * sl.atan2(q.w))
 }
-fn from_rotvec(v: Vec3) -> Quat { let a = v.length(); if a < 1e-9 { Quat::IDENTITY } else { Quat::from_axis_angle(v / a, a) } }
+fn from_rotvec(v: Vec3) -> Quat {
+    let a = v.length();
+    if a < 1e-9 {
+        Quat::IDENTITY
+    } else {
+        Quat::from_axis_angle(v / a, a)
+    }
+}
 
 fn inv_inertia_world(q: Quat, ext: [f32; 3], mass: f32) -> Mat3 {
     // uniform box, ext = full side lengths: I_x = m/12 (ey^2 + ez^2) ...
     let ix = mass / 12. * (ext[1] * ext[1] + ext[2] * ext[2]);
     let iy = mass / 12. * (ext[0] * ext[0] + ext[2] * ext[2]);
     let iz = mass / 12. * (ext[0] * ext[0] + ext[1] * ext[1]);
-    let inv = Mat3::from_diagonal(Vec3::new(1. / ix.max(1e-6), 1. / iy.max(1e-6), 1. / iz.max(1e-6)));
+    let inv = Mat3::from_diagonal(Vec3::new(
+        1. / ix.max(1e-6),
+        1. / iy.max(1e-6),
+        1. / iz.max(1e-6),
+    ));
     let r = Mat3::from_quat(q);
     r * inv * r.transpose()
 }
 
 impl AnimDynamicsSim {
-    pub fn new() -> Self { Self::default() }
-    pub fn reset(&mut self) { self.body = None; }
-    pub fn is_initialised(&self) -> bool { self.body.is_some() }
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn reset(&mut self) {
+        self.body = None;
+    }
+    pub fn is_initialised(&self) -> bool {
+        self.body.is_some()
+    }
 
     /// One tick. `base` = the node's input pose of the bound bone, UE space (cm). `dt` seconds. Returns the simulated bone transform (UE space);
     /// the caller blends it with the input by `Alpha`. The first call (or after [`reset`](Self::reset)) starts at rest on the base.
-    pub fn step(&mut self, prm: &AnimDynamicsParams, a: &SolverAssumptions, base: (Vec3, Quat), dt: f32) -> (Vec3, Quat) {
+    pub fn step(
+        &mut self,
+        prm: &AnimDynamicsParams,
+        a: &SolverAssumptions,
+        base: (Vec3, Quat),
+        dt: f32,
+    ) -> (Vec3, Quat) {
         let (bp, bq) = base;
         let Some(mut b) = self.body else {
-            self.body = Some(Body { p: bp, q: bq, v: Vec3::ZERO, w: Vec3::ZERO });
+            self.body = Some(Body {
+                p: bp,
+                q: bq,
+                v: Vec3::ZERO,
+                w: Vec3::ZERO,
+            });
             return base;
         };
-        if !prm.do_update { return (b.p, b.q); }
+        if !prm.do_update {
+            return (b.p, b.q);
+        }
         let dt = dt.clamp(0., a.max_step);
-        if dt <= 0. { return (b.p, b.q); }
+        if dt <= 0. {
+            return (b.p, b.q);
+        }
         let c = &prm.constraint;
         let off = Vec3::from(prm.local_joint_offset);
         let ext = prm.box_extents;
-        let lin_damp = if prm.override_linear_damping { prm.linear_damping_override } else { a.linear_damping };
-        let ang_damp = if prm.override_angular_damping { prm.angular_damping_override } else { a.angular_damping };
+        let lin_damp = if prm.override_linear_damping {
+            prm.linear_damping_override
+        } else {
+            a.linear_damping
+        };
+        let ang_damp = if prm.override_angular_damping {
+            prm.angular_damping_override
+        } else {
+            a.angular_damping
+        };
 
         // forces: gravity at the centre of mass, optional linear spring on the joint, angular spring toward the target
         b.v += Vec3::new(0., 0., -a.gravity_cm_s2 * prm.gravity_scale) * dt;
@@ -196,15 +331,32 @@ impl AnimDynamicsSim {
         let (p0, q0) = (b.p, b.q);
         b.p += b.v * dt;
         let dq = Quat::from_xyzw(b.w.x, b.w.y, b.w.z, 0.) * b.q;
-        b.q = Quat::from_xyzw(b.q.x + 0.5 * dt * dq.x, b.q.y + 0.5 * dt * dq.y, b.q.z + 0.5 * dt * dq.z, b.q.w + 0.5 * dt * dq.w).normalize();
+        b.q = Quat::from_xyzw(
+            b.q.x + 0.5 * dt * dq.x,
+            b.q.y + 0.5 * dt * dq.y,
+            b.q.z + 0.5 * dt * dq.z,
+            b.q.w + 0.5 * dt * dq.w,
+        )
+        .normalize();
 
         let solve = |b: &mut Body| {
             // angular range relative to the animated bone, per axis in the bone frame
             if c.angular_type == AngularConstraintType::Angular {
                 let rel = rotvec(bq.conjugate() * b.q);
-                let lim = |i: usize| (axis(c.angular_min, i).to_radians(), axis(c.angular_max, i).to_radians());
-                let clamped = Vec3::new(rel.x.clamp(lim(0).0.min(lim(0).1), lim(0).1.max(lim(0).0)), rel.y.clamp(lim(1).0.min(lim(1).1), lim(1).1.max(lim(1).0)), rel.z.clamp(lim(2).0.min(lim(2).1), lim(2).1.max(lim(2).0)));
-                if (clamped - rel).length_squared() > 1e-12 { b.q = (bq * from_rotvec(clamped)).normalize(); }
+                let lim = |i: usize| {
+                    (
+                        axis(c.angular_min, i).to_radians(),
+                        axis(c.angular_max, i).to_radians(),
+                    )
+                };
+                let clamped = Vec3::new(
+                    rel.x.clamp(lim(0).0.min(lim(0).1), lim(0).1.max(lim(0).0)),
+                    rel.y.clamp(lim(1).0.min(lim(1).1), lim(1).1.max(lim(1).0)),
+                    rel.z.clamp(lim(2).0.min(lim(2).1), lim(2).1.max(lim(2).0)),
+                );
+                if (clamped - rel).length_squared() > 1e-12 {
+                    b.q = (bq * from_rotvec(clamped)).normalize();
+                }
             }
             // joint linear displacement in the bone frame
             let jb = b.p + b.q * off;
@@ -212,9 +364,20 @@ impl AnimDynamicsSim {
             let r = bq.conjugate() * (jb - ja);
             let mut r2 = r;
             for i in 0..3 {
-                let (lo, hi) = (c.linear_min[i].min(c.linear_max[i]), c.linear_max[i].max(c.linear_min[i]));
+                let (lo, hi) = (
+                    c.linear_min[i].min(c.linear_max[i]),
+                    c.linear_max[i].max(c.linear_min[i]),
+                );
                 let v = r[i];
-                r2[i] = if c.linear_fully_locked { 0. } else { match c.linear_types[i] { LinearLimitType::Free => v, LinearLimitType::Limited => v.clamp(lo, hi), LinearLimitType::Locked => 0. } };
+                r2[i] = if c.linear_fully_locked {
+                    0.
+                } else {
+                    match c.linear_types[i] {
+                        LinearLimitType::Free => v,
+                        LinearLimitType::Limited => v.clamp(lo, hi),
+                        LinearLimitType::Locked => 0.,
+                    }
+                };
             }
             let corr = bq * (r2 - r);
             let len = corr.length();
@@ -229,7 +392,13 @@ impl AnimDynamicsSim {
                 b.p += n * (lambda / a.mass);
                 let dth = iw * arm.cross(n * lambda);
                 let dq = Quat::from_xyzw(dth.x, dth.y, dth.z, 0.) * b.q;
-                b.q = Quat::from_xyzw(b.q.x + 0.5 * dq.x, b.q.y + 0.5 * dq.y, b.q.z + 0.5 * dq.z, b.q.w + 0.5 * dq.w).normalize();
+                b.q = Quat::from_xyzw(
+                    b.q.x + 0.5 * dq.x,
+                    b.q.y + 0.5 * dq.y,
+                    b.q.z + 0.5 * dq.z,
+                    b.q.w + 0.5 * dq.w,
+                )
+                .normalize();
             }
         };
         let pure_translate = |b: &mut Body| {
@@ -239,17 +408,32 @@ impl AnimDynamicsSim {
             let r = bq.conjugate() * (jb - ja);
             let mut r2 = r;
             for i in 0..3 {
-                let (lo, hi) = (c.linear_min[i].min(c.linear_max[i]), c.linear_max[i].max(c.linear_min[i]));
-                r2[i] = if c.linear_fully_locked { 0. } else { match c.linear_types[i] { LinearLimitType::Free => r[i], LinearLimitType::Limited => r[i].clamp(lo, hi), LinearLimitType::Locked => 0. } };
+                let (lo, hi) = (
+                    c.linear_min[i].min(c.linear_max[i]),
+                    c.linear_max[i].max(c.linear_min[i]),
+                );
+                r2[i] = if c.linear_fully_locked {
+                    0.
+                } else {
+                    match c.linear_types[i] {
+                        LinearLimitType::Free => r[i],
+                        LinearLimitType::Limited => r[i].clamp(lo, hi),
+                        LinearLimitType::Locked => 0.,
+                    }
+                };
             }
             b.p += bq * (r2 - r);
         };
-        for _ in 0..prm.pre_iterations.max(1) { solve(&mut b); }
+        for _ in 0..prm.pre_iterations.max(1) {
+            solve(&mut b);
+        }
         pure_translate(&mut b);
         b.v = (b.p - p0) / dt;
         let dq = b.q * q0.conjugate();
         b.w = rotvec(dq) / dt;
-        for _ in 0..prm.post_iterations { solve(&mut b); }
+        for _ in 0..prm.post_iterations {
+            solve(&mut b);
+        }
         pure_translate(&mut b);
         self.body = Some(b);
         (b.p, b.q)
@@ -258,8 +442,13 @@ impl AnimDynamicsSim {
     /// Blend of the simulated transform over the input (`Alpha`): position lerp, rotation slerp.
     pub fn blend(input: (Vec3, Quat), sim: (Vec3, Quat), alpha: f32) -> (Vec3, Quat) {
         let alpha = alpha.clamp(0., 1.);
-        if alpha <= 1e-4 { return input; }
-        (input.0.lerp(sim.0, alpha), input.1.slerp(sim.1, alpha).normalize())
+        if alpha <= 1e-4 {
+            return input;
+        }
+        (
+            input.0.lerp(sim.0, alpha),
+            input.1.slerp(sim.1, alpha).normalize(),
+        )
     }
 }
 
@@ -267,7 +456,17 @@ impl AnimDynamicsSim {
 mod tests {
     use super::*;
     fn grenade() -> AnimDynamicsParams {
-        let mut p = AnimDynamicsParams { bound_bone: "dyn_grenade01".into(), box_extents: [10., 10., 20.], local_joint_offset: [0., 0., 2.], gravity_scale: 0.2, angular_spring: true, angular_spring_constant: 1000., pre_iterations: 16, post_iterations: 4, ..Default::default() };
+        let mut p = AnimDynamicsParams {
+            bound_bone: "dyn_grenade01".into(),
+            box_extents: [10., 10., 20.],
+            local_joint_offset: [0., 0., 2.],
+            gravity_scale: 0.2,
+            angular_spring: true,
+            angular_spring_constant: 1000.,
+            pre_iterations: 16,
+            post_iterations: 4,
+            ..Default::default()
+        };
         p.constraint.angular_min = [0., -20., 0.];
         p.constraint.angular_max = [20., 0., 0.];
         p.constraint.linear_min = [0., 0., -0.5];
@@ -281,35 +480,69 @@ mod tests {
         let base = (Vec3::new(10., 20., 100.), Quat::from_rotation_x(0.3));
         let mut s = AnimDynamicsSim::new();
         let mut out = base;
-        for _ in 0..600 { out = s.step(&prm, &a, base, 1. / 60.); }
+        for _ in 0..600 {
+            out = s.step(&prm, &a, base, 1. / 60.);
+        }
         let rel = rotvec(base.1.conjugate() * out.1);
-        assert!(rel.x >= -1e-3 && rel.x <= 20f32.to_radians() + 1e-3 && rel.y <= 1e-3 && rel.y >= -20f32.to_radians() - 1e-3 && rel.z.abs() < 1e-3, "{rel:?}");
-        let r = base.1.conjugate() * ((out.0 + out.1 * Vec3::new(0., 0., 2.)) - (base.0 + base.1 * Vec3::new(0., 0., 2.)));
-        assert!(r.x.abs() < 1e-2 && r.y.abs() < 1e-2 && r.z.abs() <= 0.51, "{r:?}");
+        assert!(
+            rel.x >= -1e-3
+                && rel.x <= 20f32.to_radians() + 1e-3
+                && rel.y <= 1e-3
+                && rel.y >= -20f32.to_radians() - 1e-3
+                && rel.z.abs() < 1e-3,
+            "{rel:?}"
+        );
+        let r = base.1.conjugate()
+            * ((out.0 + out.1 * Vec3::new(0., 0., 2.)) - (base.0 + base.1 * Vec3::new(0., 0., 2.)));
+        assert!(
+            r.x.abs() < 1e-2 && r.y.abs() < 1e-2 && r.z.abs() <= 0.51,
+            "{r:?}"
+        );
     }
     #[test]
     fn first_tick_is_the_input_and_zero_alpha_is_a_bypass() {
         let prm = grenade();
         let mut s = AnimDynamicsSim::new();
         let base = (Vec3::ONE, Quat::IDENTITY);
-        assert_eq!(s.step(&prm, &SolverAssumptions::default(), base, 1. / 60.), base);
-        assert_eq!(AnimDynamicsSim::blend(base, (Vec3::ZERO, Quat::IDENTITY), 0.), base);
+        assert_eq!(
+            s.step(&prm, &SolverAssumptions::default(), base, 1. / 60.),
+            base
+        );
+        assert_eq!(
+            AnimDynamicsSim::blend(base, (Vec3::ZERO, Quat::IDENTITY), 0.),
+            base
+        );
     }
     #[test]
     fn locked_rotation_pouch_slides_along_z_only() {
-        let mut prm = AnimDynamicsParams { bound_bone: "dyn_pouch_r".into(), box_extents: [5.; 3], local_joint_offset: [0., 0., -5.], gravity_scale: 0.1, ..Default::default() };
+        let mut prm = AnimDynamicsParams {
+            bound_bone: "dyn_pouch_r".into(),
+            box_extents: [5.; 3],
+            local_joint_offset: [0., 0., -5.],
+            gravity_scale: 0.1,
+            ..Default::default()
+        };
         prm.constraint.linear_max = [0., 0., 2.];
         let a = SolverAssumptions::default();
         let mut s = AnimDynamicsSim::new();
         let base = (Vec3::ZERO, Quat::IDENTITY);
         let mut out = base;
-        for _ in 0..300 { out = s.step(&prm, &a, base, 1. / 60.); }
-        assert!(out.0.x.abs() < 1e-2 && out.0.y.abs() < 1e-2 && out.0.z >= -1e-2 && out.0.z <= 2.01, "{:?}", out.0);
+        for _ in 0..300 {
+            out = s.step(&prm, &a, base, 1. / 60.);
+        }
+        assert!(
+            out.0.x.abs() < 1e-2 && out.0.y.abs() < 1e-2 && out.0.z >= -1e-2 && out.0.z <= 2.01,
+            "{:?}",
+            out.0
+        );
         assert!(rotvec(out.1).length() < 1e-2);
     }
     #[test]
     fn ue_conversion_round_trips() {
-        let (p, q) = (Vec3::new(0.1, 1.2, -0.3), Quat::from_euler(glam::EulerRot::XYZ, 0.3, -0.2, 0.9));
+        let (p, q) = (
+            Vec3::new(0.1, 1.2, -0.3),
+            Quat::from_euler(glam::EulerRot::XYZ, 0.3, -0.2, 0.9),
+        );
         let (up, uq) = to_ue(p, q);
         let (p2, q2) = from_ue(up, uq);
         assert!((p - p2).length() < 1e-5 && q.dot(q2).abs() > 0.99999);

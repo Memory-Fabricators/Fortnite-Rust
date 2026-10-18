@@ -33,7 +33,10 @@
 //!  * the line sweep thickness (`ConeMinRadius` 1 cm of the Line selection is taken as the sweep radius).
 //!  * the RESOURCE amount of a hit (still the damage dealt, as in `World::strike`'s history).
 //!  * the anchor of the health bar (`FortFocusedBuildingInfo.IndicatorRelativeLocation` is native): the prop's top centre.
-use crate::{trace_cylinders, HarvestEvent, Harvestable, Kind, Resource, World, CHEST_HEIGHT, HARVEST_DAMAGE, LOW_TRACE_HEIGHT, MELEE_RADIUS, MELEE_REACH};
+use crate::{
+    trace_cylinders, HarvestEvent, Harvestable, Kind, Resource, World, CHEST_HEIGHT,
+    HARVEST_DAMAGE, LOW_TRACE_HEIGHT, MELEE_RADIUS, MELEE_REACH,
+};
 use glam::Vec3;
 use std::collections::HashMap;
 
@@ -87,16 +90,29 @@ pub const MAX_PENDING_EVENTS: usize = 256;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Rng(pub u64);
 impl Rng {
-    pub fn next_u64(&mut self) -> u64 { self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15); let mut z = self.0; z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9); z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB); z ^ (z >> 31) }
+    pub fn next_u64(&mut self) -> u64 {
+        self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut z = self.0;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
+    }
     /// Uniform in [0, 1).
-    pub fn unit(&mut self) -> f32 { (self.next_u64() >> 40) as f32 / (1u64 << 24) as f32 }
-    pub fn range(&mut self, lo: f32, hi: f32) -> f32 { lo + (hi - lo) * self.unit() }
+    pub fn unit(&mut self) -> f32 {
+        (self.next_u64() >> 40) as f32 / (1u64 << 24) as f32
+    }
+    pub fn range(&mut self, lo: f32, hi: f32) -> f32 {
+        lo + (hi - lo) * self.unit()
+    }
 }
 
 // ---- data types -------------------------------------------------------------------------------------------------------------------
 /// The camera ray of the strike (what the `WeakSpots` line selection starts from).
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Aim { pub eye: Vec3, pub dir: Vec3 }
+pub struct Aim {
+    pub eye: Vec3,
+    pub dir: Vec3,
+}
 
 /// One weak point: a 30 cm sphere on the prop surface.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -124,12 +140,28 @@ pub enum FxEvent {
     /// The first hit generated a weak spot at `pos` (plays `Crack_Spawn_Cue`, ring x1.5).
     WeakSpotSpawned { object: u64, pos: Vec3 },
     /// A weak point was hit (critical): `level` selects `Sound_Crack_Level_0N` (0..8), the ring shrinks over `SCALE_DOWN_LENGTH`, then it relocates to `moved_to`.
-    WeakSpotHit { object: u64, pos: Vec3, level: u8, moved_to: Option<Vec3> },
+    WeakSpotHit {
+        object: u64,
+        pos: Vec3,
+        level: u8,
+        moved_to: Option<Vec3>,
+    },
     /// An ordinary or critical hit that played the crack impact: `connect_from` is the previous hit point when ConnectTheDots applies (30..500 cm, within 0.05 s of the previous
     /// hit as the cooked timeout says; with the pickaxe's swing rate it essentially never applies, it is reported for completeness).
-    Hit { object: u64, pos: Vec3, critical: bool, connect_from: Option<Vec3> },
+    Hit {
+        object: u64,
+        pos: Vec3,
+        critical: bool,
+        connect_from: Option<Vec3>,
+    },
     /// The hit destroyed the prop (`DeathParticles` / `DeathSound` / loot are the app's to play).
-    Broke { object: u64, pos: Vec3, kind: Kind, resource: Resource, proto: u32 },
+    Broke {
+        object: u64,
+        pos: Vec3,
+        kind: Kind,
+        resource: Resource,
+        proto: u32,
+    },
 }
 
 /// A damage number of `ImpactNumbers_C`.
@@ -148,14 +180,28 @@ pub struct DamageNumber {
 }
 impl DamageNumber {
     /// The colour `Set Material Pararmeters` selects (linear RGBA): crit + Building -> Critical Wall Hit Color, otherwise the standard colour.
-    pub fn color(&self) -> [f32; 4] { if self.critical && self.kind == NUMBER_TYPE_BUILDING { NUMBER_CRIT_WALL_COLOR } else { NUMBER_STANDARD_COLOR } }
+    pub fn color(&self) -> [f32; 4] {
+        if self.critical && self.kind == NUMBER_TYPE_BUILDING {
+            NUMBER_CRIT_WALL_COLOR
+        } else {
+            NUMBER_STANDARD_COLOR
+        }
+    }
     /// Digits (most significant first) -- the `DamageNumberArray`.
-    pub fn digits(&self) -> Vec<u8> { self.amount.to_string().bytes().map(|b| b - b'0').collect() }
+    pub fn digits(&self) -> Vec<u8> {
+        self.amount.to_string().bytes().map(|b| b - b'0').collect()
+    }
 }
 
 /// What the HUD's Target Info needs about the aimed prop.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Focus { pub index: usize, pub object: u64, pub health: f32, pub max_health: f32, pub anchor: Vec3 }
+pub struct Focus {
+    pub index: usize,
+    pub object: u64,
+    pub health: f32,
+    pub max_health: f32,
+    pub anchor: Vec3,
+}
 
 /// Everything this module keeps (a field of [`World`]).
 #[derive(Clone, Debug, Default)]
@@ -175,34 +221,69 @@ pub struct Fx {
 }
 
 /// Identity of a prop for the HUD / popups: index + respawn counter (same as `HarvestEvent::object`).
-pub fn object_id(index: usize, p: &Harvestable) -> u64 { index as u64 | ((p.life as u64) << 32) }
+pub fn object_id(index: usize, p: &Harvestable) -> u64 {
+    index as u64 | ((p.life as u64) << 32)
+}
 
 impl Fx {
     /// The weak spot of prop `index` (if any).
-    pub fn weak_spot(&self, index: usize, p: &Harvestable) -> Option<WeakSpot> { self.props.get(&object_id(index, p)).and_then(|f| f.weak) }
+    pub fn weak_spot(&self, index: usize, p: &Harvestable) -> Option<WeakSpot> {
+        self.props.get(&object_id(index, p)).and_then(|f| f.weak)
+    }
     /// Advances ages, drops the numbers that outlived [`NUMBER_KEEP`] and the state of props that are gone.
     pub fn update(&mut self, props: &[Harvestable], dt: f32) {
         let dt = dt.max(0.);
-        for n in &mut self.numbers { n.age += dt; }
+        for n in &mut self.numbers {
+            n.age += dt;
+        }
         self.numbers.retain(|n| n.age <= NUMBER_KEEP);
-        for f in self.props.values_mut() { if let Some(w) = f.weak.as_mut() { w.age += dt; } }
-        let live: Vec<u64> = props.iter().enumerate().filter(|(_, p)| p.alive()).map(|(i, p)| object_id(i, p)).collect();
+        for f in self.props.values_mut() {
+            if let Some(w) = f.weak.as_mut() {
+                w.age += dt;
+            }
+        }
+        let live: Vec<u64> = props
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| p.alive())
+            .map(|(i, p)| object_id(i, p))
+            .collect();
         self.props.retain(|k, _| live.contains(k));
     }
     /// Takes the pending presentation events.
-    pub fn take_events(&mut self) -> Vec<FxEvent> { std::mem::take(&mut self.events) }
+    pub fn take_events(&mut self) -> Vec<FxEvent> {
+        std::mem::take(&mut self.events)
+    }
     /// Queues a presentation event; a headless run nobody drains keeps only the newest [`MAX_PENDING_EVENTS`].
-    fn emit(&mut self, e: FxEvent) { if self.events.len() >= MAX_PENDING_EVENTS { self.events.remove(0); } self.events.push(e); self.emitted += 1; /* CRACK AUDIO HOOK */ }
+    fn emit(&mut self, e: FxEvent) {
+        if self.events.len() >= MAX_PENDING_EVENTS {
+            self.events.remove(0);
+        }
+        self.events.push(e);
+        self.emitted += 1; /* CRACK AUDIO HOOK */
+    }
 }
 
 // ---- geometry ------------------------------------------------------------------------------------------------------------------
 /// Distance along the ray at which the (thick) line first touches the sphere, `None` when it misses or is further than `range`.
-pub fn line_hits_sphere(eye: Vec3, dir: Vec3, range: f32, sweep: f32, centre: Vec3, radius: f32) -> Option<f32> {
-    let d = dir.normalize_or_zero(); if d == Vec3::ZERO { return None; }
+pub fn line_hits_sphere(
+    eye: Vec3,
+    dir: Vec3,
+    range: f32,
+    sweep: f32,
+    centre: Vec3,
+    radius: f32,
+) -> Option<f32> {
+    let d = dir.normalize_or_zero();
+    if d == Vec3::ZERO {
+        return None;
+    }
     let t = (centre - eye).dot(d).clamp(0., range);
     let closest = eye + d * t;
     let miss = (centre - closest).length();
-    if miss > radius + sweep { return None; }
+    if miss > radius + sweep {
+        return None;
+    }
     let back = ((radius + sweep).powi(2) - miss * miss).max(0.).sqrt();
     Some((t - back).max(0.))
 }
@@ -211,23 +292,50 @@ pub fn line_hits_sphere(eye: Vec3, dir: Vec3, range: f32, sweep: f32, centre: Ve
 fn surface_hit(p: &Harvestable, origin: Vec3, dir: Vec3, max_t: f32) -> Option<(Vec3, Vec3)> {
     if let Some(set) = &p.hull {
         let mut best: Option<(f32, Vec3)> = None;
-        for h in &set.hulls { if let Some((t, n)) = h.ray(origin, dir, max_t) { if best.map_or(true, |b| t < b.0) { best = Some((t, n)); } } }
+        for h in &set.hulls {
+            if let Some((t, n)) = h.ray(origin, dir, max_t) {
+                if best.map_or(true, |b| t < b.0) {
+                    best = Some((t, n));
+                }
+            }
+        }
         return best.map(|(t, n)| (origin + dir * t, n));
     }
     // vertical cylinder: ray / circle in the xz plane
-    let o = Vec3::new(origin.x - p.pos.x, 0., origin.z - p.pos.z); let d = Vec3::new(dir.x, 0., dir.z).normalize_or_zero();
-    let b = o.dot(d); let c = o.length_squared() - p.radius * p.radius; let disc = b * b - c;
-    if disc < 0. { return None; }
-    let t = -b - disc.sqrt(); if t < 0. || t > max_t { return None; }
-    let hit = origin + dir * t; let n = Vec3::new(hit.x - p.pos.x, 0., hit.z - p.pos.z).normalize_or_zero();
+    let o = Vec3::new(origin.x - p.pos.x, 0., origin.z - p.pos.z);
+    let d = Vec3::new(dir.x, 0., dir.z).normalize_or_zero();
+    let b = o.dot(d);
+    let c = o.length_squared() - p.radius * p.radius;
+    let disc = b * b - c;
+    if disc < 0. {
+        return None;
+    }
+    let t = -b - disc.sqrt();
+    if t < 0. || t > max_t {
+        return None;
+    }
+    let hit = origin + dir * t;
+    let n = Vec3::new(hit.x - p.pos.x, 0., hit.z - p.pos.z).normalize_or_zero();
     Some((hit, n))
 }
 
 /// RECONSTRUCTED placement (see the module docs): a point on the surface on the side facing `toward`, `avoid` (the previous spot) at least [`RELOCATE_MIN_DISTANCE`] away.
-pub fn place_weak_spot(p: &Harvestable, rng: &mut Rng, toward: Vec3, avoid: Option<Vec3>) -> Option<WeakSpot> {
-    let centre = match &p.hull { Some(h) if !h.is_empty() => Vec3::new(h.center.x, 0., h.center.z), _ => Vec3::new(p.pos.x, 0., p.pos.z) };
+pub fn place_weak_spot(
+    p: &Harvestable,
+    rng: &mut Rng,
+    toward: Vec3,
+    avoid: Option<Vec3>,
+) -> Option<WeakSpot> {
+    let centre = match &p.hull {
+        Some(h) if !h.is_empty() => Vec3::new(h.center.x, 0., h.center.z),
+        _ => Vec3::new(p.pos.x, 0., p.pos.z),
+    };
     let to = Vec3::new(toward.x - centre.x, 0., toward.z - centre.z);
-    let base = if to.length_squared() > 1e-6 { to.z.atan2(to.x) } else { 0. };
+    let base = if to.length_squared() > 1e-6 {
+        to.z.atan2(to.x)
+    } else {
+        0.
+    };
     let reach = p.radius.max(0.5) + 4.;
     let lo = p.pos.y + (PLACE_BAND.0 * p.height).min(PLACE_MIN_HEIGHT);
     let hi = (p.pos.y + (PLACE_BAND.1 * p.height).min(PLACE_MAX_HEIGHT)).max(lo + 0.05);
@@ -236,9 +344,17 @@ pub fn place_weak_spot(p: &Harvestable, rng: &mut Rng, toward: Vec3, avoid: Opti
         let y = rng.range(lo, hi);
         let dir = Vec3::new(a.cos(), 0., a.sin());
         let origin = Vec3::new(centre.x, y, centre.z) + dir * reach;
-        let Some((pt, n)) = surface_hit(p, origin, -dir, reach * 2.) else { continue };
-        if avoid.map_or(false, |o| (o - pt).length() < RELOCATE_MIN_DISTANCE) { continue; }
-        return Some(WeakSpot { pos: pt + n * 0.02, normal: n, age: 0. });
+        let Some((pt, n)) = surface_hit(p, origin, -dir, reach * 2.) else {
+            continue;
+        };
+        if avoid.map_or(false, |o| (o - pt).length() < RELOCATE_MIN_DISTANCE) {
+            continue;
+        }
+        return Some(WeakSpot {
+            pos: pt + n * 0.02,
+            normal: n,
+            age: 0.,
+        });
     }
     None
 }
@@ -246,16 +362,20 @@ pub fn place_weak_spot(p: &Harvestable, rng: &mut Rng, toward: Vec3, avoid: Opti
 /// The prop under the crosshair for the Target Info bar: the same rule as `reticle::aim_on_target` (first prop on the camera ray within the pickaxe's reach of the pawn).
 pub fn focused_prop(props: &[Harvestable], eye: Vec3, forward: Vec3, pawn: Vec3) -> Option<usize> {
     let hit = trace_cylinders(props, eye, forward, crate::reticle::AIM_TRACE, 0.)?;
-    let d = forward.normalize_or_zero(); let p = eye + d * (crate::reticle::AIM_TRACE * hit.fraction);
+    let d = forward.normalize_or_zero();
+    let p = eye + d * (crate::reticle::AIM_TRACE * hit.fraction);
     let flat = ((p.x - pawn.x).powi(2) + (p.z - pawn.z).powi(2)).sqrt();
-    (flat <= crate::reticle::RANGE_2D && (p.y - pawn.y).abs() <= crate::reticle::RANGE_Z).then_some(hit.index)
+    (flat <= crate::reticle::RANGE_2D && (p.y - pawn.y).abs() <= crate::reticle::RANGE_Z)
+        .then_some(hit.index)
 }
 /// Anchor of the Target Info bar in world space (RECONSTRUCTED, `IndicatorRelativeLocation` is native): trees use the `CentroidOffset` of `Parent_Tree` (0,0,120 cm: data), anything
 /// else the centre of its collision hulls (a bounding-box centroid), placeholders half their height.
 pub fn indicator_anchor(p: &Harvestable) -> Vec3 {
     match (&p.hull, p.kind) {
         // the oak's actor origin is not under its trunk: horizontal position of the hull centre, height from the data offset
-        (Some(h), Kind::Tree) if !h.is_empty() => Vec3::new(h.center.x, p.pos.y + TREE_CENTROID_OFFSET, h.center.z),
+        (Some(h), Kind::Tree) if !h.is_empty() => {
+            Vec3::new(h.center.x, p.pos.y + TREE_CENTROID_OFFSET, h.center.z)
+        }
         (_, Kind::Tree) => Vec3::new(p.pos.x, p.pos.y + TREE_CENTROID_OFFSET, p.pos.z),
         (Some(h), _) if !h.is_empty() => h.center,
         _ => Vec3::new(p.pos.x, p.pos.y + p.height * 0.5, p.pos.z),
@@ -263,8 +383,15 @@ pub fn indicator_anchor(p: &Harvestable) -> Vec3 {
 }
 /// [`Focus`] of the aimed prop (health, max health and [`indicator_anchor`]). Dead props are never focused (the trace skips them).
 pub fn focus(world: &World, eye: Vec3, forward: Vec3, pawn: Vec3) -> Option<Focus> {
-    let i = focused_prop(&world.props, eye, forward, pawn)?; let p = &world.props[i];
-    Some(Focus { index: i, object: object_id(i, p), health: p.health.max(0.), max_health: p.max_hp, anchor: indicator_anchor(p) })
+    let i = focused_prop(&world.props, eye, forward, pawn)?;
+    let p = &world.props[i];
+    Some(Focus {
+        index: i,
+        object: object_id(i, p),
+        health: p.health.max(0.),
+        max_health: p.max_hp,
+        anchor: indicator_anchor(p),
+    })
 }
 
 // ---- the strike -------------------------------------------------------------------------------------------------------------------
@@ -278,46 +405,125 @@ pub fn strike(world: &mut World, eye_ground: Vec3, facing: Vec3) -> bool {
         let mut best = f32::MAX;
         let pawn = eye_ground + Vec3::Y * CHEST_HEIGHT;
         for (i, p) in world.props.iter().enumerate() {
-            if !p.alive() { continue; }
-            let Some(w) = world.fx.props.get(&object_id(i, p)).and_then(|f| f.weak) else { continue };
+            if !p.alive() {
+                continue;
+            }
+            let Some(w) = world.fx.props.get(&object_id(i, p)).and_then(|f| f.weak) else {
+                continue;
+            };
             // RangeVSWeakSpots (400 cm) is applied to the pawn -> spot distance (the native origin of the 400 cm is not recoverable; measured from the camera it would
             // exclude every spot a player can reach with the pickaxe, the melee camera sits behind the pawn)
-            if (w.pos - pawn).length() > WEAKSPOT_LINE_RANGE { continue; }
-            if let Some(t) = line_hits_sphere(a.eye, a.dir, crate::reticle::AIM_TRACE, WEAKSPOT_LINE_SWEEP, w.pos, WEAKSPOT_RADIUS) { if t < best { best = t; target = Some((i, true, w.pos)); } }
+            if (w.pos - pawn).length() > WEAKSPOT_LINE_RANGE {
+                continue;
+            }
+            if let Some(t) = line_hits_sphere(
+                a.eye,
+                a.dir,
+                crate::reticle::AIM_TRACE,
+                WEAKSPOT_LINE_SWEEP,
+                w.pos,
+                WEAKSPOT_RADIUS,
+            ) {
+                if t < best {
+                    best = t;
+                    target = Some((i, true, w.pos));
+                }
+            }
         }
     }
     // 2. the Damageable sphere of the pawn (the old melee sweep: chest height, then knee height)
     if target.is_none() {
         let origin = eye_ground + Vec3::Y * CHEST_HEIGHT;
         let d = facing.normalize_or_zero();
-        let hit = trace_cylinders(&world.props, origin, facing, MELEE_REACH, MELEE_RADIUS).map(|h| (h, origin)).or_else(|| { let o = eye_ground + Vec3::Y * LOW_TRACE_HEIGHT; trace_cylinders(&world.props, o, facing, MELEE_REACH, MELEE_RADIUS).map(|h| (h, o)) });
-        if let Some((h, o)) = hit { target = Some((h.index, false, o + d * (MELEE_REACH * h.fraction))); }
+        let hit = trace_cylinders(&world.props, origin, facing, MELEE_REACH, MELEE_RADIUS)
+            .map(|h| (h, origin))
+            .or_else(|| {
+                let o = eye_ground + Vec3::Y * LOW_TRACE_HEIGHT;
+                trace_cylinders(&world.props, o, facing, MELEE_REACH, MELEE_RADIUS).map(|h| (h, o))
+            });
+        if let Some((h, o)) = hit {
+            target = Some((h.index, false, o + d * (MELEE_REACH * h.fraction)));
+        }
     }
-    let Some((index, critical, point)) = target else { world.misses += 1; return false };
-    let damage = if critical { DAMAGE_WEAKPOINT } else { DAMAGE_NORMAL };
+    let Some((index, critical, point)) = target else {
+        world.misses += 1;
+        return false;
+    };
+    let damage = if critical {
+        DAMAGE_WEAKPOINT
+    } else {
+        DAMAGE_NORMAL
+    };
     let toward = aim.map_or(eye_ground, |a| a.eye);
     let (object, destroyed, resource, kind, proto, pos) = {
         let p = &mut world.props[index];
-        p.health -= damage; p.shake = 0.3;
-        let destroyed = p.health <= 0.; if destroyed { p.gone_for = 0.; }
-        (object_id(index, p), destroyed, p.res, p.kind, p.proto, p.pos)
+        p.health -= damage;
+        p.shake = 0.3;
+        let destroyed = p.health <= 0.;
+        if destroyed {
+            p.gone_for = 0.;
+        }
+        (
+            object_id(index, p),
+            destroyed,
+            p.res,
+            p.kind,
+            p.proto,
+            p.pos,
+        )
     };
     world.hits += 1;
-    match resource { Resource::Wood => world.wood += damage as u32, Resource::Stone => world.stone += damage as u32, Resource::Metal => world.metal += damage as u32 }
-    world.events.push(HarvestEvent { object, resource, amount: damage as u32, destroyed, weakpoint: critical });
+    match resource {
+        Resource::Wood => world.wood += damage as u32,
+        Resource::Stone => world.stone += damage as u32,
+        Resource::Metal => world.metal += damage as u32,
+    }
+    world.events.push(HarvestEvent {
+        object,
+        resource,
+        amount: damage as u32,
+        destroyed,
+        weakpoint: critical,
+    });
     // feedback state
     let fx = &mut world.fx;
-    if critical { fx.critical_hits += 1; } else { fx.normal_hits += 1; }
-    let seed = { fx.seed = fx.seed.wrapping_add(1); fx.seed ^ object.wrapping_mul(0x9E37_79B9_7F4A_7C15) };
-    let state = fx.props.entry(object).or_insert_with(|| PropFx { weak: None, crack_hits: 0, last_hit: None, rng: Rng(seed) });
+    if critical {
+        fx.critical_hits += 1;
+    } else {
+        fx.normal_hits += 1;
+    }
+    let seed = {
+        fx.seed = fx.seed.wrapping_add(1);
+        fx.seed ^ object.wrapping_mul(0x9E37_79B9_7F4A_7C15)
+    };
+    let state = fx.props.entry(object).or_insert_with(|| PropFx {
+        weak: None,
+        crack_hits: 0,
+        last_hit: None,
+        rng: Rng(seed),
+    });
     // the first hit (an ordinary one) only spawns the spot (CrackHitCount 0 -> 1); the first WEAK-POINT hit is CrackLevel 0 = Sound_Crack_Level_01, then 1, 2 .. clamped to 8
-    let level = state.crack_hits.saturating_sub(1).min(CRACK_SOUND_LEVELS as u32 - 1) as u8;
+    let level = state
+        .crack_hits
+        .saturating_sub(1)
+        .min(CRACK_SOUND_LEVELS as u32 - 1) as u8;
     let connect_from = None::<Vec3>; // ConnectTheDots needs a hit within 0.05 s of the previous one: the pickaxe's swing time (0.5667 s) never allows it
     state.last_hit = Some((point, 0.));
     if destroyed {
         fx.props.remove(&object);
-        fx.emit(FxEvent::Hit { object, pos: point, critical, connect_from });
-        fx.emit(FxEvent::Broke { object, pos, kind, resource, proto });
+        fx.emit(FxEvent::Hit {
+            object,
+            pos: point,
+            critical,
+            connect_from,
+        });
+        fx.emit(FxEvent::Broke {
+            object,
+            pos,
+            kind,
+            resource,
+            proto,
+        });
     } else {
         let prop = &world.props[index];
         let state = fx.props.get_mut(&object).expect("just inserted");
@@ -327,18 +533,37 @@ pub fn strike(world: &mut World, eye_ground: Vec3, facing: Vec3) -> bool {
             state.weak = moved.or(state.weak);
             let mt = moved.map(|w| w.pos);
             state.crack_hits += 1;
-            fx.emit(FxEvent::WeakSpotHit { object, pos: old.unwrap_or(point), level, moved_to: mt });
+            fx.emit(FxEvent::WeakSpotHit {
+                object,
+                pos: old.unwrap_or(point),
+                level,
+                moved_to: mt,
+            });
         } else {
             state.crack_hits += 1;
             if state.weak.is_none() {
                 state.weak = place_weak_spot(prop, &mut state.rng, toward, None);
-                if let Some(w) = state.weak { fx.emit(FxEvent::WeakSpotSpawned { object, pos: w.pos }); }
+                if let Some(w) = state.weak {
+                    fx.emit(FxEvent::WeakSpotSpawned { object, pos: w.pos });
+                }
             }
-            fx.emit(FxEvent::Hit { object, pos: point, critical, connect_from });
+            fx.emit(FxEvent::Hit {
+                object,
+                pos: point,
+                critical,
+                connect_from,
+            });
         }
     }
     // damage number (type Building)
-    fx.numbers.push(DamageNumber { pos: point, amount: damage as u32, critical, kind: NUMBER_TYPE_BUILDING, offset: (0., 0.), age: 0. });
+    fx.numbers.push(DamageNumber {
+        pos: point,
+        amount: damage as u32,
+        critical,
+        kind: NUMBER_TYPE_BUILDING,
+        offset: (0., 0.),
+        age: 0.,
+    });
     true
 }
 
@@ -348,136 +573,401 @@ mod tests {
     use crate::{Hull, HullSet, TREE_HEALTH};
     use std::sync::Arc;
 
-    fn tree_at(z: f32) -> Harvestable { Harvestable::new(Kind::Tree, Vec3::new(0., 0., z)) }
+    fn tree_at(z: f32) -> Harvestable {
+        Harvestable::new(Kind::Tree, Vec3::new(0., 0., z))
+    }
     fn hulled(pos: Vec3, h: f32, hp: f32) -> Harvestable {
-        let mut pts = vec![]; for x in [-0.4, 0.4] { for z in [-0.4, 0.4] { for y in [0., h] { pts.push(pos + Vec3::new(x, y, z)); } } }
-        Harvestable::real(Kind::Tree, Resource::Wood, pos, 0., 1., hp, 3, Some(Arc::new(HullSet::new(vec![Hull::from_points(&pts).unwrap()]))))
+        let mut pts = vec![];
+        for x in [-0.4, 0.4] {
+            for z in [-0.4, 0.4] {
+                for y in [0., h] {
+                    pts.push(pos + Vec3::new(x, y, z));
+                }
+            }
+        }
+        Harvestable::real(
+            Kind::Tree,
+            Resource::Wood,
+            pos,
+            0.,
+            1.,
+            hp,
+            3,
+            Some(Arc::new(HullSet::new(vec![
+                Hull::from_points(&pts).unwrap()
+            ]))),
+        )
     }
     /// Camera 2.2 m behind and 1 m above the pawn, aiming at `target`.
-    fn aim_at(eye: Vec3, target: Vec3) -> Aim { Aim { eye, dir: (target - eye).normalize() } }
+    fn aim_at(eye: Vec3, target: Vec3) -> Aim {
+        Aim {
+            eye,
+            dir: (target - eye).normalize(),
+        }
+    }
 
-    #[test] fn the_numbers_are_the_data_and_the_specified_damage() {
+    #[test]
+    fn the_numbers_are_the_data_and_the_specified_damage() {
         assert_eq!((DAMAGE_NORMAL, DAMAGE_WEAKPOINT), (50., 100.));
-        assert_eq!(WEAKSPOT_LINE_RANGE, 4.); assert_eq!(WEAKSPOT_RADIUS, 0.3);
-        assert_eq!(HEALTH_BAR_HIDE_DELAY, 3.); assert_eq!(WEAKSPOT_ENABLED_TIMEOUT, 5.);
-        assert_eq!(NUMBER_CRIT_WALL_COLOR, [0.5175, 1.036573, 1.5, 0.5]); assert_eq!(NUMBER_STANDARD_COLOR[..3], [0.96, 1.0, 0.98]);
+        assert_eq!(WEAKSPOT_LINE_RANGE, 4.);
+        assert_eq!(WEAKSPOT_RADIUS, 0.3);
+        assert_eq!(HEALTH_BAR_HIDE_DELAY, 3.);
+        assert_eq!(WEAKSPOT_ENABLED_TIMEOUT, 5.);
+        assert_eq!(NUMBER_CRIT_WALL_COLOR, [0.5175, 1.036573, 1.5, 0.5]);
+        assert_eq!(NUMBER_STANDARD_COLOR[..3], [0.96, 1.0, 0.98]);
     }
-    #[test] fn data_files_agree() {
+    #[test]
+    fn data_files_agree() {
         // the pickaxe stat row: RangeVSWeakSpots 400 cm, EnvDmgPB 50
-        let m: serde_json::Value = serde_json::from_str(&fn_testdata::report_text("melee-stats-pickaxe.json")).unwrap_or(serde_json::Value::Null);
-        if m.is_null() { eprintln!("skipping: melee-stats-pickaxe.json not in the test data"); return; }
-        assert_eq!(m["stats"]["RangeVSWeakSpots"].as_f64().unwrap() as f32 / 100., WEAKSPOT_LINE_RANGE);
-        assert_eq!(m["stats"]["EnvDmgPB"].as_f64().unwrap() as f32, DAMAGE_NORMAL);
+        let m: serde_json::Value =
+            serde_json::from_str(&fn_testdata::report_text("melee-stats-pickaxe.json"))
+                .unwrap_or(serde_json::Value::Null);
+        if m.is_null() {
+            eprintln!("skipping: melee-stats-pickaxe.json not in the test data");
+            return;
+        }
+        assert_eq!(
+            m["stats"]["RangeVSWeakSpots"].as_f64().unwrap() as f32 / 100.,
+            WEAKSPOT_LINE_RANGE
+        );
+        assert_eq!(
+            m["stats"]["EnvDmgPB"].as_f64().unwrap() as f32,
+            DAMAGE_NORMAL
+        );
     }
-    #[test] fn a_normal_hit_generates_one_weak_spot_on_the_surface_facing_the_player() {
-        let mut w = World { props: vec![tree_at(-3.)], ..Default::default() };
+    #[test]
+    fn a_normal_hit_generates_one_weak_spot_on_the_surface_facing_the_player() {
+        let mut w = World {
+            props: vec![tree_at(-3.)],
+            ..Default::default()
+        };
         let eye = Vec3::new(0., 0., 0.);
         w.fx.aim = Some(aim_at(Vec3::new(0., 1.5, 2.), Vec3::new(0., 1.1, -3.)));
         assert!(w.strike(eye, Vec3::NEG_Z));
-        let s = w.fx.weak_spot(0, &w.props[0]).expect("the first hit places a weak spot");
+        let s =
+            w.fx.weak_spot(0, &w.props[0])
+                .expect("the first hit places a weak spot");
         let r = ((s.pos.x).powi(2) + (s.pos.z + 3.).powi(2)).sqrt();
-        assert!((r - (w.props[0].radius + 0.02)).abs() < 0.05, "on the cylinder surface, radius {r}");
+        assert!(
+            (r - (w.props[0].radius + 0.02)).abs() < 0.05,
+            "on the cylinder surface, radius {r}"
+        );
         assert!(s.pos.z > -3., "on the side of the player: {:?}", s.pos);
-        assert!(s.pos.y >= PLACE_MIN_HEIGHT - 1e-3 && s.pos.y <= PLACE_MAX_HEIGHT + 1e-3, "{}", s.pos.y);
-        assert!(w.fx.events.iter().any(|e| matches!(e, FxEvent::WeakSpotSpawned { .. })));
-        assert_eq!((w.props[0].health, w.events[0].amount, w.events[0].weakpoint), (TREE_HEALTH - 50., 50, false));
+        assert!(
+            s.pos.y >= PLACE_MIN_HEIGHT - 1e-3 && s.pos.y <= PLACE_MAX_HEIGHT + 1e-3,
+            "{}",
+            s.pos.y
+        );
+        assert!(w
+            .fx
+            .events
+            .iter()
+            .any(|e| matches!(e, FxEvent::WeakSpotSpawned { .. })));
+        assert_eq!(
+            (w.props[0].health, w.events[0].amount, w.events[0].weakpoint),
+            (TREE_HEALTH - 50., 50, false)
+        );
     }
-    #[test] fn hitting_the_weak_point_is_a_100_damage_critical_and_relocates_it() {
-        let mut w = World { props: vec![tree_at(-3.)], ..Default::default() };
-        let pawn = Vec3::ZERO; let cam = Vec3::new(0.3, 1.5, 2.);
-        w.fx.aim = Some(aim_at(cam, Vec3::new(0., 1.1, -3.))); w.strike(pawn, Vec3::NEG_Z);
+    #[test]
+    fn hitting_the_weak_point_is_a_100_damage_critical_and_relocates_it() {
+        let mut w = World {
+            props: vec![tree_at(-3.)],
+            ..Default::default()
+        };
+        let pawn = Vec3::ZERO;
+        let cam = Vec3::new(0.3, 1.5, 2.);
+        w.fx.aim = Some(aim_at(cam, Vec3::new(0., 1.1, -3.)));
+        w.strike(pawn, Vec3::NEG_Z);
         let first = w.fx.weak_spot(0, &w.props[0]).unwrap();
         // aim the camera exactly at the weak point
         w.fx.aim = Some(aim_at(cam, first.pos));
-        assert!(w.strike(pawn, Vec3::X), "the pawn faces away but the camera line selects the weak spot");
+        assert!(
+            w.strike(pawn, Vec3::X),
+            "the pawn faces away but the camera line selects the weak spot"
+        );
         let e = *w.events.last().unwrap();
         assert!(e.weakpoint && e.amount == 100, "{e:?}");
         assert_eq!(w.props[0].health, TREE_HEALTH - 50. - 100.);
         assert_eq!((w.fx.critical_hits, w.fx.normal_hits), (1, 1));
         let moved = w.fx.weak_spot(0, &w.props[0]).unwrap();
-        assert!((moved.pos - first.pos).length() >= RELOCATE_MIN_DISTANCE - 1e-3, "relocated by {}", (moved.pos - first.pos).length());
-        assert!(matches!(w.fx.events.last(), Some(FxEvent::WeakSpotHit { level: 0, moved_to: Some(_), .. })), "the first weak-point hit plays Sound_Crack_Level_01: {:?}", w.fx.events.last());
+        assert!(
+            (moved.pos - first.pos).length() >= RELOCATE_MIN_DISTANCE - 1e-3,
+            "relocated by {}",
+            (moved.pos - first.pos).length()
+        );
+        assert!(
+            matches!(
+                w.fx.events.last(),
+                Some(FxEvent::WeakSpotHit {
+                    level: 0,
+                    moved_to: Some(_),
+                    ..
+                })
+            ),
+            "the first weak-point hit plays Sound_Crack_Level_01: {:?}",
+            w.fx.events.last()
+        );
         // the old spot no longer exists: aiming at it again is only an ordinary hit
-        w.fx.aim = Some(aim_at(cam, first.pos)); w.strike(pawn, Vec3::NEG_Z);
+        w.fx.aim = Some(aim_at(cam, first.pos));
+        w.strike(pawn, Vec3::NEG_Z);
         assert!(!w.events.last().unwrap().weakpoint);
     }
-    #[test] fn the_weak_spot_needs_the_pawn_within_4_m_and_the_camera_line_within_30_cm() {
-        let mut w = World { props: vec![tree_at(-3.)], ..Default::default() };
-        w.fx.aim = Some(aim_at(Vec3::new(0., 1.5, 2.), Vec3::new(0., 1.1, -3.))); w.strike(Vec3::ZERO, Vec3::NEG_Z);
+    #[test]
+    fn the_weak_spot_needs_the_pawn_within_4_m_and_the_camera_line_within_30_cm() {
+        let mut w = World {
+            props: vec![tree_at(-3.)],
+            ..Default::default()
+        };
+        w.fx.aim = Some(aim_at(Vec3::new(0., 1.5, 2.), Vec3::new(0., 1.1, -3.)));
+        w.strike(Vec3::ZERO, Vec3::NEG_Z);
         let s = w.fx.weak_spot(0, &w.props[0]).unwrap();
         // pawn 4.5 m from the spot (out of RangeVSWeakSpots 400 cm) while the camera line is dead centre: only an ordinary hit
-        let near = s.pos + Vec3::new(0., 0.5, 2.5); let before = w.fx.critical_hits;
-        w.fx.aim = Some(aim_at(near, s.pos)); let pawn_far = Vec3::new(0., 0., s.pos.z + 4.6); w.strike(pawn_far, Vec3::NEG_Z);
+        let near = s.pos + Vec3::new(0., 0.5, 2.5);
+        let before = w.fx.critical_hits;
+        w.fx.aim = Some(aim_at(near, s.pos));
+        let pawn_far = Vec3::new(0., 0., s.pos.z + 4.6);
+        w.strike(pawn_far, Vec3::NEG_Z);
         assert_eq!(w.fx.critical_hits, before, "pawn 4.6 m away");
-        w.fx.aim = Some(aim_at(near, s.pos)); w.strike(Vec3::ZERO, Vec3::NEG_Z);
-        assert!(w.events.last().unwrap().weakpoint, "pawn in range, line dead centre");
+        w.fx.aim = Some(aim_at(near, s.pos));
+        w.strike(Vec3::ZERO, Vec3::NEG_Z);
+        assert!(
+            w.events.last().unwrap().weakpoint,
+            "pawn in range, line dead centre"
+        );
         // 25 cm off-centre counts (radius 30 cm), 45 cm does not
-        let s = w.fx.weak_spot(0, &w.props[0]).unwrap(); let cam = s.pos + s.normal * 2.5 + Vec3::Y * 0.5; let right = (s.pos - cam).cross(Vec3::Y).normalize();
-        let hit = |off: f32, w: &mut World| { let before = w.fx.critical_hits; w.fx.aim = Some(aim_at(cam, s.pos + right * off)); w.strike(Vec3::new(s.pos.x, s.pos.y - CHEST_HEIGHT, s.pos.z + 2.), Vec3::X); w.fx.critical_hits > before };
-        let mut w2 = w.clone_for_test(); assert!(hit(0.25, &mut w2), "25 cm off");
-        let mut w3 = w.clone_for_test(); assert!(!hit(0.45, &mut w3), "45 cm off");
+        let s = w.fx.weak_spot(0, &w.props[0]).unwrap();
+        let cam = s.pos + s.normal * 2.5 + Vec3::Y * 0.5;
+        let right = (s.pos - cam).cross(Vec3::Y).normalize();
+        let hit = |off: f32, w: &mut World| {
+            let before = w.fx.critical_hits;
+            w.fx.aim = Some(aim_at(cam, s.pos + right * off));
+            w.strike(
+                Vec3::new(s.pos.x, s.pos.y - CHEST_HEIGHT, s.pos.z + 2.),
+                Vec3::X,
+            );
+            w.fx.critical_hits > before
+        };
+        let mut w2 = w.clone_for_test();
+        assert!(hit(0.25, &mut w2), "25 cm off");
+        let mut w3 = w.clone_for_test();
+        assert!(!hit(0.45, &mut w3), "45 cm off");
     }
-    #[test] fn a_tree_breaks_after_the_right_mix_of_ordinary_and_weak_point_hits() {
+    #[test]
+    fn a_tree_breaks_after_the_right_mix_of_ordinary_and_weak_point_hits() {
         // 600 HP: 4 ordinary + ... deterministic: every other hit a weak point -> 50,100,50,100,50,100,50,100 = 600 in 8 hits
-        let mut w = World { props: vec![tree_at(-3.)], ..Default::default() };
-        let pawn = Vec3::ZERO; let cam = Vec3::new(0., 1.5, 2.);
+        let mut w = World {
+            props: vec![tree_at(-3.)],
+            ..Default::default()
+        };
+        let pawn = Vec3::ZERO;
+        let cam = Vec3::new(0., 1.5, 2.);
         let mut n = 0;
         while w.props[0].alive() {
-            n += 1; assert!(n < 30);
-            let aim = match w.fx.weak_spot(0, &w.props[0]) { Some(s) if n % 2 == 0 => aim_at(cam + Vec3::Y * 0.4, s.pos), _ => aim_at(cam, Vec3::new(0., 1.1, -3.)) };
-            w.fx.aim = Some(aim); w.strike(pawn, Vec3::NEG_Z);
+            n += 1;
+            assert!(n < 30);
+            let aim = match w.fx.weak_spot(0, &w.props[0]) {
+                Some(s) if n % 2 == 0 => aim_at(cam + Vec3::Y * 0.4, s.pos),
+                _ => aim_at(cam, Vec3::new(0., 1.1, -3.)),
+            };
+            w.fx.aim = Some(aim);
+            w.strike(pawn, Vec3::NEG_Z);
         }
         let amounts: Vec<u32> = w.events.iter().map(|e| e.amount).collect();
-        assert!(amounts.iter().all(|a| *a == 50 || *a == 100) && amounts.contains(&100), "{amounts:?}");
-        assert_eq!(w.events.len(), n); assert_eq!(w.wood, amounts.iter().sum::<u32>());
-        let before_last: u32 = amounts[..n - 1].iter().sum(); assert!(before_last < 600 && before_last + amounts[n - 1] >= 600, "breaks on the hit that crosses 600 HP: {amounts:?}");
-        assert_eq!(w.events.iter().filter(|e| e.destroyed).count(), 1); assert!(w.events.last().unwrap().destroyed);
-        assert!(w.fx.props.is_empty(), "the break drops the prop's feedback state");
-        let ev = w.fx.take_events(); assert!(matches!(ev.last(), Some(FxEvent::Broke { kind: Kind::Tree, resource: Resource::Wood, .. })));
-        assert_eq!(w.fx.numbers.len(), n); assert_eq!(w.fx.numbers.iter().filter(|x| x.critical).count(), w.events.iter().filter(|e| e.weakpoint).count());
-        assert!(w.fx.numbers.iter().zip(&w.events).all(|(x, e)| x.amount == e.amount && x.critical == e.weakpoint));
+        assert!(
+            amounts.iter().all(|a| *a == 50 || *a == 100) && amounts.contains(&100),
+            "{amounts:?}"
+        );
+        assert_eq!(w.events.len(), n);
+        assert_eq!(w.wood, amounts.iter().sum::<u32>());
+        let before_last: u32 = amounts[..n - 1].iter().sum();
+        assert!(
+            before_last < 600 && before_last + amounts[n - 1] >= 600,
+            "breaks on the hit that crosses 600 HP: {amounts:?}"
+        );
+        assert_eq!(w.events.iter().filter(|e| e.destroyed).count(), 1);
+        assert!(w.events.last().unwrap().destroyed);
+        assert!(
+            w.fx.props.is_empty(),
+            "the break drops the prop's feedback state"
+        );
+        let ev = w.fx.take_events();
+        assert!(matches!(
+            ev.last(),
+            Some(FxEvent::Broke {
+                kind: Kind::Tree,
+                resource: Resource::Wood,
+                ..
+            })
+        ));
+        assert_eq!(w.fx.numbers.len(), n);
+        assert_eq!(
+            w.fx.numbers.iter().filter(|x| x.critical).count(),
+            w.events.iter().filter(|e| e.weakpoint).count()
+        );
+        assert!(w
+            .fx
+            .numbers
+            .iter()
+            .zip(&w.events)
+            .all(|(x, e)| x.amount == e.amount && x.critical == e.weakpoint));
         assert!(w.fx.numbers.iter().all(|n| n.kind == NUMBER_TYPE_BUILDING));
     }
-    #[test] fn without_a_camera_ray_there_are_only_ordinary_hits() {
-        let mut w = World { props: vec![tree_at(-3.)], ..Default::default() };
-        for _ in 0..4 { assert!(w.strike(Vec3::ZERO, Vec3::NEG_Z)); }
-        assert_eq!((w.fx.critical_hits, w.fx.normal_hits), (0, 4)); assert_eq!(w.props[0].health, TREE_HEALTH - 200.);
-        assert!(!w.strike(Vec3::new(20., 0., 0.), Vec3::X)); assert_eq!(w.misses, 1);
+    #[test]
+    fn without_a_camera_ray_there_are_only_ordinary_hits() {
+        let mut w = World {
+            props: vec![tree_at(-3.)],
+            ..Default::default()
+        };
+        for _ in 0..4 {
+            assert!(w.strike(Vec3::ZERO, Vec3::NEG_Z));
+        }
+        assert_eq!((w.fx.critical_hits, w.fx.normal_hits), (0, 4));
+        assert_eq!(w.props[0].health, TREE_HEALTH - 200.);
+        assert!(!w.strike(Vec3::new(20., 0., 0.), Vec3::X));
+        assert_eq!(w.misses, 1);
     }
-    #[test] fn a_hull_prop_gets_its_spot_on_the_hull_surface() {
-        let mut w = World { props: vec![hulled(Vec3::new(0., 0., -3.), 6., 600.)], ..Default::default() };
-        w.fx.aim = Some(aim_at(Vec3::new(0., 1.5, 2.), Vec3::new(0., 1.5, -3.))); assert!(w.strike(Vec3::ZERO, Vec3::NEG_Z));
+    #[test]
+    fn a_hull_prop_gets_its_spot_on_the_hull_surface() {
+        let mut w = World {
+            props: vec![hulled(Vec3::new(0., 0., -3.), 6., 600.)],
+            ..Default::default()
+        };
+        w.fx.aim = Some(aim_at(Vec3::new(0., 1.5, 2.), Vec3::new(0., 1.5, -3.)));
+        assert!(w.strike(Vec3::ZERO, Vec3::NEG_Z));
         let s = w.fx.weak_spot(0, &w.props[0]).expect("hull spot");
         let d = w.props[0].hull.as_ref().unwrap().sdf(s.pos);
-        assert!(d > 0.0 && d < 0.05, "just outside the hull surface, sdf {d}");
-        assert!(s.pos.z > -3.0 && s.pos.y <= PLACE_MAX_HEIGHT + 1e-3, "{:?}", s.pos);
+        assert!(
+            d > 0.0 && d < 0.05,
+            "just outside the hull surface, sdf {d}"
+        );
+        assert!(
+            s.pos.z > -3.0 && s.pos.y <= PLACE_MAX_HEIGHT + 1e-3,
+            "{:?}",
+            s.pos
+        );
     }
-    #[test] fn placement_is_deterministic_and_avoids_the_previous_spot() {
-        let p = tree_at(-3.); let toward = Vec3::new(0., 1., 4.);
-        let a = place_weak_spot(&p, &mut Rng(7), toward, None).unwrap(); let b = place_weak_spot(&p, &mut Rng(7), toward, None).unwrap();
+    #[test]
+    fn placement_is_deterministic_and_avoids_the_previous_spot() {
+        let p = tree_at(-3.);
+        let toward = Vec3::new(0., 1., 4.);
+        let a = place_weak_spot(&p, &mut Rng(7), toward, None).unwrap();
+        let b = place_weak_spot(&p, &mut Rng(7), toward, None).unwrap();
         assert_eq!(a, b);
-        let mut rng = Rng(11); for _ in 0..50 { let n = place_weak_spot(&p, &mut rng, toward, Some(a.pos)).unwrap(); assert!((n.pos - a.pos).length() >= RELOCATE_MIN_DISTANCE - 1e-4); }
+        let mut rng = Rng(11);
+        for _ in 0..50 {
+            let n = place_weak_spot(&p, &mut rng, toward, Some(a.pos)).unwrap();
+            assert!((n.pos - a.pos).length() >= RELOCATE_MIN_DISTANCE - 1e-4);
+        }
     }
-    #[test] fn crack_level_rises_with_the_hit_count_and_clamps_at_nine() {
-        let mut w = World { props: vec![hulled(Vec3::new(0., 0., -3.), 6., 9000.)], ..Default::default() };
-        for _ in 0..12 { w.strike(Vec3::ZERO, Vec3::NEG_Z); }
-        let lv: Vec<u8> = w.fx.events.iter().filter_map(|e| if let FxEvent::Hit { .. } = e { Some(0u8) } else { None }).collect(); assert_eq!(lv.len(), 12);
+    #[test]
+    fn crack_level_rises_with_the_hit_count_and_clamps_at_nine() {
+        let mut w = World {
+            props: vec![hulled(Vec3::new(0., 0., -3.), 6., 9000.)],
+            ..Default::default()
+        };
+        for _ in 0..12 {
+            w.strike(Vec3::ZERO, Vec3::NEG_Z);
+        }
+        let lv: Vec<u8> =
+            w.fx.events
+                .iter()
+                .filter_map(|e| {
+                    if let FxEvent::Hit { .. } = e {
+                        Some(0u8)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+        assert_eq!(lv.len(), 12);
         assert_eq!(w.fx.props.values().next().unwrap().crack_hits, 12);
     }
-    #[test] fn damage_numbers_use_the_building_crit_colour_and_age_out() {
-        let n = DamageNumber { pos: Vec3::ZERO, amount: 100, critical: true, kind: NUMBER_TYPE_BUILDING, offset: (0., 0.), age: 0. };
-        assert_eq!(n.color(), NUMBER_CRIT_WALL_COLOR); assert_eq!(n.digits(), vec![1, 0, 0]);
-        assert_eq!(DamageNumber { critical: false, ..n }.color(), NUMBER_STANDARD_COLOR);
-        assert_eq!(DamageNumber { kind: 1, ..n }.color(), NUMBER_STANDARD_COLOR, "the wall colour is for Building numbers only");
-        let mut fx = Fx::default(); fx.numbers.push(n); fx.update(&[], 1.); assert_eq!(fx.numbers.len(), 1); fx.update(&[], 1.5); assert!(fx.numbers.is_empty());
+    #[test]
+    fn damage_numbers_use_the_building_crit_colour_and_age_out() {
+        let n = DamageNumber {
+            pos: Vec3::ZERO,
+            amount: 100,
+            critical: true,
+            kind: NUMBER_TYPE_BUILDING,
+            offset: (0., 0.),
+            age: 0.,
+        };
+        assert_eq!(n.color(), NUMBER_CRIT_WALL_COLOR);
+        assert_eq!(n.digits(), vec![1, 0, 0]);
+        assert_eq!(
+            DamageNumber {
+                critical: false,
+                ..n
+            }
+            .color(),
+            NUMBER_STANDARD_COLOR
+        );
+        assert_eq!(
+            DamageNumber { kind: 1, ..n }.color(),
+            NUMBER_STANDARD_COLOR,
+            "the wall colour is for Building numbers only"
+        );
+        let mut fx = Fx::default();
+        fx.numbers.push(n);
+        fx.update(&[], 1.);
+        assert_eq!(fx.numbers.len(), 1);
+        fx.update(&[], 1.5);
+        assert!(fx.numbers.is_empty());
     }
-    #[test] fn focus_follows_the_crosshair_and_ignores_dead_props() {
-        let mut w = World { props: vec![tree_at(-2.)], ..Default::default() };
-        let eye = Vec3::new(0., 1.5, 1.); let f = focus(&w, eye, Vec3::new(0., -0.1, -1.).normalize(), Vec3::new(0., 1.1, 0.)).expect("aimed at the trunk");
-        assert_eq!((f.index, f.health, f.max_health), (0, 600., 600.)); assert!((f.anchor.y - TREE_CENTROID_OFFSET).abs() < 1e-4, "tree anchor = CentroidOffset");
-        let tall = Harvestable { height: 22., ..tree_at(-3.) }; let mut rng = Rng(5); for _ in 0..40 { let s = place_weak_spot(&tall, &mut rng, Vec3::new(0., 1., 4.), None).unwrap(); assert!(s.pos.y <= PLACE_MAX_HEIGHT + 1e-3, "a 22 m tree keeps its circle in reach: {}", s.pos.y); }
+    #[test]
+    fn focus_follows_the_crosshair_and_ignores_dead_props() {
+        let mut w = World {
+            props: vec![tree_at(-2.)],
+            ..Default::default()
+        };
+        let eye = Vec3::new(0., 1.5, 1.);
+        let f = focus(
+            &w,
+            eye,
+            Vec3::new(0., -0.1, -1.).normalize(),
+            Vec3::new(0., 1.1, 0.),
+        )
+        .expect("aimed at the trunk");
+        assert_eq!((f.index, f.health, f.max_health), (0, 600., 600.));
+        assert!(
+            (f.anchor.y - TREE_CENTROID_OFFSET).abs() < 1e-4,
+            "tree anchor = CentroidOffset"
+        );
+        let tall = Harvestable {
+            height: 22.,
+            ..tree_at(-3.)
+        };
+        let mut rng = Rng(5);
+        for _ in 0..40 {
+            let s = place_weak_spot(&tall, &mut rng, Vec3::new(0., 1., 4.), None).unwrap();
+            assert!(
+                s.pos.y <= PLACE_MAX_HEIGHT + 1e-3,
+                "a 22 m tree keeps its circle in reach: {}",
+                s.pos.y
+            );
+        }
         assert!(focus(&w, eye, Vec3::X, Vec3::ZERO).is_none());
-        w.props[0].health = 0.; assert!(focus(&w, eye, Vec3::new(0., -0.1, -1.).normalize(), Vec3::new(0., 1.1, 0.)).is_none());
+        w.props[0].health = 0.;
+        assert!(focus(
+            &w,
+            eye,
+            Vec3::new(0., -0.1, -1.).normalize(),
+            Vec3::new(0., 1.1, 0.)
+        )
+        .is_none());
     }
-    impl World { fn clone_for_test(&self) -> World { World { props: self.props.clone(), wood: self.wood, stone: self.stone, metal: self.metal, hits: self.hits, misses: self.misses, events: self.events.clone(), fx: self.fx.clone() } } }
+    impl World {
+        fn clone_for_test(&self) -> World {
+            World {
+                props: self.props.clone(),
+                wood: self.wood,
+                stone: self.stone,
+                metal: self.metal,
+                hits: self.hits,
+                misses: self.misses,
+                events: self.events.clone(),
+                fx: self.fx.clone(),
+            }
+        }
+    }
 }

@@ -75,7 +75,11 @@ impl MusicState {
     /// `(cues decoded + mixes loaded, a track is playing, the loading mix is active)` (diagnostics / tests).
     pub(crate) fn status(&self) -> (bool, bool, bool) {
         let i = self.lock();
-        (i.mixes_ready && i.cues_ready, i.current.is_some(), i.loading_on)
+        (
+            i.mixes_ready && i.cues_ready,
+            i.current.is_some(),
+            i.loading_on,
+        )
     }
 }
 
@@ -142,7 +146,10 @@ impl SinkLoader {
                 None
             }
         };
-        let (loading, suppress) = (mix(lib, data::LOADING_MIX), mix(lib, data::MENU_SUPPRESS_MIX));
+        let (loading, suppress) = (
+            mix(lib, data::LOADING_MIX),
+            mix(lib, data::MENU_SUPPRESS_MIX),
+        );
         {
             let mut i = self.shared.music.lock();
             i.loading_mix = loading;

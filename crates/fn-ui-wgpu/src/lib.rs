@@ -61,8 +61,16 @@ pub struct UiPass<'a> {
     pub assets: &'a mut fn_ui::assets::UiAssets,
 }
 impl fn_render::UiOverlay for UiPass<'_> {
-    fn draw(&mut self, _device: &wgpu::Device, _queue: &wgpu::Queue, target: &wgpu::TextureView, width: u32, height: u32) {
-        self.renderer.render(self.list, self.assets, target, width, height, None);
+    fn draw(
+        &mut self,
+        _device: &wgpu::Device,
+        _queue: &wgpu::Queue,
+        target: &wgpu::TextureView,
+        width: u32,
+        height: u32,
+    ) {
+        self.renderer
+            .render(self.list, self.assets, target, width, height, None);
     }
 }
 

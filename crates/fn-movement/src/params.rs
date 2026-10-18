@@ -68,7 +68,8 @@ pub const APPLY_GRAVITY_WHILE_JUMPING: bool = true;
 /// EXE (UFortMovementComp_CharacterAthena ctor 0x4167b0, TArray at +0x758 filled at RVAs 0x416a9e..0x416bd5): `{JumpZ scale, speed scale}` per consecutive-jump index
 /// (a jump within [`JUMP_CHAIN_WINDOW`] seconds of the previous one escalates the index, clamped to the last entry). Used by `UFortMovementComp_CharacterAthena::DoJump`
 /// (0x421d20: JumpZVelocity x `.0`, then horizontal speed clamp to the movement-style speed x `.1`) and `GetMaxSpeed` (0x4343e0: speed x `.1` while falling inside the window).
-pub const JUMP_CHAIN_TABLE: [(f32, f32); 5] = [(1., 1.), (1., 1.), (0.75, 0.75), (0.5, 0.5), (0.25, 0.25)];
+pub const JUMP_CHAIN_TABLE: [(f32, f32); 5] =
+    [(1., 1.), (1., 1.), (0.75, 0.75), (0.5, 0.5), (0.25, 0.25)];
 /// EXE: Athena ctor `mov qword [rdi+0x768], 0x3f800000` (RVA 0x416be5): the window length, +0x768 = 1.0 s (+0x76c index 0). Decays by the pawn tick delta (0x41f920).
 pub const JUMP_CHAIN_WINDOW: f32 = 1.;
 /// EXE `UFortMovementComp_Character::DoJump` (0x6d4f20): JumpZVelocity is scaled while the pawn tick delta recorded this frame (`AFortPawn::Tick` -> setter 0x6d24a0, stored at
@@ -81,7 +82,11 @@ pub const JUMP_FRAME_DT_OFFSET: f32 = f32::from_bits(0x3f63c92b); // 0.8897883 (
 pub const JUMP_FRAME_DT_MAX_SCALE: f32 = 2.5; // .rdata 0x4078d78
 /// The JumpZ multiplier `UFortMovementComp_Character::DoJump` applies for a pawn tick of `dt` seconds (1.0 at or below 0.03 s, i.e. at 60 Hz and faster).
 pub fn jump_frame_scale(dt: f32) -> f32 {
-    if dt > JUMP_FRAME_DT_THRESHOLD { (dt * JUMP_FRAME_DT_SLOPE + JUMP_FRAME_DT_OFFSET).min(JUMP_FRAME_DT_MAX_SCALE) } else { 1. }
+    if dt > JUMP_FRAME_DT_THRESHOLD {
+        (dt * JUMP_FRAME_DT_SLOPE + JUMP_FRAME_DT_OFFSET).min(JUMP_FRAME_DT_MAX_SCALE)
+    } else {
+        1.
+    }
 }
 // ---- gravity (full decode with RVAs: crates/fn-movement/FALLING.md)
 //  Runtime path (all RVAs of FortniteClient-Win64-Shipping.exe, UE 4.16):
@@ -114,7 +119,7 @@ pub const TERMINAL_VELOCITY: f32 = 4000.;
 /// Effective gravity magnitude (cm/s^2).
 pub const GRAVITY: f32 = -WORLD_GRAVITY_Z * GRAVITY_SCALE * GRAVITY_Z_SCALE_ATTRIBUTE;
 pub const KILL_Z: f32 = -5000.; // RECOVERED Athena_Terrain FortWorldSettings KillZ
-// ---- capsule / floor
+                                // ---- capsule / floor
 pub const CAPSULE_HALF_HEIGHT: f32 = 75.; // RECOVERED (PlayerPawn_Athena_Generic CollisionCylinder)
 /// ASSUMED = ACharacter ctor default (34); CollisionCylinder does not serialize a radius in any pawn Blueprint (the engine UCapsuleComponent default would be 22).
 pub const CAPSULE_RADIUS: f32 = 34.;
@@ -140,63 +145,169 @@ pub const MAX_SIMULATION_ITERATIONS: u32 = 8;
 pub const MAX_DEPENETRATION_WITH_GEOMETRY: f32 = 500.;
 
 /// Apex height (cm) and airtime (s) of a first jump from the ground with the constants above at a pawn tick of 0.03 s or shorter (no frame-delta scale).
-pub fn jump_apex_cm() -> f32 { JUMP_Z_VELOCITY * JUMP_Z_VELOCITY / (2. * GRAVITY) }
-pub fn jump_airtime() -> f32 { 2. * JUMP_Z_VELOCITY / GRAVITY }
+pub fn jump_apex_cm() -> f32 {
+    JUMP_Z_VELOCITY * JUMP_Z_VELOCITY / (2. * GRAVITY)
+}
+pub fn jump_airtime() -> f32 {
+    2. * JUMP_Z_VELOCITY / GRAVITY
+}
 /// Take-off vertical speed of a first jump (chain index 0) with the pawn tick delta `dt`: JumpZVelocity x chain scale x [`jump_frame_scale`].
-pub fn jump_launch_z(dt: f32) -> f32 { JUMP_Z_VELOCITY * JUMP_CHAIN_TABLE[0].0 * jump_frame_scale(dt) }
+pub fn jump_launch_z(dt: f32) -> f32 {
+    JUMP_Z_VELOCITY * JUMP_CHAIN_TABLE[0].0 * jump_frame_scale(dt)
+}
 /// Apex height (cm) / airtime (s) of a first jump with the pawn tick delta `dt` (continuous closed form, no sampling).
-pub fn jump_apex_cm_at(dt: f32) -> f32 { let v = jump_launch_z(dt); v * v / (2. * GRAVITY) }
-pub fn jump_airtime_at(dt: f32) -> f32 { 2. * jump_launch_z(dt) / GRAVITY }
+pub fn jump_apex_cm_at(dt: f32) -> f32 {
+    let v = jump_launch_z(dt);
+    v * v / (2. * GRAVITY)
+}
+pub fn jump_airtime_at(dt: f32) -> f32 {
+    2. * jump_launch_z(dt) / GRAVITY
+}
 /// Directional multiplier: a STEP function. Every key of the 1.8 `DirectionalSpeedMultiplierCurve` has `InterpMode` 1 = RCIM_Constant (UE 4.16
 /// `ERichCurveInterpMode`: Linear 0, Constant 1, Cubic 2; re-read by tools/verify-1.8.cjs), so `FRichCurve::Eval` returns the value of the last key
 /// at or before the angle: 1.0 below 70 degrees, 0.8 from 70 to under 110, 0.65 from 110 on. (Earlier versions interpolated linearly, which gave 0.875
 /// at a 45 degree diagonal instead of the recovered full speed.)
 pub fn directional_multiplier(deg: f32) -> f32 {
-    let a = deg.abs(); let k = DIRECTIONAL_SPEED_CURVE; // RCIM_Constant
-    k.iter().rev().find(|key| a >= key.0).map_or(k[0].1, |key| key.1)
+    let a = deg.abs();
+    let k = DIRECTIONAL_SPEED_CURVE; // RCIM_Constant
+    k.iter()
+        .rev()
+        .find(|key| a >= key.0)
+        .map_or(k[0].1, |key| key.1)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn report() -> serde_json::Value { serde_json::from_str(&fn_testdata::report_text("movement-full.json")).unwrap() }
-    fn entry<'a>(r: &'a serde_json::Value, name: &str) -> &'a serde_json::Value { r["values"].as_array().unwrap().iter().find(|v| v["name"] == name).unwrap_or_else(|| panic!("{name} missing from movement-full.json")) }
-    fn get(r: &serde_json::Value, name: &str) -> f64 { entry(r, name)["value"].as_f64().unwrap_or_else(|| panic!("{name} is not numeric")) }
-    fn status(r: &serde_json::Value, name: &str) -> String { entry(r, name)["status"].as_str().unwrap().to_owned() }
+    fn report() -> serde_json::Value {
+        serde_json::from_str(&fn_testdata::report_text("movement-full.json")).unwrap()
+    }
+    fn entry<'a>(r: &'a serde_json::Value, name: &str) -> &'a serde_json::Value {
+        r["values"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|v| v["name"] == name)
+            .unwrap_or_else(|| panic!("{name} missing from movement-full.json"))
+    }
+    fn get(r: &serde_json::Value, name: &str) -> f64 {
+        entry(r, name)["value"]
+            .as_f64()
+            .unwrap_or_else(|| panic!("{name} is not numeric"))
+    }
+    fn status(r: &serde_json::Value, name: &str) -> String {
+        entry(r, name)["status"].as_str().unwrap().to_owned()
+    }
     /// 1.8: the pawn Blueprint carries JumpZ/MaxAcceleration/Braking/AirControl/GroundFriction/PerchRadiusThreshold, the stat row only the speeds.
-    #[test] fn constants_match_movement_full_json() {
-        let r = report(); let row = |n: &str| get(&r, &format!("PlayerLoadout_AthenaPlayer.{n}"));
-        for (n, c) in [("SpeedWalk", SPEED_WALK), ("SpeedRun", SPEED_RUN), ("SpeedSprint", SPEED_SPRINT), ("SpeedCrouchedRun", SPEED_CROUCHED_RUN), ("SpeedCrouchedSprint", SPEED_CROUCHED_SPRINT), ("SpeedDBNO", SPEED_DBNO)] { assert_eq!(row(n) as f32, c, "{n}"); }
-        for (n, c) in [("SpeedBackwardsMultiplier", SPEED_BACKWARDS_MULTIPLIER), ("AccelerationStrafeMultiplierSprint", ACCELERATION_STRAFE_MULTIPLIER_SPRINT), ("MaxJumpTime", MAX_JUMP_TIME_STAT)] { assert!((row(n) as f32 - c).abs() < 1e-6, "{n}"); }
-        for (n, c) in [("JumpZVelocity", JUMP_Z_VELOCITY), ("MaxAcceleration", MAX_ACCELERATION), ("BrakingDecelerationWalking", BRAKING_DECELERATION_WALKING), ("GroundFriction", GROUND_FRICTION), ("PerchRadiusThreshold", PERCH_RADIUS_THRESHOLD)] { assert_eq!(get(&r, n) as f32, c, "{n}"); }
+    #[test]
+    fn constants_match_movement_full_json() {
+        let r = report();
+        let row = |n: &str| get(&r, &format!("PlayerLoadout_AthenaPlayer.{n}"));
+        for (n, c) in [
+            ("SpeedWalk", SPEED_WALK),
+            ("SpeedRun", SPEED_RUN),
+            ("SpeedSprint", SPEED_SPRINT),
+            ("SpeedCrouchedRun", SPEED_CROUCHED_RUN),
+            ("SpeedCrouchedSprint", SPEED_CROUCHED_SPRINT),
+            ("SpeedDBNO", SPEED_DBNO),
+        ] {
+            assert_eq!(row(n) as f32, c, "{n}");
+        }
+        for (n, c) in [
+            ("SpeedBackwardsMultiplier", SPEED_BACKWARDS_MULTIPLIER),
+            (
+                "AccelerationStrafeMultiplierSprint",
+                ACCELERATION_STRAFE_MULTIPLIER_SPRINT,
+            ),
+            ("MaxJumpTime", MAX_JUMP_TIME_STAT),
+        ] {
+            assert!((row(n) as f32 - c).abs() < 1e-6, "{n}");
+        }
+        for (n, c) in [
+            ("JumpZVelocity", JUMP_Z_VELOCITY),
+            ("MaxAcceleration", MAX_ACCELERATION),
+            ("BrakingDecelerationWalking", BRAKING_DECELERATION_WALKING),
+            ("GroundFriction", GROUND_FRICTION),
+            ("PerchRadiusThreshold", PERCH_RADIUS_THRESHOLD),
+        ] {
+            assert_eq!(get(&r, n) as f32, c, "{n}");
+        }
         assert!((get(&r, "AirControl") as f32 - AIR_CONTROL).abs() < 1e-6);
         assert_eq!(get(&r, "WorldSettings.KillZ") as f32, KILL_Z);
-        assert_eq!(get(&r, "CollisionCylinder.CapsuleHalfHeight") as f32, CAPSULE_HALF_HEIGHT);
+        assert_eq!(
+            get(&r, "CollisionCylinder.CapsuleHalfHeight") as f32,
+            CAPSULE_HALF_HEIGHT
+        );
         // The statuses must say where each value comes from.
-        assert_eq!(status(&r, "MaxAcceleration"), "recovered"); assert_eq!(status(&r, "GroundFriction"), "recovered");
-        assert_eq!(status(&r, "JumpZVelocity"), "inherited"); assert_eq!(status(&r, "AirControl"), "inherited");
+        assert_eq!(status(&r, "MaxAcceleration"), "recovered");
+        assert_eq!(status(&r, "GroundFriction"), "recovered");
+        assert_eq!(status(&r, "JumpZVelocity"), "inherited");
+        assert_eq!(status(&r, "AirControl"), "inherited");
     }
     /// Native defaults read from the 1.8 exe's constructor immediates (movement-full.json `exeCtor`).
-    #[test] fn exe_constructor_defaults_match_the_report() {
+    #[test]
+    fn exe_constructor_defaults_match_the_report() {
         let r = report();
-        for (n, c) in [("CMC.GravityScale", GRAVITY_SCALE), ("CMC.MaxStepHeight", MAX_STEP_HEIGHT), ("CMC.CrouchedHalfHeight", CROUCHED_HALF_HEIGHT), ("CMC.PerchAdditionalHeight", PERCH_ADDITIONAL_HEIGHT),
-            ("CMC.BrakingFrictionFactor", BRAKING_FRICTION_FACTOR), ("CMC.AirControlBoostMultiplier", AIR_CONTROL_BOOST_MULTIPLIER), ("CMC.AirControlBoostVelocityThreshold", AIR_CONTROL_BOOST_VELOCITY_THRESHOLD),
-            ("CMC.LedgeCheckThreshold", LEDGE_CHECK_THRESHOLD), ("CMC.MaxSimulationTimeStep", MAX_SIMULATION_TIME_STEP), ("CMC.MaxDepenetrationWithGeometry", MAX_DEPENETRATION_WITH_GEOMETRY)] {
-            assert!((get(&r, n) as f32 - c).abs() < 1e-6, "{n}"); assert_eq!(status(&r, n), "exe-verified", "{n}");
+        for (n, c) in [
+            ("CMC.GravityScale", GRAVITY_SCALE),
+            ("CMC.MaxStepHeight", MAX_STEP_HEIGHT),
+            ("CMC.CrouchedHalfHeight", CROUCHED_HALF_HEIGHT),
+            ("CMC.PerchAdditionalHeight", PERCH_ADDITIONAL_HEIGHT),
+            ("CMC.BrakingFrictionFactor", BRAKING_FRICTION_FACTOR),
+            (
+                "CMC.AirControlBoostMultiplier",
+                AIR_CONTROL_BOOST_MULTIPLIER,
+            ),
+            (
+                "CMC.AirControlBoostVelocityThreshold",
+                AIR_CONTROL_BOOST_VELOCITY_THRESHOLD,
+            ),
+            ("CMC.LedgeCheckThreshold", LEDGE_CHECK_THRESHOLD),
+            ("CMC.MaxSimulationTimeStep", MAX_SIMULATION_TIME_STEP),
+            (
+                "CMC.MaxDepenetrationWithGeometry",
+                MAX_DEPENETRATION_WITH_GEOMETRY,
+            ),
+        ] {
+            assert!((get(&r, n) as f32 - c).abs() < 1e-6, "{n}");
+            assert_eq!(status(&r, n), "exe-verified", "{n}");
         }
-        assert_eq!(get(&r, "CMC.MaxSimulationIterations") as u32, MAX_SIMULATION_ITERATIONS);
+        assert_eq!(
+            get(&r, "CMC.MaxSimulationIterations") as u32,
+            MAX_SIMULATION_ITERATIONS
+        );
         // The engine JumpZVelocity default (420) is NOT used: the Athena pawn overrides it with 600.
-        assert_eq!(get(&r, "CMC.JumpZVelocity(engine default, overridden)") as f32, 420.);
+        assert_eq!(
+            get(&r, "CMC.JumpZVelocity(engine default, overridden)") as f32,
+            420.
+        );
     }
     /// Gravity is the 1.8 project setting DefaultGravityZ -2800 (DefaultEngine.ini); the old report only knew the engine
     /// constructor default (-980) but it agrees that no WorldSettings override exists.
-    #[test] fn gravity_is_the_recovered_project_setting() {
+    #[test]
+    fn gravity_is_the_recovered_project_setting() {
         let r = report();
         assert!((GRAVITY - 2800.).abs() < 1e-3);
         // v^2 / 2g = 64.29 cm, 2v / g = 0.4286 s
-        assert!((jump_apex_cm() - 64.2857).abs() < 0.01); assert!((jump_airtime() - 0.428571).abs() < 1e-3);
+        assert!((jump_apex_cm() - 64.2857).abs() < 0.01);
+        assert!((jump_airtime() - 0.428571).abs() < 1e-3);
         assert_eq!(JUMP_MAX_COUNT, 1);
-        assert_eq!(status(&r, "WorldSettings.WorldGravityZ"), "engine-default-assumed"); // WorldSettings has no override: the project setting applies
+        assert_eq!(
+            status(&r, "WorldSettings.WorldGravityZ"),
+            "engine-default-assumed"
+        ); // WorldSettings has no override: the project setting applies
     }
-    #[test] fn directional_curve_is_a_step_function() { assert_eq!(directional_multiplier(0.), 1.); assert_eq!(directional_multiplier(35.), 1.); assert_eq!(directional_multiplier(45.), 1.); assert_eq!(directional_multiplier(69.9), 1.); assert_eq!(directional_multiplier(70.), 0.8); assert_eq!(directional_multiplier(109.9), 0.8); assert_eq!(directional_multiplier(110.), 0.65); assert_eq!(directional_multiplier(180.), 0.65); assert_eq!(directional_multiplier(-70.), 0.8); assert_eq!(directional_multiplier(-45.), 1.); }
+    #[test]
+    fn directional_curve_is_a_step_function() {
+        assert_eq!(directional_multiplier(0.), 1.);
+        assert_eq!(directional_multiplier(35.), 1.);
+        assert_eq!(directional_multiplier(45.), 1.);
+        assert_eq!(directional_multiplier(69.9), 1.);
+        assert_eq!(directional_multiplier(70.), 0.8);
+        assert_eq!(directional_multiplier(109.9), 0.8);
+        assert_eq!(directional_multiplier(110.), 0.65);
+        assert_eq!(directional_multiplier(180.), 0.65);
+        assert_eq!(directional_multiplier(-70.), 0.8);
+        assert_eq!(directional_multiplier(-45.), 1.);
+    }
 }

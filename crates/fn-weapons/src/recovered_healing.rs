@@ -15,7 +15,13 @@ pub fn bandage_health_gate(health: f32, healing_cap: f32) -> bool {
 /// direct pawn-health write or proof of the native effect's scaling semantics.
 pub fn bandage_effect_level(health: f32, healing_cap: f32, maximum: f32) -> i32 {
     let difference = healing_cap - health;
-    let clamped = if difference < 0. { 0. } else if difference < maximum { difference } else { maximum };
+    let clamped = if difference < 0. {
+        0.
+    } else if difference < maximum {
+        difference
+    } else {
+        maximum
+    };
     clamped.trunc() as i32
 }
 
@@ -32,8 +38,17 @@ mod tests {
     }
     #[test]
     fn original_trigger_path_caps_then_truncates_the_effect_level() {
-        for (health, expected) in [(0.,15),(50.,15),(60.,15),(61.,14),(74.,1),(74.5,0),(75.,0),(100.,0)] {
-            assert_eq!(bandage_effect_level(health,75.,15.),expected);
+        for (health, expected) in [
+            (0., 15),
+            (50., 15),
+            (60., 15),
+            (61., 14),
+            (74., 1),
+            (74.5, 0),
+            (75., 0),
+            (100., 0),
+        ] {
+            assert_eq!(bandage_effect_level(health, 75., 15.), expected);
         }
     }
 }

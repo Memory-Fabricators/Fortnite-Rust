@@ -35,7 +35,12 @@ pub fn decode(format: &PixelFormat, src: &[u8], w: usize, h: usize) -> Result<Pi
             }
             Pixels::Rgba8(out)
         }
-        PixelFormat::FloatRGBA => Pixels::RgbaF16(src[..n * 8].chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect()),
+        PixelFormat::FloatRGBA => Pixels::RgbaF16(
+            src[..n * 8]
+                .chunks_exact(2)
+                .map(|c| u16::from_le_bytes([c[0], c[1]]))
+                .collect(),
+        ),
         PixelFormat::R16F => {
             let mut out = Vec::with_capacity(n * 4);
             for c in src[..n * 2].chunks_exact(2) {
@@ -60,7 +65,11 @@ pub fn decode(format: &PixelFormat, src: &[u8], w: usize, h: usize) -> Result<Pi
                 let uf = (u as i32 - 128) as f32 / 255.0 * 2.0 - 1.0;
                 let vf = (v as i32 - 128) as f32 / 255.0 * 2.0 - 1.0;
                 let t = 1.0 - uf * uf - vf * vf;
-                let z = if t >= 0.0 { (255i32 - 255 * (t.sqrt().floor() as i32)) as u8 } else { 255 };
+                let z = if t >= 0.0 {
+                    (255i32 - 255 * (t.sqrt().floor() as i32)) as u8
+                } else {
+                    255
+                };
                 out.extend_from_slice(&[u, v, z, 255]);
             }
             Pixels::Rgba8(out)

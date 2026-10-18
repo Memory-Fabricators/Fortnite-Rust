@@ -33,8 +33,11 @@ struct Opts {
 }
 
 fn parse_args() -> Opts {
-    let mut root = PathBuf::from(std::env::var("FN_ROOT").unwrap_or_else(|_| DEFAULT_ROOT.to_string()));
-    let mut ue4_version = std::env::var("FN_UE4_VERSION").ok().and_then(|v| v.parse().ok());
+    let mut root =
+        PathBuf::from(std::env::var("FN_ROOT").unwrap_or_else(|_| DEFAULT_ROOT.to_string()));
+    let mut ue4_version = std::env::var("FN_UE4_VERSION")
+        .ok()
+        .and_then(|v| v.parse().ok());
     let mut args = Vec::new();
     let mut it = std::env::args().skip(1);
     while let Some(a) = it.next() {
@@ -44,7 +47,11 @@ fn parse_args() -> Opts {
             _ => args.push(a),
         }
     }
-    Opts { root, ue4_version, args }
+    Opts {
+        root,
+        ue4_version,
+        args,
+    }
 }
 
 fn die(msg: &str) -> ! {
@@ -114,7 +121,11 @@ fn cmd_ls(o: &Opts) {
 fn cmd_cat(o: &Opts) {
     let p = o.args.get(1).unwrap_or_else(|| die("cat <path>"));
     let set = open(o);
-    let path = if p.starts_with("/Game/") || p.starts_with("/Engine/") { fn_pak::game_path_to_pak(p, "uasset").unwrap() } else { p.clone() };
+    let path = if p.starts_with("/Game/") || p.starts_with("/Engine/") {
+        fn_pak::game_path_to_pak(p, "uasset").unwrap()
+    } else {
+        p.clone()
+    };
     match set.read(&path) {
         Ok(b) => {
             let _ = std::io::stdout().write_all(&b);
@@ -129,7 +140,9 @@ fn load<'a>(set: &'a PakSet, o: &Opts, p: &str) -> PackageData<'a> {
 }
 
 fn pkg_of<'d>(d: &'d PackageData<'_>, o: &Opts) -> Package<'d> {
-    Package::parse_with(&d.asset, &d.uexp, parse_opts(o)).unwrap_or_else(|e| die(&format!("{}: {e}", d.name))).with_name(d.name.clone())
+    Package::parse_with(&d.asset, &d.uexp, parse_opts(o))
+        .unwrap_or_else(|e| die(&format!("{}: {e}", d.name)))
+        .with_name(d.name.clone())
 }
 
 fn cmd_info(o: &Opts) {
@@ -170,17 +183,24 @@ fn cmd_exports(o: &Opts) {
 }
 
 fn cmd_props(o: &Opts) {
-    let p = o.args.get(1).unwrap_or_else(|| die("props <package> [export]"));
+    let p = o
+        .args
+        .get(1)
+        .unwrap_or_else(|| die("props <package> [export]"));
     let sel = o.args.get(2).cloned();
     let set = open(o);
     let d = load(&set, o, p);
     let pkg = pkg_of(&d, o);
     let objs: Vec<usize> = match sel.as_deref() {
         None => (0..pkg.exports.len()).collect(),
-        Some("cdo") => vec![pkg.default_object_export().unwrap_or_else(|| die("no class default object export"))],
+        Some("cdo") => vec![pkg
+            .default_object_export()
+            .unwrap_or_else(|| die("no class default object export"))],
         Some(s) => match s.parse::<usize>() {
             Ok(i) if i < pkg.exports.len() => vec![i],
-            _ => vec![pkg.find_export(s).unwrap_or_else(|| die(&format!("no export named {s}")))],
+            _ => vec![pkg
+                .find_export(s)
+                .unwrap_or_else(|| die(&format!("no export named {s}")))],
         },
     };
     let mut out = Vec::new();
@@ -190,7 +210,11 @@ fn cmd_props(o: &Opts) {
             Err(e) => out.push(json!({"index": i, "error": e.to_string()})),
         }
     }
-    let j = if sel.is_some() && out.len() == 1 { out.pop().unwrap() } else { json!({"package": d.name, "exports": out}) };
+    let j = if sel.is_some() && out.len() == 1 {
+        out.pop().unwrap()
+    } else {
+        json!({"package": d.name, "exports": out})
+    };
     println!("{}", serde_json::to_string_pretty(&j).unwrap());
 }
 
@@ -199,11 +223,17 @@ fn cmd_classes(o: &Opts) {
     let set = open(o);
     let d = load(&set, o, p);
     let pkg = pkg_of(&d, o);
-    println!("{}", serde_json::to_string_pretty(&fn_uasset::classes::package_classes_json(&pkg)).unwrap());
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&fn_uasset::classes::package_classes_json(&pkg)).unwrap()
+    );
 }
 
 fn cmd_disasm(o: &Opts) {
-    let p = o.args.get(1).unwrap_or_else(|| die("disasm <package> [function]"));
+    let p = o
+        .args
+        .get(1)
+        .unwrap_or_else(|| die("disasm <package> [function]"));
     let want = o.args.get(2).cloned();
     let set = open(o);
     let d = load(&set, o, p);
@@ -222,7 +252,14 @@ fn cmd_disasm(o: &Opts) {
         }
         match fn_uasset::classes::read_function(&pkg, i) {
             Ok(f) => {
-                let _ = writeln!(w, "== [{}] {} (flags {:#x}, script {} bytes)", i, pkg.exports[i].name, f.function_flags, f.script.len());
+                let _ = writeln!(
+                    w,
+                    "== [{}] {} (flags {:#x}, script {} bytes)",
+                    i,
+                    pkg.exports[i].name,
+                    f.function_flags,
+                    f.script.len()
+                );
                 let dis = fn_uasset::kismet::disassemble(&pkg, f.script);
                 for (off, text) in &dis.lines {
                     let _ = writeln!(w, "  {off:5x}: {text}");
@@ -231,7 +268,15 @@ fn cmd_disasm(o: &Opts) {
                     let _ = writeln!(w, "  !! {e}");
                     let last = dis.lines.last().map(|l| l.0).unwrap_or(0);
                     let hi = (last + 64).min(f.script.len());
-                    let _ = writeln!(w, "  bytes from last good statement ({last:#x}): {}", f.script[last..hi].iter().map(|b| format!("{b:02x}")).collect::<Vec<_>>().join(" "));
+                    let _ = writeln!(
+                        w,
+                        "  bytes from last good statement ({last:#x}): {}",
+                        f.script[last..hi]
+                            .iter()
+                            .map(|b| format!("{b:02x}"))
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    );
                 }
             }
             Err(e) => {
@@ -309,7 +354,13 @@ fn load_index_map(src: &str, o: &Opts) -> HashMap<String, (u64, String)> {
         let j: Json = serde_json::from_slice(&data).unwrap_or_else(|e| die(&format!("{src}: {e}")));
         for e in j.as_array().unwrap_or_else(|| die("index is not an array")) {
             let file = e["file"].as_str().unwrap_or("");
-            m.insert(fn_pak::normalize_path(file), (e["uncompressed"].as_u64().unwrap_or(0), e["pak"].as_str().unwrap_or("").to_string()));
+            m.insert(
+                fn_pak::normalize_path(file),
+                (
+                    e["uncompressed"].as_u64().unwrap_or(0),
+                    e["pak"].as_str().unwrap_or("").to_string(),
+                ),
+            );
         }
     } else {
         let set = PakSet::open_install(p).unwrap_or_else(|e| die(&format!("{src}: {e}")));
@@ -327,8 +378,14 @@ fn top_dir(path: &str) -> String {
 }
 
 fn cmd_diff_index(o: &Opts) {
-    let a = o.args.get(1).unwrap_or_else(|| die("diff-index <A> <B> [--list]"));
-    let b = o.args.get(2).unwrap_or_else(|| die("diff-index <A> <B> [--list]"));
+    let a = o
+        .args
+        .get(1)
+        .unwrap_or_else(|| die("diff-index <A> <B> [--list]"));
+    let b = o
+        .args
+        .get(2)
+        .unwrap_or_else(|| die("diff-index <A> <B> [--list]"));
     let list = o.args.iter().any(|x| x == "--list");
     let (ma, mb) = std::thread::scope(|s| {
         let ha = s.spawn(|| load_index_map(a, o));
@@ -345,7 +402,11 @@ fn cmd_diff_index(o: &Opts) {
             Some(_) => same += 1,
         }
     }
-    let mut added: Vec<String> = mb.keys().filter(|k| !ma.contains_key(*k)).cloned().collect();
+    let mut added: Vec<String> = mb
+        .keys()
+        .filter(|k| !ma.contains_key(*k))
+        .cloned()
+        .collect();
     removed.sort();
     changed.sort();
     added.sort();
@@ -357,7 +418,9 @@ fn cmd_diff_index(o: &Opts) {
         let mut gv: Vec<(String, usize)> = g.into_iter().collect();
         gv.sort_by(|x, y| y.1.cmp(&x.1));
         gv.truncate(40);
-        gv.into_iter().map(|(k, n)| json!({"dir": k, "count": n})).collect::<Vec<_>>()
+        gv.into_iter()
+            .map(|(k, n)| json!({"dir": k, "count": n}))
+            .collect::<Vec<_>>()
     };
     let mut j = json!({
         "a": a, "b": b,
@@ -465,7 +528,10 @@ fn count_values(v: &fn_uasset::Value) -> usize {
     use fn_uasset::Value;
     1 + match v {
         Value::Array(a) | Value::Set(a) => a.iter().map(count_values).sum(),
-        Value::Map(m) => m.iter().map(|(k, x)| count_values(k) + count_values(x)).sum(),
+        Value::Map(m) => m
+            .iter()
+            .map(|(k, x)| count_values(k) + count_values(x))
+            .sum(),
         Value::Struct { props, .. } => props.iter().map(|p| count_values(&p.value)).sum(),
         _ => 0,
     }
@@ -485,7 +551,14 @@ fn unparsed_reasons(v: &fn_uasset::Value, out: &mut Vec<(String, String)>) {
     }
 }
 
-fn sweep_one(set: &PakSet, pf: &fn_pak::PakFile, e: &fn_pak::PakEntry, popts: fn_uasset::package::ParseOptions, agg: &mut Agg, deep: bool) {
+fn sweep_one(
+    set: &PakSet,
+    pf: &fn_pak::PakFile,
+    e: &fn_pak::PakEntry,
+    popts: fn_uasset::package::ParseOptions,
+    agg: &mut Agg,
+    deep: bool,
+) {
     agg.packages += 1;
     agg.bytes += e.size;
     let name = e.rel_path().to_string();
@@ -493,18 +566,30 @@ fn sweep_one(set: &PakSet, pf: &fn_pak::PakFile, e: &fn_pak::PakEntry, popts: fn
         Ok(b) => b,
         Err(er) => {
             agg.failed += 1;
-            note(&mut agg.failures, format!("pak read: {}", cause_key(&er.to_string())), &name);
+            note(
+                &mut agg.failures,
+                format!("pak read: {}", cause_key(&er.to_string())),
+                &name,
+            );
             return;
         }
     };
-    let stem = name.rsplit_once('.').map(|x| x.0).unwrap_or(&name).to_string();
+    let stem = name
+        .rsplit_once('.')
+        .map(|x| x.0)
+        .unwrap_or(&name)
+        .to_string();
     let uexp = set.read(&format!("{stem}.uexp")).ok();
     let uexp_bytes: &[u8] = uexp.as_deref().unwrap_or(&[]);
     let pkg = match Package::parse_with(&asset, uexp_bytes, popts) {
         Ok(p) => p,
         Err(er) => {
             agg.failed += 1;
-            note(&mut agg.failures, format!("header {:?}: {}", er.kind, cause_key(&er.msg)), &name);
+            note(
+                &mut agg.failures,
+                format!("header {:?}: {}", er.kind, cause_key(&er.msg)),
+                &name,
+            );
             return;
         }
     };
@@ -524,7 +609,12 @@ fn sweep_one(set: &PakSet, pf: &fn_pak::PakFile, e: &fn_pak::PakEntry, popts: fn
                 if let Some(er) = &obj.error {
                     failed = true;
                     agg.exports_failed += 1;
-                    let k = format!("export props {:?} [{}]: {}", er.kind, class, cause_key(&er.msg));
+                    let k = format!(
+                        "export props {:?} [{}]: {}",
+                        er.kind,
+                        class,
+                        cause_key(&er.msg)
+                    );
                     note(&mut agg.failures, k, &format!("{name} #{i} {}", obj.name));
                     continue;
                 }
@@ -536,7 +626,12 @@ fn sweep_one(set: &PakSet, pf: &fn_pak::PakFile, e: &fn_pak::PakEntry, popts: fn
                     if let Err(er) = fn_uasset::classes::check_export(&pkg, i, &obj) {
                         failed = true;
                         agg.exports_failed += 1;
-                        let k = format!("class decode {:?} [{}]: {}", er.kind, class, cause_key(&er.msg));
+                        let k = format!(
+                            "class decode {:?} [{}]: {}",
+                            er.kind,
+                            class,
+                            cause_key(&er.msg)
+                        );
                         note(&mut agg.failures, k, &format!("{name} #{i} {}", obj.name));
                         continue;
                     }
@@ -551,7 +646,11 @@ fn sweep_one(set: &PakSet, pf: &fn_pak::PakFile, e: &fn_pak::PakEntry, popts: fn
                     agg.exports_partial += 1;
                     agg.props_unparsed += reasons.len();
                     for (ty, reason) in reasons.into_iter().take(16) {
-                        note(&mut agg.partials, format!("{ty}: {}", cause_key(&reason)), &format!("{name} #{i} {}", obj.name));
+                        note(
+                            &mut agg.partials,
+                            format!("{ty}: {}", cause_key(&reason)),
+                            &format!("{name} #{i} {}", obj.name),
+                        );
                     }
                 }
             }
@@ -582,7 +681,10 @@ fn cmd_sweep(o: &Opts) {
             "--no-umap" => include_umap = false,
             "--threads" => {
                 if let Some(n) = it.next().and_then(|v| v.parse::<usize>().ok()) {
-                    rayon::ThreadPoolBuilder::new().num_threads(n).build_global().ok();
+                    rayon::ThreadPoolBuilder::new()
+                        .num_threads(n)
+                        .build_global()
+                        .ok();
                 }
             }
             _ => {}
@@ -607,17 +709,63 @@ fn cmd_sweep(o: &Opts) {
         .reduce(Agg::default, Agg::merge);
     let t_parse = t1.elapsed();
 
-    let pct = |n: usize| if agg.packages == 0 { 0.0 } else { 100.0 * n as f64 / agg.packages as f64 };
+    let pct = |n: usize| {
+        if agg.packages == 0 {
+            0.0
+        } else {
+            100.0 * n as f64 / agg.packages as f64
+        }
+    };
     println!("install            : {}", o.root.display());
-    println!("mount time         : {:?} ({} paks, {} entries)", t_open, set.paks().len(), set.total_entries());
-    println!("packages swept     : {} ({:.1} GiB of .uasset)", agg.packages, agg.bytes as f64 / (1u64 << 30) as f64);
-    println!("parse time         : {:?} on {} threads ({:.0} packages/s)", t_parse, rayon::current_num_threads(), agg.packages as f64 / t_parse.as_secs_f64());
-    println!("clean              : {} ({:.3}%)", agg.clean, pct(agg.clean));
-    println!("parsed w/ unparsed : {} ({:.3}%)  [{} exports, {} property values kept as raw bytes]", agg.partial, pct(agg.partial), agg.exports_partial, agg.props_unparsed);
-    println!("failed             : {} ({:.3}%)", agg.failed, pct(agg.failed));
-    println!("parse w/o error    : {:.3}% (clean + unparsed-values)", pct(agg.clean + agg.partial));
-    println!("exports            : {} total, {} failed", agg.exports, agg.exports_failed);
-    println!("property values    : {} decoded in total, {} kept raw ({:.4}% decoded)", agg.values_total, agg.props_unparsed, 100.0 * (agg.values_total - agg.props_unparsed.min(agg.values_total)) as f64 / agg.values_total.max(1) as f64);
+    println!(
+        "mount time         : {:?} ({} paks, {} entries)",
+        t_open,
+        set.paks().len(),
+        set.total_entries()
+    );
+    println!(
+        "packages swept     : {} ({:.1} GiB of .uasset)",
+        agg.packages,
+        agg.bytes as f64 / (1u64 << 30) as f64
+    );
+    println!(
+        "parse time         : {:?} on {} threads ({:.0} packages/s)",
+        t_parse,
+        rayon::current_num_threads(),
+        agg.packages as f64 / t_parse.as_secs_f64()
+    );
+    println!(
+        "clean              : {} ({:.3}%)",
+        agg.clean,
+        pct(agg.clean)
+    );
+    println!(
+        "parsed w/ unparsed : {} ({:.3}%)  [{} exports, {} property values kept as raw bytes]",
+        agg.partial,
+        pct(agg.partial),
+        agg.exports_partial,
+        agg.props_unparsed
+    );
+    println!(
+        "failed             : {} ({:.3}%)",
+        agg.failed,
+        pct(agg.failed)
+    );
+    println!(
+        "parse w/o error    : {:.3}% (clean + unparsed-values)",
+        pct(agg.clean + agg.partial)
+    );
+    println!(
+        "exports            : {} total, {} failed",
+        agg.exports, agg.exports_failed
+    );
+    println!(
+        "property values    : {} decoded in total, {} kept raw ({:.4}% decoded)",
+        agg.values_total,
+        agg.props_unparsed,
+        100.0 * (agg.values_total - agg.props_unparsed.min(agg.values_total)) as f64
+            / agg.values_total.max(1) as f64
+    );
     let mut f: Vec<_> = agg.failures.iter().collect();
     f.sort_by(|a, b| b.1 .0.cmp(&a.1 .0));
     println!("\nFAILURES by cause ({} causes):", f.len());
@@ -641,11 +789,8 @@ fn cmd_sweep(o: &Opts) {
             "unparsedValues": p.iter().map(|(k, (n, ex))| json!({"cause": k, "count": n, "examples": ex})).collect::<Vec<_>>(),
             "trailingBytesByClass": agg.trailing.iter().map(|(k, (n, t))| (k.clone(), json!({"exports": n, "trailingBytes": t}))).collect::<BTreeMap<_, _>>(),
         });
-        std::fs::write(&path, serde_json::to_string_pretty(&j).unwrap()).unwrap_or_else(|e| die(&format!("{path}: {e}")));
+        std::fs::write(&path, serde_json::to_string_pretty(&j).unwrap())
+            .unwrap_or_else(|e| die(&format!("{path}: {e}")));
         println!("\nreport written to {path}");
     }
 }
-
-
-
-

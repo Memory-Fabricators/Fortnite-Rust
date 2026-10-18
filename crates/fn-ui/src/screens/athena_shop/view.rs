@@ -46,16 +46,31 @@ pub struct ShopView {
 }
 
 impl ShopView {
-    pub fn find(&self, offer_id: &str) -> Option<&OfferView> { self.weekly.iter().chain(self.daily.iter()).find(|o| o.offer_id == offer_id) }
+    pub fn find(&self, offer_id: &str) -> Option<&OfferView> {
+        self.weekly
+            .iter()
+            .chain(self.daily.iter())
+            .find(|o| o.offer_id == offer_id)
+    }
 }
 
 /// `CanPurchaseOffer(offerId, priceIndex)`: 0 = can purchase (button "PURCHASE"), 2 = "Cannot Afford" (button disabled); owned offers show `OwnedSwitcher` index 1.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Affordability { Can, CannotAfford, Owned }
+pub enum Affordability {
+    Can,
+    CannotAfford,
+    Owned,
+}
 
 impl Affordability {
     pub fn of(offer: &OfferView, balance: i64) -> Affordability {
-        if offer.owned { Affordability::Owned } else if balance >= offer.price { Affordability::Can } else { Affordability::CannotAfford }
+        if offer.owned {
+            Affordability::Owned
+        } else if balance >= offer.price {
+            Affordability::Can
+        } else {
+            Affordability::CannotAfford
+        }
     }
 }
 
@@ -64,9 +79,14 @@ impl Affordability {
 pub enum Dialog {
     None,
     /// `AthenaDirectAcquisitionOfferDetailsWidget` (offer id into the [`ShopView`])
-    Details { offer: OfferView, purchase_hovered: bool },
+    Details {
+        offer: OfferView,
+        purchase_hovered: bool,
+    },
     /// `AthenaDirectAcquisitionOfferPurchasedWidget`
-    Purchased { offer: OfferView },
+    Purchased {
+        offer: OfferView,
+    },
 }
 
 /// Runtime-driven parts of the screen (everything else is the widget data).
@@ -87,5 +107,16 @@ pub struct ShopState {
 }
 
 impl Default for ShopState {
-    fn default() -> Self { ShopState { selected_tab: 0, hovered_tab: None, mtx_balance: 0, view: ShopView::default(), hovered_offer: None, dialog: Dialog::None, back_hovered: false, time: 0.0 } }
+    fn default() -> Self {
+        ShopState {
+            selected_tab: 0,
+            hovered_tab: None,
+            mtx_balance: 0,
+            view: ShopView::default(),
+            hovered_offer: None,
+            dialog: Dialog::None,
+            back_hovered: false,
+            time: 0.0,
+        }
+    }
 }

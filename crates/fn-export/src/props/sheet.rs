@@ -16,7 +16,11 @@ fn dot(a: V3, b: V3) -> f32 {
     a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }
 fn cross(a: V3, b: V3) -> V3 {
-    [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
 }
 fn norm(a: V3) -> V3 {
     let l = dot(a, a).sqrt();
@@ -56,9 +60,19 @@ fn sample(img: &Image, u: f32, v: f32) -> [f32; 4] {
     let wrap = |a: i64, n: i64| (((a % n) + n) % n) as u32;
     let px = |ix: i64, iy: i64| -> [f32; 4] {
         let p = img.pixel(wrap(ix, w), wrap(iy, h));
-        [p[0] as f32 / 255.0, p[1] as f32 / 255.0, p[2] as f32 / 255.0, p[3] as f32 / 255.0]
+        [
+            p[0] as f32 / 255.0,
+            p[1] as f32 / 255.0,
+            p[2] as f32 / 255.0,
+            p[3] as f32 / 255.0,
+        ]
     };
-    let (a, b, c, d) = (px(x0 as i64, y0 as i64), px(x0 as i64 + 1, y0 as i64), px(x0 as i64, y0 as i64 + 1), px(x0 as i64 + 1, y0 as i64 + 1));
+    let (a, b, c, d) = (
+        px(x0 as i64, y0 as i64),
+        px(x0 as i64 + 1, y0 as i64),
+        px(x0 as i64, y0 as i64 + 1),
+        px(x0 as i64 + 1, y0 as i64 + 1),
+    );
     let mut o = [0.0; 4];
     for i in 0..4 {
         o[i] = (a[i] * (1.0 - fx) + b[i] * fx) * (1.0 - fy) + (c[i] * (1.0 - fx) + d[i] * fx) * fy;
@@ -66,23 +80,53 @@ fn sample(img: &Image, u: f32, v: f32) -> [f32; 4] {
     o
 }
 
-pub fn surface_of(kind: &PropKind, slot: usize, cache: &mut HashMap<PathBuf, Option<Rc<Image>>>) -> Surface {
+pub fn surface_of(
+    kind: &PropKind,
+    slot: usize,
+    cache: &mut HashMap<PathBuf, Option<Rc<Image>>>,
+) -> Surface {
     let mut load = |t: Option<&fn_propdata::TextureRef>| -> Option<Rc<Image>> {
         let t = t?;
-        cache.entry(t.png.clone()).or_insert_with(|| Image::load(&t.png).ok().map(Rc::new)).clone()
+        cache
+            .entry(t.png.clone())
+            .or_insert_with(|| Image::load(&t.png).ok().map(Rc::new))
+            .clone()
     };
     match kind.load_material(slot) {
         Ok(m) => surface_from(&m, &mut load),
-        Err(_) => Surface { base: None, mask: None, alpha_from_mask: false, mask_has_alpha: false, masked: false, cutoff: 0.5, two_sided: false, tint: [1.0; 3] },
+        Err(_) => Surface {
+            base: None,
+            mask: None,
+            alpha_from_mask: false,
+            mask_has_alpha: false,
+            masked: false,
+            cutoff: 0.5,
+            two_sided: false,
+            tint: [1.0; 3],
+        },
     }
 }
 
-fn surface_from(m: &Material, load: &mut dyn FnMut(Option<&fn_propdata::TextureRef>) -> Option<Rc<Image>>) -> Surface {
+fn surface_from(
+    m: &Material,
+    load: &mut dyn FnMut(Option<&fn_propdata::TextureRef>) -> Option<Rc<Image>>,
+) -> Surface {
     let base = load(m.base_color_texture());
     let mask = load(m.mask_texture());
     let alpha_from_mask = m.slots.opacity_from.as_deref() == Some("mask");
-    let mask_has_alpha = mask.as_ref().map_or(false, |i| i.rgba.chunks_exact(4).any(|p| p[3] != 255));
-    Surface { base, mask, alpha_from_mask, mask_has_alpha, masked: m.alpha_mode == AlphaMode::Masked, cutoff: m.alpha_cutoff, two_sided: m.two_sided, tint: m.tint_guess.unwrap_or([1.0; 3]) }
+    let mask_has_alpha = mask
+        .as_ref()
+        .map_or(false, |i| i.rgba.chunks_exact(4).any(|p| p[3] != 255));
+    Surface {
+        base,
+        mask,
+        alpha_from_mask,
+        mask_has_alpha,
+        masked: m.alpha_mode == AlphaMode::Masked,
+        cutoff: m.alpha_cutoff,
+        two_sided: m.two_sided,
+        tint: m.tint_guess.unwrap_or([1.0; 3]),
+    }
 }
 
 struct Frame {
@@ -107,12 +151,22 @@ fn cam(yaw: f32, pitch: f32) -> Cam {
 }
 
 /// Render `lod` from one angle into a `size` x `size` RGB image (row-major, 8 bit) over a sky gradient.
-pub fn render_view(lod: &LodMesh, surfaces: &[Surface], yaw: f32, pitch: f32, size: usize) -> Vec<u8> {
+pub fn render_view(
+    lod: &LodMesh,
+    surfaces: &[Surface],
+    yaw: f32,
+    pitch: f32,
+    size: usize,
+) -> Vec<u8> {
     const SS: usize = 2;
     let n = size * SS;
     let c = cam(yaw, pitch);
     // fit: project every vertex, centre and scale the projected box
-    let proj: Vec<[f32; 3]> = lod.positions.iter().map(|&p| [dot(p, c.right), dot(p, c.up), dot(p, c.toward)]).collect();
+    let proj: Vec<[f32; 3]> = lod
+        .positions
+        .iter()
+        .map(|&p| [dot(p, c.right), dot(p, c.up), dot(p, c.toward)])
+        .collect();
     let (mut mn, mut mx) = ([f32::MAX; 2], [f32::MIN; 2]);
     for p in &proj {
         for k in 0..2 {
@@ -124,8 +178,18 @@ pub fn render_view(lod: &LodMesh, surfaces: &[Surface], yaw: f32, pitch: f32, si
     let scale = n as f32 * 0.9 / span;
     let cx = (mn[0] + mx[0]) * 0.5;
     let cy = (mn[1] + mx[1]) * 0.5;
-    let to_px = |p: [f32; 3]| -> [f32; 3] { [n as f32 * 0.5 + (p[0] - cx) * scale, n as f32 * 0.5 - (p[1] - cy) * scale, p[2]] };
-    let mut f = Frame { w: n, color: vec![[f32::NAN; 3]; n * n], depth: vec![f32::MIN; n * n] };
+    let to_px = |p: [f32; 3]| -> [f32; 3] {
+        [
+            n as f32 * 0.5 + (p[0] - cx) * scale,
+            n as f32 * 0.5 - (p[1] - cy) * scale,
+            p[2],
+        ]
+    };
+    let mut f = Frame {
+        w: n,
+        color: vec![[f32::NAN; 3]; n * n],
+        depth: vec![f32::MIN; n * n],
+    };
     let light = norm([0.45, 0.8, 0.5]);
     let has_uv = !lod.uvs.is_empty();
     for sec in &lod.sections {
@@ -138,7 +202,10 @@ pub fn render_view(lod: &LodMesh, surfaces: &[Surface], yaw: f32, pitch: f32, si
                 continue;
             }
             // geometric normal in world space decides the facing (glTF: counter clockwise = front)
-            let gn = norm(cross(sub(lod.positions[i1], lod.positions[i0]), sub(lod.positions[i2], lod.positions[i0])));
+            let gn = norm(cross(
+                sub(lod.positions[i1], lod.positions[i0]),
+                sub(lod.positions[i2], lod.positions[i0]),
+            ));
             let facing = dot(gn, c.toward);
             let two_sided = surf.map_or(false, |s| s.two_sided);
             if facing <= 0.0 && !two_sided {
@@ -166,7 +233,10 @@ pub fn render_view(lod: &LodMesh, surfaces: &[Surface], yaw: f32, pitch: f32, si
                     }
                     let uv = if has_uv {
                         let (a, b, cc) = (lod.uvs[0][i0], lod.uvs[0][i1], lod.uvs[0][i2]);
-                        [w0 * a[0] + w1 * b[0] + w2 * cc[0], w0 * a[1] + w1 * b[1] + w2 * cc[1]]
+                        [
+                            w0 * a[0] + w1 * b[0] + w2 * cc[0],
+                            w0 * a[1] + w1 * b[1] + w2 * cc[1],
+                        ]
                     } else {
                         [0.0, 0.0]
                     };
@@ -195,7 +265,11 @@ pub fn render_view(lod: &LodMesh, surfaces: &[Surface], yaw: f32, pitch: f32, si
                         gn
                     } else {
                         let (a, b, cc) = (lod.normals[i0], lod.normals[i1], lod.normals[i2]);
-                        norm([w0 * a[0] + w1 * b[0] + w2 * cc[0], w0 * a[1] + w1 * b[1] + w2 * cc[1], w0 * a[2] + w1 * b[2] + w2 * cc[2]])
+                        norm([
+                            w0 * a[0] + w1 * b[0] + w2 * cc[0],
+                            w0 * a[1] + w1 * b[1] + w2 * cc[1],
+                            w0 * a[2] + w1 * b[2] + w2 * cc[2],
+                        ])
                     };
                     if back {
                         nrm = [-nrm[0], -nrm[1], -nrm[2]];
@@ -213,7 +287,11 @@ pub fn render_view(lod: &LodMesh, surfaces: &[Surface], yaw: f32, pitch: f32, si
     let mut out = vec![0u8; size * size * 3];
     for y in 0..size {
         let t = y as f32 / size as f32;
-        let bg = [srgb_to_lin(0.62 + 0.18 * (1.0 - t)), srgb_to_lin(0.74 + 0.12 * (1.0 - t)), srgb_to_lin(0.88)];
+        let bg = [
+            srgb_to_lin(0.62 + 0.18 * (1.0 - t)),
+            srgb_to_lin(0.74 + 0.12 * (1.0 - t)),
+            srgb_to_lin(0.88),
+        ];
         for x in 0..size {
             let mut acc = [0.0f32; 3];
             for sy in 0..SS {
@@ -226,7 +304,8 @@ pub fn render_view(lod: &LodMesh, surfaces: &[Surface], yaw: f32, pitch: f32, si
                 }
             }
             for k in 0..3 {
-                out[(y * size + x) * 3 + k] = (lin_to_srgb(acc[k] / (SS * SS) as f32) * 255.0 + 0.5) as u8;
+                out[(y * size + x) * 3 + k] =
+                    (lin_to_srgb(acc[k] / (SS * SS) as f32) * 255.0 + 0.5) as u8;
             }
         }
     }
@@ -236,51 +315,276 @@ pub fn render_view(lod: &LodMesh, surfaces: &[Surface], yaw: f32, pitch: f32, si
 // ---- tiny 5x7 font -------------------------------------------------------------------------------------------------
 
 const FONT: &[(char, [&str; 7])] = &[
-    ('A', [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"]),
-    ('B', ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."]),
-    ('C', [".####", "#....", "#....", "#....", "#....", "#....", ".####"]),
-    ('D', ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."]),
-    ('E', ["#####", "#....", "#....", "####.", "#....", "#....", "#####"]),
-    ('F', ["#####", "#....", "#....", "####.", "#....", "#....", "#...."]),
-    ('G', [".####", "#....", "#....", "#.###", "#...#", "#...#", ".###."]),
-    ('H', ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"]),
-    ('I', ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####"]),
-    ('J', ["..###", "...#.", "...#.", "...#.", "...#.", "#..#.", ".##.."]),
-    ('K', ["#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#"]),
-    ('L', ["#....", "#....", "#....", "#....", "#....", "#....", "#####"]),
-    ('M', ["#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"]),
-    ('N', ["#...#", "##..#", "#.#.#", "#..##", "#...#", "#...#", "#...#"]),
-    ('O', [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."]),
-    ('P', ["####.", "#...#", "#...#", "####.", "#....", "#....", "#...."]),
-    ('Q', [".###.", "#...#", "#...#", "#...#", "#.#.#", "#..#.", ".##.#"]),
-    ('R', ["####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"]),
-    ('S', [".####", "#....", "#....", ".###.", "....#", "....#", "####."]),
-    ('T', ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."]),
-    ('U', ["#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."]),
-    ('V', ["#...#", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#.."]),
-    ('W', ["#...#", "#...#", "#...#", "#.#.#", "#.#.#", "##.##", "#...#"]),
-    ('X', ["#...#", "#...#", ".#.#.", "..#..", ".#.#.", "#...#", "#...#"]),
-    ('Y', ["#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#.."]),
-    ('Z', ["#####", "....#", "...#.", "..#..", ".#...", "#....", "#####"]),
-    ('0', [".###.", "#...#", "#..##", "#.#.#", "##..#", "#...#", ".###."]),
-    ('1', ["..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###."]),
-    ('2', [".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"]),
-    ('3', ["####.", "....#", "....#", ".###.", "....#", "....#", "####."]),
-    ('4', ["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."]),
-    ('5', ["#####", "#....", "####.", "....#", "....#", "#...#", ".###."]),
-    ('6', [".###.", "#....", "#....", "####.", "#...#", "#...#", ".###."]),
-    ('7', ["#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..."]),
-    ('8', [".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."]),
-    ('9', [".###.", "#...#", "#...#", ".####", "....#", "....#", ".###."]),
-    ('_', [".....", ".....", ".....", ".....", ".....", ".....", "#####"]),
-    ('.', [".....", ".....", ".....", ".....", ".....", ".##..", ".##.."]),
-    ('-', [".....", ".....", ".....", "#####", ".....", ".....", "....."]),
-    (':', [".....", ".##..", ".##..", ".....", ".##..", ".##..", "....."]),
-    ('/', ["....#", "....#", "...#.", "..#..", ".#...", "#....", "#...."]),
-    ('(', ["..#..", ".#...", "#....", "#....", "#....", ".#...", "..#.."]),
-    (')', ["..#..", "...#.", "....#", "....#", "....#", "...#.", "..#.."]),
-    ('%', ["##..#", "##.#.", "..#..", "..#..", ".#.##", "#..##", "....."]),
-    (' ', [".....", ".....", ".....", ".....", ".....", ".....", "....."]),
+    (
+        'A',
+        [
+            ".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#",
+        ],
+    ),
+    (
+        'B',
+        [
+            "####.", "#...#", "#...#", "####.", "#...#", "#...#", "####.",
+        ],
+    ),
+    (
+        'C',
+        [
+            ".####", "#....", "#....", "#....", "#....", "#....", ".####",
+        ],
+    ),
+    (
+        'D',
+        [
+            "####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####.",
+        ],
+    ),
+    (
+        'E',
+        [
+            "#####", "#....", "#....", "####.", "#....", "#....", "#####",
+        ],
+    ),
+    (
+        'F',
+        [
+            "#####", "#....", "#....", "####.", "#....", "#....", "#....",
+        ],
+    ),
+    (
+        'G',
+        [
+            ".####", "#....", "#....", "#.###", "#...#", "#...#", ".###.",
+        ],
+    ),
+    (
+        'H',
+        [
+            "#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#",
+        ],
+    ),
+    (
+        'I',
+        [
+            "#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####",
+        ],
+    ),
+    (
+        'J',
+        [
+            "..###", "...#.", "...#.", "...#.", "...#.", "#..#.", ".##..",
+        ],
+    ),
+    (
+        'K',
+        [
+            "#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#",
+        ],
+    ),
+    (
+        'L',
+        [
+            "#....", "#....", "#....", "#....", "#....", "#....", "#####",
+        ],
+    ),
+    (
+        'M',
+        [
+            "#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#",
+        ],
+    ),
+    (
+        'N',
+        [
+            "#...#", "##..#", "#.#.#", "#..##", "#...#", "#...#", "#...#",
+        ],
+    ),
+    (
+        'O',
+        [
+            ".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###.",
+        ],
+    ),
+    (
+        'P',
+        [
+            "####.", "#...#", "#...#", "####.", "#....", "#....", "#....",
+        ],
+    ),
+    (
+        'Q',
+        [
+            ".###.", "#...#", "#...#", "#...#", "#.#.#", "#..#.", ".##.#",
+        ],
+    ),
+    (
+        'R',
+        [
+            "####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#",
+        ],
+    ),
+    (
+        'S',
+        [
+            ".####", "#....", "#....", ".###.", "....#", "....#", "####.",
+        ],
+    ),
+    (
+        'T',
+        [
+            "#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#..",
+        ],
+    ),
+    (
+        'U',
+        [
+            "#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###.",
+        ],
+    ),
+    (
+        'V',
+        [
+            "#...#", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#..",
+        ],
+    ),
+    (
+        'W',
+        [
+            "#...#", "#...#", "#...#", "#.#.#", "#.#.#", "##.##", "#...#",
+        ],
+    ),
+    (
+        'X',
+        [
+            "#...#", "#...#", ".#.#.", "..#..", ".#.#.", "#...#", "#...#",
+        ],
+    ),
+    (
+        'Y',
+        [
+            "#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#..",
+        ],
+    ),
+    (
+        'Z',
+        [
+            "#####", "....#", "...#.", "..#..", ".#...", "#....", "#####",
+        ],
+    ),
+    (
+        '0',
+        [
+            ".###.", "#...#", "#..##", "#.#.#", "##..#", "#...#", ".###.",
+        ],
+    ),
+    (
+        '1',
+        [
+            "..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###.",
+        ],
+    ),
+    (
+        '2',
+        [
+            ".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####",
+        ],
+    ),
+    (
+        '3',
+        [
+            "####.", "....#", "....#", ".###.", "....#", "....#", "####.",
+        ],
+    ),
+    (
+        '4',
+        [
+            "...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#.",
+        ],
+    ),
+    (
+        '5',
+        [
+            "#####", "#....", "####.", "....#", "....#", "#...#", ".###.",
+        ],
+    ),
+    (
+        '6',
+        [
+            ".###.", "#....", "#....", "####.", "#...#", "#...#", ".###.",
+        ],
+    ),
+    (
+        '7',
+        [
+            "#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#...",
+        ],
+    ),
+    (
+        '8',
+        [
+            ".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###.",
+        ],
+    ),
+    (
+        '9',
+        [
+            ".###.", "#...#", "#...#", ".####", "....#", "....#", ".###.",
+        ],
+    ),
+    (
+        '_',
+        [
+            ".....", ".....", ".....", ".....", ".....", ".....", "#####",
+        ],
+    ),
+    (
+        '.',
+        [
+            ".....", ".....", ".....", ".....", ".....", ".##..", ".##..",
+        ],
+    ),
+    (
+        '-',
+        [
+            ".....", ".....", ".....", "#####", ".....", ".....", ".....",
+        ],
+    ),
+    (
+        ':',
+        [
+            ".....", ".##..", ".##..", ".....", ".##..", ".##..", ".....",
+        ],
+    ),
+    (
+        '/',
+        [
+            "....#", "....#", "...#.", "..#..", ".#...", "#....", "#....",
+        ],
+    ),
+    (
+        '(',
+        [
+            "..#..", ".#...", "#....", "#....", "#....", ".#...", "..#..",
+        ],
+    ),
+    (
+        ')',
+        [
+            "..#..", "...#.", "....#", "....#", "....#", "...#.", "..#..",
+        ],
+    ),
+    (
+        '%',
+        [
+            "##..#", "##.#.", "..#..", "..#..", ".#.##", "#..##", ".....",
+        ],
+    ),
+    (
+        ' ',
+        [
+            ".....", ".....", ".....", ".....", ".....", ".....", ".....",
+        ],
+    ),
 ];
 
 fn draw_text(img: &mut [u8], w: usize, x: usize, y: usize, text: &str, color: [u8; 3]) {
@@ -320,14 +624,27 @@ fn write_png(path: &Path, rgb: &[u8], w: usize, h: usize) -> Result<(), String> 
         std::fs::create_dir_all(p).map_err(|e| e.to_string())?;
     }
     let f = std::fs::File::create(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    image::codecs::png::PngEncoder::new(std::io::BufWriter::new(f)).write_image(rgb, w as u32, h as u32, image::ExtendedColorType::Rgb8).map_err(|e| e.to_string())
+    image::codecs::png::PngEncoder::new(std::io::BufWriter::new(f))
+        .write_image(rgb, w as u32, h as u32, image::ExtendedColorType::Rgb8)
+        .map_err(|e| e.to_string())
 }
 
-fn render_kind(kind: &PropKind, cache: &mut HashMap<PathBuf, Option<Rc<Image>>>, lod: usize, angles: &[(f32, f32)], size: usize) -> Result<Vec<Vec<u8>>, String> {
+fn render_kind(
+    kind: &PropKind,
+    cache: &mut HashMap<PathBuf, Option<Rc<Image>>>,
+    lod: usize,
+    angles: &[(f32, f32)],
+    size: usize,
+) -> Result<Vec<Vec<u8>>, String> {
     let lods = kind.load_lods().map_err(|e| format!("{}: {e}", kind.id))?;
     let l = lods.get(lod).or_else(|| lods.first()).ok_or("no LOD")?;
-    let surfaces: Vec<Surface> = (0..kind.materials.len().max(1)).map(|s| surface_of(kind, s, cache)).collect();
-    Ok(angles.iter().map(|&(y, p)| render_view(l, &surfaces, y, p, size)).collect())
+    let surfaces: Vec<Surface> = (0..kind.materials.len().max(1))
+        .map(|s| surface_of(kind, s, cache))
+        .collect();
+    Ok(angles
+        .iter()
+        .map(|&(y, p)| render_view(l, &surfaces, y, p, size))
+        .collect())
 }
 
 /// Render the whole catalog under `out` and return the written file names (relative to `out/sheet`).
@@ -372,8 +689,22 @@ pub fn run(out: &Path) -> Result<Vec<String>, String> {
                 Err(e) => eprintln!("render {}: {e}", k.id),
             }
             let l0 = k.lods.first();
-            let cap = format!("{} LOD0 {}V {}T  HP {}  {:?}", k.id, l0.map_or(0, |l| l.vertices), l0.map_or(0, |l| l.triangles), k.health, k.resource.kind);
-            draw_text(&mut pg, w, bx + 2, by + 2, &cap.to_uppercase(), [20, 20, 20]);
+            let cap = format!(
+                "{} LOD0 {}V {}T  HP {}  {:?}",
+                k.id,
+                l0.map_or(0, |l| l.vertices),
+                l0.map_or(0, |l| l.triangles),
+                k.health,
+                k.resource.kind
+            );
+            draw_text(
+                &mut pg,
+                w,
+                bx + 2,
+                by + 2,
+                &cap.to_uppercase(),
+                [20, 20, 20],
+            );
         }
         let name = format!("contact-sheet-{:02}.png", pi + 1);
         write_png(&dir.join(&name), &pg, w, h)?;
@@ -389,19 +720,36 @@ mod tests {
 
     fn quad() -> LodMesh {
         LodMesh {
-            positions: vec![[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 2.0, 0.0], [-1.0, 2.0, 0.0]],
+            positions: vec![
+                [-1.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 2.0, 0.0],
+                [-1.0, 2.0, 0.0],
+            ],
             normals: vec![[0.0, 0.0, 1.0]; 4],
             tangents: vec![],
             colors: vec![],
             uvs: vec![vec![[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]]],
-            sections: vec![MeshSection { material_slot: 0, indices: vec![0, 1, 2, 0, 2, 3] }],
+            sections: vec![MeshSection {
+                material_slot: 0,
+                indices: vec![0, 1, 2, 0, 2, 3],
+            }],
             screen_size: 1.0,
         }
     }
 
     #[test]
     fn front_face_is_drawn_and_back_face_culled() {
-        let s = [Surface { base: None, mask: None, alpha_from_mask: false, mask_has_alpha: false, masked: false, cutoff: 0.5, two_sided: false, tint: [1.0; 3] }];
+        let s = [Surface {
+            base: None,
+            mask: None,
+            alpha_from_mask: false,
+            mask_has_alpha: false,
+            masked: false,
+            cutoff: 0.5,
+            two_sided: false,
+            tint: [1.0; 3],
+        }];
         let lit = |yaw: f32| {
             let img = render_view(&quad(), &s, yaw, 0.0, 32);
             // centre pixel vs. the left edge of the same row (sky)
@@ -421,8 +769,21 @@ mod tests {
             // right half transparent
             p.copy_from_slice(&[200, 40, 40, if x < 2 { 255 } else { 0 }]);
         }
-        let img = Image { width: 4, height: 4, rgba };
-        let s = [Surface { base: Some(Rc::new(img)), mask: None, alpha_from_mask: false, mask_has_alpha: false, masked: true, cutoff: 0.5, two_sided: true, tint: [1.0; 3] }];
+        let img = Image {
+            width: 4,
+            height: 4,
+            rgba,
+        };
+        let s = [Surface {
+            base: Some(Rc::new(img)),
+            mask: None,
+            alpha_from_mask: false,
+            mask_has_alpha: false,
+            masked: true,
+            cutoff: 0.5,
+            two_sided: true,
+            tint: [1.0; 3],
+        }];
         let out = render_view(&quad(), &s, 0.0, 0.0, 64);
         let px = |x: usize, y: usize| out[(y * 64 + x) * 3..(y * 64 + x) * 3 + 3].to_vec();
         let (l, r) = (px(26, 32), px(38, 32));
@@ -433,7 +794,10 @@ mod tests {
     #[test]
     fn font_covers_caption_characters() {
         for ch in "ATHENA_TREE_PINE_3 LOD0 123V HP 600.5 WOOD".chars() {
-            assert!(FONT.iter().any(|(c, _)| *c == ch.to_ascii_uppercase()), "missing glyph {ch}");
+            assert!(
+                FONT.iter().any(|(c, _)| *c == ch.to_ascii_uppercase()),
+                "missing glyph {ch}"
+            );
         }
     }
 }

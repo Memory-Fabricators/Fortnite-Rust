@@ -1,4 +1,4 @@
-﻿use fn_audio::analysis::{loop_seam_ratio, octave_bands_db, spectrum};
+use fn_audio::analysis::{loop_seam_ratio, octave_bands_db, spectrum};
 use fn_audio::cue::NodeKind;
 use fn_audio::events;
 use fn_audio::install::to_pak_asset_path;
@@ -39,7 +39,10 @@ fn json(v: &serde_json::Value) -> String {
 }
 
 fn opt<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
-    args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).map(String::as_str)
+    args.iter()
+        .position(|a| a == name)
+        .and_then(|i| args.get(i + 1))
+        .map(String::as_str)
 }
 
 fn vec3(s: &str) -> Vec3 {
@@ -52,14 +55,29 @@ fn vec3(s: &str) -> Vec3 {
 
 fn print_wave_stats(w: &DecodedWave) {
     let s = w.stats();
-    print!("peak {:.4} rms {:.4} nan {} max-clip-run {}", s.peak, s.rms, s.non_finite, s.max_clip_run);
+    print!(
+        "peak {:.4} rms {:.4} nan {} max-clip-run {}",
+        s.peak, s.rms, s.non_finite, s.max_clip_run
+    );
     if let Some(sp) = spectrum(w, w.frames() / 4, 8192) {
-        print!("; dominant {:.0} Hz centroid {:.0} Hz rolloff95 {:.0} Hz high-band {:.4}", sp.dominant_hz, sp.centroid_hz, sp.rolloff95_hz, sp.high_band_fraction);
+        print!(
+            "; dominant {:.0} Hz centroid {:.0} Hz rolloff95 {:.0} Hz high-band {:.4}",
+            sp.dominant_hz, sp.centroid_hz, sp.rolloff95_hz, sp.high_band_fraction
+        );
     }
     println!();
     let bands = octave_bands_db(w);
     if !bands.is_empty() {
-        let s: Vec<String> = bands.iter().map(|(e, db)| if e.is_finite() { format!("<{e:.0}:{db:.0}") } else { format!("rest:{db:.0}") }).collect();
+        let s: Vec<String> = bands
+            .iter()
+            .map(|(e, db)| {
+                if e.is_finite() {
+                    format!("<{e:.0}:{db:.0}")
+                } else {
+                    format!("rest:{db:.0}")
+                }
+            })
+            .collect();
         println!("  octave-band dB: {}", s.join(" "));
     }
 }
@@ -84,7 +102,10 @@ fn main() {
             let inst = open();
             let pat = args.get(1).map(|s| s.to_ascii_lowercase());
             for p in inst.sound_paths() {
-                if pat.as_ref().map_or(true, |s| p.to_ascii_lowercase().contains(s)) {
+                if pat
+                    .as_ref()
+                    .map_or(true, |s| p.to_ascii_lowercase().contains(s))
+                {
                     println!("{p}");
                 }
             }
@@ -92,21 +113,41 @@ fn main() {
         "info" if args.len() == 2 => {
             let a = open().load_soundwave(&args[1]).unwrap_or_else(|e| fail(e));
             println!("{:#?}", a.info);
-            println!("cooked={} guid={:02x?} leftover={} tail_error={:?}", a.cooked, a.guid, a.leftover, a.tail_error);
+            println!(
+                "cooked={} guid={:02x?} leftover={} tail_error={:?}",
+                a.cooked, a.guid, a.leftover, a.tail_error
+            );
             for f in &a.formats {
                 println!("format {} placement {:?} flags {:#x} size_on_disk {} offset {} payload {} bytes", f.name, f.placement, f.bulk.flags, f.bulk.size_on_disk, f.bulk.offset_in_file, f.payload.len());
             }
             if let Some(s) = &a.streamed {
                 println!("streamed format {} chunks {}", s.format, s.chunks.len());
                 for (i, c) in s.chunks.iter().enumerate() {
-                    println!("  chunk {i}: {:?} flags {:#x} DataSize {} AudioDataSize {} payload {}", c.placement, c.bulk.flags, c.data_size, c.audio_data_size, c.payload.len());
+                    println!(
+                        "  chunk {i}: {:?} flags {:#x} DataSize {} AudioDataSize {} payload {}",
+                        c.placement,
+                        c.bulk.flags,
+                        c.data_size,
+                        c.audio_data_size,
+                        c.payload.len()
+                    );
                 }
             }
         }
         "decode" if args.len() == 3 => {
-            let (w, a) = open().decode_soundwave(&args[1]).unwrap_or_else(|e| fail(e));
+            let (w, a) = open()
+                .decode_soundwave(&args[1])
+                .unwrap_or_else(|e| fail(e));
             write_wav(&args[2], &w).unwrap_or_else(|e| fail(e));
-            print!("{} {} Hz, {} ch, {} frames ({:.4} s); property duration {:?} s; ", a.format_name().unwrap_or("?"), w.sample_rate, w.channels, w.frames(), w.duration_seconds(), a.info.duration);
+            print!(
+                "{} {} Hz, {} ch, {} frames ({:.4} s); property duration {:?} s; ",
+                a.format_name().unwrap_or("?"),
+                w.sample_rate,
+                w.channels,
+                w.frames(),
+                w.duration_seconds(),
+                a.info.duration
+            );
             print_wave_stats(&w);
         }
         "sweep" => {
@@ -115,10 +156,17 @@ fn main() {
             let rows = sweep::sweep_install(&inst);
             let sum = sweep::summarize(&rows);
             println!("{}", json(&sum));
-            eprintln!("swept {} SoundWaves in {:.1}s", rows.len(), t.elapsed().as_secs_f64());
+            eprintln!(
+                "swept {} SoundWaves in {:.1}s",
+                rows.len(),
+                t.elapsed().as_secs_f64()
+            );
             if let Some(out) = args.get(2) {
                 let mut t = String::new();
-                for r in rows.iter().filter(|r| !r.decoded || !r.duration_ok || !r.rate_ok || !r.channels_ok) {
+                for r in rows
+                    .iter()
+                    .filter(|r| !r.decoded || !r.duration_ok || !r.rate_ok || !r.channels_ok)
+                {
                     t += &format!("{}\t{}\tstream={}\tprop {:?}Hz {:?}ch {:?}s\tdec {}Hz {}ch {}fr\tdelta {:?}\t{:?}\n", r.path, r.format, r.streaming, r.prop_rate, r.prop_channels, r.prop_duration, r.dec_rate, r.dec_channels, r.dec_frames, r.frame_delta, r.error);
                 }
                 fs::write(out, t).unwrap_or_else(|e| fail(e));
@@ -134,16 +182,36 @@ fn main() {
             let waves = cue.wave_paths();
             println!("waves: {}", waves.len());
             for w in waves {
-                println!("  {w}{}", if lib.install.paks.contains(&to_pak_asset_path(&w)) { "" } else { "   <MISSING>" });
+                println!(
+                    "  {w}{}",
+                    if lib.install.paks.contains(&to_pak_asset_path(&w)) {
+                        ""
+                    } else {
+                        "   <MISSING>"
+                    }
+                );
             }
         }
         "cues" => {
             let mut lib = open_lib();
             let all = args.iter().any(|a| a == "--all");
-            let paths: Vec<String> = lib.install.all_asset_paths().into_iter().filter(|p| all || p.to_ascii_lowercase().contains("cue")).collect();
+            let paths: Vec<String> = lib
+                .install
+                .all_asset_paths()
+                .into_iter()
+                .filter(|p| all || p.to_ascii_lowercase().contains("cue"))
+                .collect();
             let (mut ok, mut not_cue, mut failed) = (0usize, 0usize, 0usize);
             let mut classes: BTreeMap<String, usize> = BTreeMap::new();
-            let (mut unresolved_att, mut null_waves, mut missing_waves, mut total_nodes, mut no_root, mut conc, mut cue_att) = (0usize, 0usize, 0usize, 0usize, 0usize, 0usize, 0usize);
+            let (
+                mut unresolved_att,
+                mut null_waves,
+                mut missing_waves,
+                mut total_nodes,
+                mut no_root,
+                mut conc,
+                mut cue_att,
+            ) = (0usize, 0usize, 0usize, 0usize, 0usize, 0usize, 0usize);
             let mut errs: BTreeMap<String, usize> = BTreeMap::new();
             let mut buses: BTreeMap<String, usize> = BTreeMap::new();
             let t = std::time::Instant::now();
@@ -162,12 +230,21 @@ fn main() {
                                 match &n.kind {
                                     NodeKind::Attenuation(None) => {
                                         unresolved_att += 1;
-                                        if args.iter().any(|a| a == "--verbose") && unresolved_att <= 12 {
-                                            eprintln!("unresolved attenuation: {} / {}", c.path, n.name);
+                                        if args.iter().any(|a| a == "--verbose")
+                                            && unresolved_att <= 12
+                                        {
+                                            eprintln!(
+                                                "unresolved attenuation: {} / {}",
+                                                c.path, n.name
+                                            );
                                         }
                                     }
                                     NodeKind::WavePlayer { wave: None, .. } => null_waves += 1,
-                                    NodeKind::WavePlayer { wave: Some(w), .. } if !lib.install.paks.contains(&to_pak_asset_path(w)) => missing_waves += 1,
+                                    NodeKind::WavePlayer { wave: Some(w), .. }
+                                        if !lib.install.paks.contains(&to_pak_asset_path(w)) =>
+                                    {
+                                        missing_waves += 1
+                                    }
                                     _ => {}
                                 }
                             }),
@@ -201,21 +278,41 @@ fn main() {
             let tree = lib.classes().clone();
             let mut names: Vec<&str> = tree.names().collect();
             names.sort();
-            println!("{} SoundClasses; Master volume {}", tree.len(), tree.master_volume());
+            println!(
+                "{} SoundClasses; Master volume {}",
+                tree.len(),
+                tree.master_volume()
+            );
             for n in names {
                 let i = tree.info(n);
                 let c = tree.get(n).unwrap();
-                println!("{:46} parent {:44} vol {:<5} -> chain-volume {:.4} bus {:?}{}", n, c.parent.as_deref().unwrap_or("-"), c.volume, i.base_volume, i.bus, if i.is_ui { " ui" } else { "" });
+                println!(
+                    "{:46} parent {:44} vol {:<5} -> chain-volume {:.4} bus {:?}{}",
+                    n,
+                    c.parent.as_deref().unwrap_or("-"),
+                    c.volume,
+                    i.base_volume,
+                    i.bus,
+                    if i.is_ui { " ui" } else { "" }
+                );
             }
             // SoundMix assets of the same folder
             let mut mixes = 0;
             let mut adjusters = 0;
-            for p in lib.install.all_asset_paths().into_iter().filter(|p| p.contains("/FortSoundClassesAndModes/")) {
+            for p in lib
+                .install
+                .all_asset_paths()
+                .into_iter()
+                .filter(|p| p.contains("/FortSoundClassesAndModes/"))
+            {
                 if let Ok(Some(m)) = lib.load_mix(&p) {
                     mixes += 1;
                     adjusters += m.adjusters.len();
                     if m.name == "Fort_WeaponMelee_Duck_MixMod" {
-                        println!("SoundMix {}: fade in {}s hold {}s fade out {}s, adjusters {:?}", m.name, m.fade_in_time, m.duration, m.fade_out_time, m.adjusters);
+                        println!(
+                            "SoundMix {}: fade in {}s hold {}s fade out {}s, adjusters {:?}",
+                            m.name, m.fade_in_time, m.duration, m.fade_out_time, m.adjusters
+                        );
                     }
                 }
             }
@@ -234,7 +331,10 @@ fn main() {
                         h.play_cue(e.cue, PlayParams::default()).unwrap();
                         let out = eng.render_offline(48000 * 2, 1);
                         let peak = out.iter().fold(0f32, |a, &b| a.max(b.abs()));
-                        let last = out.chunks(2).rposition(|f| f[0].abs() > 1e-4 || f[1].abs() > 1e-4).map_or(0.0, |i| i as f32 / 48000.0);
+                        let last = out
+                            .chunks(2)
+                            .rposition(|f| f[0].abs() > 1e-4 || f[1].abs() > 1e-4)
+                            .map_or(0.0, |i| i as f32 / 48000.0);
                         println!("{:30} {:9?} {:<78} waves {:2} missing {} peak {:.3} audible-until {:.2}s class {} bus {:?} base {:.3}", e.event, e.source, e.cue.rsplit('/').next().unwrap(), cue.wave_paths().len(), missing, peak, last, cue.class.name, cue.class.bus, cue.class.base_volume);
                         if missing > 0 || peak == 0.0 {
                             bad += 1;
@@ -257,14 +357,23 @@ fn main() {
         }
         "render" if args.len() >= 3 => {
             let mut lib = open_lib();
-            let rate: u32 = opt(&args, "--rate").and_then(|s| s.parse().ok()).unwrap_or(48000);
-            let seed: u64 = opt(&args, "--seed").and_then(|s| s.parse().ok()).unwrap_or(1);
-            let secs: f32 = opt(&args, "--secs").and_then(|s| s.parse().ok()).unwrap_or(2.0);
+            let rate: u32 = opt(&args, "--rate")
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(48000);
+            let seed: u64 = opt(&args, "--seed")
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(1);
+            let secs: f32 = opt(&args, "--secs")
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(2.0);
             let mut eng = AudioEngine::new(rate);
             let h = eng.handle();
             let missing = lib.prepare_cue(&h, &args[1]).unwrap_or_else(|e| fail(e));
             if missing > 0 {
-                eprintln!("warning: {missing} wave(s) could not be loaded: {:?}", lib.warnings);
+                eprintln!(
+                    "warning: {missing} wave(s) could not be loaded: {:?}",
+                    lib.warnings
+                );
             }
             if let Some(l) = opt(&args, "--listener") {
                 h.set_listener(vec3(l), Vec3::new(0.0, 0.0, -1.0), Vec3::new(0.0, 1.0, 0.0));
@@ -282,7 +391,13 @@ fn main() {
         "analyze" if args.len() == 2 => {
             let b = fs::read(&args[1]).unwrap_or_else(|e| fail(e));
             let w = read_wav(&b).unwrap_or_else(|e| fail(e));
-            print!("{} Hz, {} ch, {} frames ({:.3} s); ", w.sample_rate, w.channels, w.frames(), w.duration_seconds());
+            print!(
+                "{} Hz, {} ch, {} frames ({:.3} s); ",
+                w.sample_rate,
+                w.channels,
+                w.frames(),
+                w.duration_seconds()
+            );
             print_wave_stats(&w);
             if let Some(r) = loop_seam_ratio(&w) {
                 println!("loop-seam ratio {r:.2}");
@@ -298,15 +413,24 @@ fn main() {
 fn device_smoke(root: &str) {
     let mut lib = Library::open(root).unwrap_or_else(|e| fail(e));
     let (handle, stream) = fn_audio::device::open_default().unwrap_or_else(|e| fail(e));
-    println!("output device: {} ({} Hz, {} ch)", stream.device_name, stream.sample_rate, stream.channels);
-    lib.prepare_cue(&handle, events::SWING).unwrap_or_else(|e| fail(e));
+    println!(
+        "output device: {} ({} Hz, {} ch)",
+        stream.device_name, stream.sample_rate, stream.channels
+    );
+    lib.prepare_cue(&handle, events::SWING)
+        .unwrap_or_else(|e| fail(e));
     // low volume: master 0.15 x the class chain (~0.28 x 0.3 cue volume) -> well below normal listening level
     handle.set_bus_volume(Bus::Master, 0.15);
-    handle.play_cue(events::SWING, PlayParams::default()).unwrap_or_else(|e| fail(e));
+    handle
+        .play_cue(events::SWING, PlayParams::default())
+        .unwrap_or_else(|e| fail(e));
     std::thread::sleep(std::time::Duration::from_millis(300));
     handle.stop_all();
     std::thread::sleep(std::time::Duration::from_millis(40));
-    println!("played 0.3 s of {} through the default device", events::SWING);
+    println!(
+        "played 0.3 s of {} through the default device",
+        events::SWING
+    );
     drop(stream);
 }
 
@@ -314,5 +438,3 @@ fn device_smoke(root: &str) {
 fn device_smoke(_root: &str) {
     fail("built without the device-output feature (cargo run -p fn-audio-cli --features device-output -- device-smoke)")
 }
-
-

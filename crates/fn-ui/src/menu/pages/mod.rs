@@ -40,8 +40,8 @@
 //! texts, visibility gates, "Apply" / "Reset To Default" / "Back" names, the three confirmation texts (`layout_table.rs`).
 //! ASSUMED: the widget look (toolkit), the 15 s revert timeout, the unsaved-changes prompt, the widget->setting mapping, and
 //! that Input/Controller rows come from the settings catalog (the original key list is natively built from encrypted data).
-pub mod brightness;
 pub mod bridge;
+pub mod brightness;
 pub mod controller;
 pub mod dialogs;
 pub mod footer;
@@ -57,7 +57,10 @@ pub mod visibility;
 
 pub use bridge::*;
 #[allow(unused_imports)]
-pub use rows::{extra_keys, hud_set, hud_tags, reset_row, row_info, Bind, GenericPage, Gate, PageState, RowDef, RowInfo, SubTab, TabDef, Wid};
+pub use rows::{
+    extra_keys, hud_set, hud_tags, reset_row, row_info, Bind, Gate, GenericPage, PageState, RowDef,
+    RowInfo, SubTab, TabDef, Wid,
+};
 
 pub const ORDER_VIDEO: i32 = 10;
 pub const ORDER_GAME: i32 = 20;
@@ -69,7 +72,10 @@ pub const ORDER_LIVESTREAM: i32 = 70;
 
 /// Only the generic descriptor-built pages (all seven tabs).
 pub fn generic_pages() -> Vec<Box<dyn crate::menu::SettingsPage>> {
-    rows::generic_tabs().into_iter().map(|t| Box::new(GenericPage::new(t)) as Box<dyn crate::menu::SettingsPage>).collect()
+    rows::generic_tabs()
+        .into_iter()
+        .map(|t| Box::new(GenericPage::new(t)) as Box<dyn crate::menu::SettingsPage>)
+        .collect()
 }
 /// Every Settings page (generic fallbacks + the specialised Input / Controller / Video / Brightness pages). Register them into a `MenuSystem` with
 /// `MenuSystem::register_settings_page` (specialised pages replace the generic ones by id).
@@ -82,11 +88,19 @@ pub fn all_pages() -> Vec<Box<dyn crate::menu::SettingsPage>> {
     v
 }
 /// Register [`all_pages`] directly into `m`.
-pub fn register_all_into(m: &mut crate::menu::MenuSystem) { for p in all_pages() { m.register_settings_page(p); } }
+pub fn register_all_into(m: &mut crate::menu::MenuSystem) {
+    for p in all_pages() {
+        m.register_settings_page(p);
+    }
+}
 /// Register only the generic pages into `m`.
-pub fn register_generic_into(m: &mut crate::menu::MenuSystem) { for p in generic_pages() { m.register_settings_page(p); } }
+pub fn register_generic_into(m: &mut crate::menu::MenuSystem) {
+    for p in generic_pages() {
+        m.register_settings_page(p);
+    }
+}
 
 #[cfg(test)]
-mod tests;
-#[cfg(test)]
 mod layout_tests;
+#[cfg(test)]
+mod tests;

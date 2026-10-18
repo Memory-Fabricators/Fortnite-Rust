@@ -32,7 +32,15 @@ fn main() {
     let samples = args.iter().any(|a| a == "--samples");
     let skel_pkg = load(&root.join("FortniteGame/Content/Characters/Player/Male/Male_Avg_Base/Fortnite_M_Avg_Player_Skeleton.uasset")).expect("skeleton");
     let skel = SkeletonInfo::from_package(&skel_pkg).expect("skeleton parse");
-    println!("skeleton: {} bones, {} retarget sources, non-unit scales: {}", skel.num_bones(), skel.retarget_sources.len(), skel.ref_pose.iter().filter(|t| t.scale.iter().any(|s| (s - 1.0).abs() > 1e-4)).count());
+    println!(
+        "skeleton: {} bones, {} retarget sources, non-unit scales: {}",
+        skel.num_bones(),
+        skel.retarget_sources.len(),
+        skel.ref_pose
+            .iter()
+            .filter(|t| t.scale.iter().any(|s| (s - 1.0).abs() > 1e-4))
+            .count()
+    );
     for s in &skel.retarget_sources {
         println!("  retarget source {} ({} bones)", s.name, s.pose.len());
     }
@@ -58,7 +66,48 @@ fn main() {
     let mut interp_stats = std::collections::BTreeMap::<(bool, bool), usize>::new();
     let mut total = Diff::default();
     let mut sampled_rows: Vec<(String, Diff, Diff, bool, String, String)> = Vec::new();
-    const PICK: &[&str] = &["M_Jog_NoWep_N", "M_Jog_NoWep_NE", "M_Jog_NoWep_E", "M_Jog_NoWep_SE", "M_Jog_NoWep_S", "M_Jog_NoWep_SW", "M_Jog_NoWep_W", "M_Jog_NoWep_NW", "M_Jog_NoWep_N_Core", "M_Jog_NoWep_NE_Core", "M_Jog_NoWep_E_Core", "M_Jog_NoWep_SE_Core", "M_Jog_NoWep_S_Core", "M_Jog_NoWep_SW_Core", "M_Jog_NoWep_W_Core", "M_Jog_NoWep_NW_Core", "Sprint_AR", "Sprint_Default", "Sprint_Sword", "Sprint_TwoHanded", "CrouchSprint_NoWeapon", "M_JumpApex_ARDS_Loop_Additive", "M_JumpFall_ARDS_Additive", "M_JumpLand_ARDS_Additive", "M_JumpUp_ARDS_Additive", "JumpLand_NoWep_CMM_Additive", "JumpLand_NoWep_CMM_Additive_Core", "JumpUp_NoWep_CMM_Additive", "TwoHanded_Loop_Swing1", "TwoHanded_Loop_Swing2", "TwoHanded_Loop_Swing1_Bounce", "TwoHanded_Loop_Swing2_InMotion", "Crouch_NoWeapon_E", "Crouch_NoWeapon_E_Core", "Crouch_NoWep_CMM", "Crouch_NoWeapon_SW_Core", "Commando_Male_Body_Idle", "Idle_Noise", "Idle_Turn_Left", "Idle_Turn_Right_180"];
+    const PICK: &[&str] = &[
+        "M_Jog_NoWep_N",
+        "M_Jog_NoWep_NE",
+        "M_Jog_NoWep_E",
+        "M_Jog_NoWep_SE",
+        "M_Jog_NoWep_S",
+        "M_Jog_NoWep_SW",
+        "M_Jog_NoWep_W",
+        "M_Jog_NoWep_NW",
+        "M_Jog_NoWep_N_Core",
+        "M_Jog_NoWep_NE_Core",
+        "M_Jog_NoWep_E_Core",
+        "M_Jog_NoWep_SE_Core",
+        "M_Jog_NoWep_S_Core",
+        "M_Jog_NoWep_SW_Core",
+        "M_Jog_NoWep_W_Core",
+        "M_Jog_NoWep_NW_Core",
+        "Sprint_AR",
+        "Sprint_Default",
+        "Sprint_Sword",
+        "Sprint_TwoHanded",
+        "CrouchSprint_NoWeapon",
+        "M_JumpApex_ARDS_Loop_Additive",
+        "M_JumpFall_ARDS_Additive",
+        "M_JumpLand_ARDS_Additive",
+        "M_JumpUp_ARDS_Additive",
+        "JumpLand_NoWep_CMM_Additive",
+        "JumpLand_NoWep_CMM_Additive_Core",
+        "JumpUp_NoWep_CMM_Additive",
+        "TwoHanded_Loop_Swing1",
+        "TwoHanded_Loop_Swing2",
+        "TwoHanded_Loop_Swing1_Bounce",
+        "TwoHanded_Loop_Swing2_InMotion",
+        "Crouch_NoWeapon_E",
+        "Crouch_NoWeapon_E_Core",
+        "Crouch_NoWep_CMM",
+        "Crouch_NoWeapon_SW_Core",
+        "Commando_Male_Body_Idle",
+        "Idle_Noise",
+        "Idle_Turn_Left",
+        "Idle_Turn_Right_180",
+    ];
     let pick = |n: &str| PICK.contains(&n);
     for f in files {
         let Some(pkg) = load(&f) else { continue };
@@ -83,15 +132,27 @@ fn main() {
         let mut buf = Vec::new();
         md5::write(&new, &mut buf).unwrap();
         let same = buf == old_bytes;
-        let interp = seq.tracks.iter().any(|t| (t.rot.len() > 1 && t.rot.len() < seq.num_frames) || (t.pos.len() > 1 && t.pos.len() < seq.num_frames));
+        let interp = seq.tracks.iter().any(|t| {
+            (t.rot.len() > 1 && t.rot.len() < seq.num_frames)
+                || (t.pos.len() > 1 && t.pos.len() < seq.num_frames)
+        });
         *interp_stats.entry((interp, same)).or_default() += 1;
         if !same && args.iter().any(|a| a == "--diff") {
-            let (a, b) = (String::from_utf8_lossy(&buf).into_owned(), String::from_utf8_lossy(&old_bytes).into_owned());
+            let (a, b) = (
+                String::from_utf8_lossy(&buf).into_owned(),
+                String::from_utf8_lossy(&old_bytes).into_owned(),
+            );
             let mut n = 0;
             let mut kinds = std::collections::BTreeMap::<&str, usize>::new();
             for (la, lb) in a.lines().zip(b.lines()) {
                 if la != lb {
-                    let k = if la.starts_with("//") { "comment" } else if la.starts_with("frameRate") { "rate" } else { "data" };
+                    let k = if la.starts_with("//") {
+                        "comment"
+                    } else if la.starts_with("frameRate") {
+                        "rate"
+                    } else {
+                        "data"
+                    };
                     *kinds.entry(k).or_default() += 1;
                     if n < 3 {
                         println!("DIFF {} new: {la}\n     old: {lb}", seq.name);
@@ -100,7 +161,12 @@ fn main() {
                 }
             }
             if a.lines().count() != b.lines().count() {
-                println!("DIFF {} line count {} vs {}", seq.name, a.lines().count(), b.lines().count());
+                println!(
+                    "DIFF {} line count {} vs {}",
+                    seq.name,
+                    a.lines().count(),
+                    b.lines().count()
+                );
             }
             if samples {
                 println!("  kinds {kinds:?} total {n}");
@@ -143,7 +209,10 @@ fn main() {
             meta.push("track flags".to_string());
         }
         if (new.frame_rate - old.frame_rate).abs() > old.frame_rate * 1e-5 {
-            meta.push(format!("frameRate {} vs {}", new.frame_rate, old.frame_rate));
+            meta.push(format!(
+                "frameRate {} vs {}",
+                new.frame_rate, old.frame_rate
+            ));
         }
         let mut max_rt = 0.0f32;
         for (a, b) in new.retarget.iter().zip(&old.retarget) {
@@ -186,7 +255,10 @@ fn main() {
                 compare_sampled(&seq, &skel, &old, fr, k, RotationBlend::Nlerp, &mut sd);
                 compare_sampled(&seq, &skel, &old, fr, k, RotationBlend::Slerp, &mut sd2);
             }
-            let (bp, br) = (skel.bone_names[sd2.worst_pos.1].clone(), skel.bone_names[sd2.worst_rot.1].clone());
+            let (bp, br) = (
+                skel.bone_names[sd2.worst_pos.1].clone(),
+                skel.bone_names[sd2.worst_rot.1].clone(),
+            );
             sampled_rows.push((seq.name.clone(), sd, sd2, seq.is_additive(), bp, br));
         }
         rows.push(Row {
@@ -194,15 +266,34 @@ fn main() {
             frames: seq.num_frames,
             pos: d.max_pos_cm,
             rot: d.max_rot_deg,
-            wpos: format!("f{} {}", d.worst_pos.0, skel.bone_names.get(d.worst_pos.1).cloned().unwrap_or_default()),
-            wrot: format!("f{} {}", d.worst_rot.0, skel.bone_names.get(d.worst_rot.1).cloned().unwrap_or_default()),
+            wpos: format!(
+                "f{} {}",
+                d.worst_pos.0,
+                skel.bone_names
+                    .get(d.worst_pos.1)
+                    .cloned()
+                    .unwrap_or_default()
+            ),
+            wrot: format!(
+                "f{} {}",
+                d.worst_rot.0,
+                skel.bone_names
+                    .get(d.worst_rot.1)
+                    .cloned()
+                    .unwrap_or_default()
+            ),
             identical: same,
             meta,
             fc,
             jc,
         });
     }
-    println!("clips verified: {} (missing md5: {missing}); frame+joint count equal: {}/{}", rows.len(), rows.iter().filter(|r| r.fc && r.jc).count(), rows.len());
+    println!(
+        "clips verified: {} (missing md5: {missing}); frame+joint count equal: {}/{}",
+        rows.len(),
+        rows.iter().filter(|r| r.fc && r.jc).count(),
+        rows.len()
+    );
     println!("byte-identical md5anim text: {identical}/{}", rows.len());
     println!("  by (has sparse-key interpolation, identical): {interp_stats:?}");
     println!("max over all frames of all clips: pos {:.6} cm, rot {:.6} deg, max |dxyz| {:.3e}; joints compared {}", total.max_pos_cm, total.max_rot_deg, total.max_xyz, total.joints_compared);
@@ -214,16 +305,25 @@ fn main() {
     rows.sort_by(|a, b| (b.pos.max(b.rot)).partial_cmp(&a.pos.max(a.rot)).unwrap());
     println!("worst clips (pos cm / rot deg):");
     for r in rows.iter().take(12) {
-        println!("  {:50} frames {:3} pos {:.6} rot {:.6}  [{}] [{}] identical={}", r.name, r.frames, r.pos, r.rot, r.wpos, r.wrot, r.identical);
+        println!(
+            "  {:50} frames {:3} pos {:.6} rot {:.6}  [{}] [{}] identical={}",
+            r.name, r.frames, r.pos, r.rot, r.wpos, r.wrot, r.identical
+        );
     }
     if show_clips {
         println!("all clips:");
         for r in &rows {
-            println!("  {:50} frames {:3} pos {:.6} rot {:.6} identical={}", r.name, r.frames, r.pos, r.rot, r.identical);
+            println!(
+                "  {:50} frames {:3} pos {:.6} rot {:.6} identical={}",
+                r.name, r.frames, r.pos, r.rot, r.identical
+            );
         }
     }
     if samples {
-        println!("sampled comparison ({} clips x 20 times): pos cm / rot deg", sampled_rows.len());
+        println!(
+            "sampled comparison ({} clips x 20 times): pos cm / rot deg",
+            sampled_rows.len()
+        );
         for (n, d, d2, add, bp, br) in &sampled_rows {
             println!("  {:36} {} pos {:.6} cm [{}] | nlerp rot {:.4} deg | slerp rot {:.5} deg [{}] xyz {:.1e} (joints {})", n, if *add { "ADD " } else { "core" }, d.max_pos_cm, bp, d.max_rot_deg, d2.max_rot_deg, br, d2.max_xyz, d.joints_compared);
         }

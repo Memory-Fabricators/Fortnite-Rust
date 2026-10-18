@@ -143,14 +143,23 @@ pub struct CookedWidgetNode {
 }
 
 fn object_path(pkg: &Package, v: Option<&PropValue>) -> Option<String> {
-    let PropValue::Object(index) = v? else { return None };
-    let path = if *index < 0 { pkg.import_path(*index) } else { pkg.index_name(*index) };
+    let PropValue::Object(index) = v? else {
+        return None;
+    };
+    let path = if *index < 0 {
+        pkg.import_path(*index)
+    } else {
+        pkg.index_name(*index)
+    };
     (!path.is_empty()).then_some(path)
 }
 
-
 fn read_package(set: &fn_pak::PakSet, long: &str) -> Result<Package, String> {
-    let read = |ext| set.read_game(long, ext).map(|b| b.into_owned()).unwrap_or_default();
+    let read = |ext| {
+        set.read_game(long, ext)
+            .map(|b| b.into_owned())
+            .unwrap_or_default()
+    };
     Package::parse(&read("uasset"), &read("uexp"), &read("ubulk"))
         .map_err(|e| format!("{long}: {e}"))
 }
@@ -158,12 +167,17 @@ fn read_package(set: &fn_pak::PakSet, long: &str) -> Result<Package, String> {
 fn export_props(pkg: &Package, index: usize) -> Result<props::PropList, String> {
     let body = pkg.export_bytes(index).map_err(|e| e.to_string())?;
     let mut reader = Reader::new(body);
-    let ctx = props::Ctx { names: &pkg.names, file_version: pkg.summary.file_version };
+    let ctx = props::Ctx {
+        names: &pkg.names,
+        file_version: pkg.summary.file_version,
+    };
     props::read_props(&mut reader, &ctx).map_err(|e| e.to_string())
 }
 
 fn margin(p: &props::PropList) -> [f32; 4] {
-    let Some(m) = p.fields("Padding") else { return [0.; 4]; };
+    let Some(m) = p.fields("Padding") else {
+        return [0.; 4];
+    };
     [
         m.float("Left").unwrap_or(0.) as f32,
         m.float("Top").unwrap_or(0.) as f32,
@@ -176,46 +190,77 @@ fn margin(p: &props::PropList) -> [f32; 4] {
 /// history types deliberately remain unresolved instead of becoming made-up
 /// labels.
 fn ftext_source(value: Option<&PropValue>) -> Option<String> {
-    let PropValue::Raw(bytes) = value? else { return None };
+    let PropValue::Raw(bytes) = value? else {
+        return None;
+    };
     let mut reader = Reader::new(bytes);
     let _flags = reader.u32().ok()?;
-    if reader.u8().ok()? as i8 != 0 { return None; }
+    if reader.u8().ok()? as i8 != 0 {
+        return None;
+    }
     let _namespace = reader.fstring().ok()?;
     let _key = reader.fstring().ok()?;
     reader.fstring().ok()
 }
 
 fn named_props(pkg: &Package, package: &str, name: &str) -> Result<props::PropList, String> {
-    let index = pkg.exports.iter().position(|e| e.object_name == name)
+    let index = pkg
+        .exports
+        .iter()
+        .position(|e| e.object_name == name)
         .ok_or_else(|| format!("{package}: missing widget export {name}"))?;
     export_props(pkg, index)
 }
 
 fn export_name(pkg: &Package, object: i32) -> Option<String> {
-    if object <= 0 { return None; }
-    pkg.exports.get(object as usize - 1).map(|e| e.object_name.clone())
+    if object <= 0 {
+        return None;
+    }
+    pkg.exports
+        .get(object as usize - 1)
+        .map(|e| e.object_name.clone())
 }
 
 fn object_indices(values: Option<&Vec<PropValue>>) -> Vec<usize> {
-    values.into_iter().flatten().filter_map(|v| match v {
-        PropValue::Object(i) if *i > 0 => Some(*i as usize - 1),
-        _ => None,
-    }).collect()
+    values
+        .into_iter()
+        .flatten()
+        .filter_map(|v| match v {
+            PropValue::Object(i) if *i > 0 => Some(*i as usize - 1),
+            _ => None,
+        })
+        .collect()
 }
 
 fn brush_resource(pkg: &Package, p: &props::PropList) -> (Option<String>, Option<[f32; 2]>) {
     for name in ["Brush", "IconBrush", "Background"] {
-        let Some(b) = p.fields(name) else { continue; };
-        let resource = b.object("ResourceObject").and_then(|i| object_path(pkg, Some(&PropValue::Object(i))));
-        let size = match b.get("ImageSize") { Some(PropValue::Vec2(v)) => Some(*v), _ => None };
-        if resource.is_some() || size.is_some() { return (resource, size); }
+        let Some(b) = p.fields(name) else {
+            continue;
+        };
+        let resource = b
+            .object("ResourceObject")
+            .and_then(|i| object_path(pkg, Some(&PropValue::Object(i))));
+        let size = match b.get("ImageSize") {
+            Some(PropValue::Vec2(v)) => Some(*v),
+            _ => None,
+        };
+        if resource.is_some() || size.is_some() {
+            return (resource, size);
+        }
     }
     (None, None)
 }
 
-fn slate_brush(pkg: &Package, p: &props::PropList, field: &str) -> Result<CookedSlateBrush, String> {
-    let brush = p.fields(field).ok_or_else(|| format!("missing {field} SlateBrush"))?;
-    let resource = brush.object("ResourceObject")
+fn slate_brush(
+    pkg: &Package,
+    p: &props::PropList,
+    field: &str,
+) -> Result<CookedSlateBrush, String> {
+    let brush = p
+        .fields(field)
+        .ok_or_else(|| format!("missing {field} SlateBrush"))?;
+    let resource = brush
+        .object("ResourceObject")
         .and_then(|i| object_path(pkg, Some(&PropValue::Object(i))))
         .ok_or_else(|| format!("{field}: SlateBrush has no ResourceObject"))?;
     let image_size = match brush.get("ImageSize") {
@@ -223,62 +268,112 @@ fn slate_brush(pkg: &Package, p: &props::PropList, field: &str) -> Result<Cooked
         _ => return Err(format!("{field}: SlateBrush has no ImageSize")),
     };
     let margin = [
-        brush.fields("Margin").and_then(|m| m.float("Left")).unwrap_or(0.) as f32,
-        brush.fields("Margin").and_then(|m| m.float("Top")).unwrap_or(0.) as f32,
-        brush.fields("Margin").and_then(|m| m.float("Right")).unwrap_or(0.) as f32,
-        brush.fields("Margin").and_then(|m| m.float("Bottom")).unwrap_or(0.) as f32,
+        brush
+            .fields("Margin")
+            .and_then(|m| m.float("Left"))
+            .unwrap_or(0.) as f32,
+        brush
+            .fields("Margin")
+            .and_then(|m| m.float("Top"))
+            .unwrap_or(0.) as f32,
+        brush
+            .fields("Margin")
+            .and_then(|m| m.float("Right"))
+            .unwrap_or(0.) as f32,
+        brush
+            .fields("Margin")
+            .and_then(|m| m.float("Bottom"))
+            .unwrap_or(0.) as f32,
     ];
     let draw_as = brush.text("DrawAs").unwrap_or_default().to_owned();
-    Ok(CookedSlateBrush { resource, image_size, margin, draw_as })
+    Ok(CookedSlateBrush {
+        resource,
+        image_size,
+        margin,
+        draw_as,
+    })
 }
 
 /// Reads an actual `UCommonButtonStyle` CDO from the supplied 1.8 install.
 /// The `style_path` may include an object suffix (`.ButtonStyle-..._C`), which
 /// is stripped because UE stores style class and CDO in its package.
 pub fn read_button_style(install: &Path, style_path: &str) -> Result<CookedButtonStyle, String> {
-    let package = style_path.split_once('.').map(|(package, _)| package).unwrap_or(style_path);
+    let package = style_path
+        .split_once('.')
+        .map(|(package, _)| package)
+        .unwrap_or(style_path);
     let set = fn_pak::PakSet::open_install(install).map_err(|e| e.to_string())?;
     let pkg = read_package(&set, package)?;
-    let cdo = pkg.exports.iter().position(|e| e.object_name.starts_with("Default__"))
+    let cdo = pkg
+        .exports
+        .iter()
+        .position(|e| e.object_name.starts_with("Default__"))
         .ok_or_else(|| format!("{package}: no style CDO"))?;
     let p = export_props(&pkg, cdo)?;
     Ok(CookedButtonStyle {
         path: style_path.to_owned(),
-        min_size: [p.float("MinWidth").unwrap_or(0.) as f32, p.float("MinHeight").unwrap_or(0.) as f32],
+        min_size: [
+            p.float("MinWidth").unwrap_or(0.) as f32,
+            p.float("MinHeight").unwrap_or(0.) as f32,
+        ],
         normal: slate_brush(&pkg, &p, "NormalBase")?,
         hovered: slate_brush(&pkg, &p, "NormalHovered")?,
         pressed: slate_brush(&pkg, &p, "NormalPressed")?,
         selected: slate_brush(&pkg, &p, "SelectedBase")?,
         disabled: slate_brush(&pkg, &p, "Disabled")?,
-        normal_text_style: p.object("NormalTextStyle").and_then(|i| object_path(&pkg, Some(&PropValue::Object(i)))),
-        selected_text_style: p.object("SelectedTextStyle").and_then(|i| object_path(&pkg, Some(&PropValue::Object(i)))),
+        normal_text_style: p
+            .object("NormalTextStyle")
+            .and_then(|i| object_path(&pkg, Some(&PropValue::Object(i)))),
+        selected_text_style: p
+            .object("SelectedTextStyle")
+            .and_then(|i| object_path(&pkg, Some(&PropValue::Object(i)))),
     })
 }
 
 /// Decodes `AthenaLobby.WidgetTree.AllWidgets` and each panel's `Slots`
 /// directly from the 1.8 UMG package. No names, child order, or hierarchy are
 /// duplicated as a Rust constant.
-pub fn read_widget_tree(install: &Path, package: &str, tree_name: &str) -> Result<AthenaLobbyWidgetTree, String> {
+pub fn read_widget_tree(
+    install: &Path,
+    package: &str,
+    tree_name: &str,
+) -> Result<AthenaLobbyWidgetTree, String> {
     let set = fn_pak::PakSet::open_install(install).map_err(|e| e.to_string())?;
     let pkg = read_package(&set, package)?;
     let tree = named_props(&pkg, package, tree_name)?;
-    let root = tree.object("RootWidget").and_then(|i| export_name(&pkg, i))
+    let root = tree
+        .object("RootWidget")
+        .and_then(|i| export_name(&pkg, i))
         .ok_or_else(|| format!("{package}: {tree_name} has no RootWidget"))?;
     let mut widgets = Vec::new();
     for index in object_indices(tree.array("AllWidgets")) {
-        let name = pkg.exports.get(index).ok_or_else(|| format!("{package}: AllWidgets refers outside the export table"))?.object_name.clone();
+        let name = pkg
+            .exports
+            .get(index)
+            .ok_or_else(|| format!("{package}: AllWidgets refers outside the export table"))?
+            .object_name
+            .clone();
         let p = export_props(&pkg, index)?;
         let mut children = Vec::new();
         for slot in object_indices(p.array("Slots")) {
             let slot_props = export_props(&pkg, slot)?;
-            if let Some(child) = slot_props.object("Content").and_then(|i| export_name(&pkg, i)) {
+            if let Some(child) = slot_props
+                .object("Content")
+                .and_then(|i| export_name(&pkg, i))
+            {
                 children.push(child);
             }
         }
         let class_index = pkg.exports[index].class_index;
-        let class_path = (class_index < 0).then(|| pkg.import_path(class_index))
+        let class_path = (class_index < 0)
+            .then(|| pkg.import_path(class_index))
             .filter(|path| path.starts_with("/Game/"));
-        widgets.push(AthenaLobbyWidget { name, class: pkg.export_class(index).to_owned(), class_path, children });
+        widgets.push(AthenaLobbyWidget {
+            name,
+            class: pkg.export_class(index).to_owned(),
+            class_path,
+            children,
+        });
     }
     Ok(AthenaLobbyWidgetTree { root, widgets })
 }
@@ -305,19 +400,30 @@ pub fn read_athena_tab_registrations(install: &Path) -> Result<Vec<AthenaTabRegi
     let p = named_props(&pkg, ATHENA_TABS_SCREEN, "TopTabList")?;
     let mut tabs = Vec::new();
     for value in p.array("PreregisteredTabInfoArray").into_iter().flatten() {
-        let PropValue::Struct { fields, .. } = value else { continue };
-        let Some(id) = fields.text("TabNameId") else { continue };
-        let label = fields.fields("TabLabelInfo")
+        let PropValue::Struct { fields, .. } = value else {
+            continue;
+        };
+        let Some(id) = fields.text("TabNameId") else {
+            continue;
+        };
+        let label = fields
+            .fields("TabLabelInfo")
             .and_then(|label| ftext_source(label.get("DisplayName")))
             .unwrap_or_default();
         tabs.push(AthenaTabRegistration {
             id: id.to_owned(),
             label,
             hidden: fields.bool("bHidden").unwrap_or(false),
-            content_class: fields.object("TabContentType").and_then(|object| object_path(&pkg, Some(&PropValue::Object(object)))),
+            content_class: fields
+                .object("TabContentType")
+                .and_then(|object| object_path(&pkg, Some(&PropValue::Object(object)))),
         });
     }
-    if tabs.is_empty() { return Err(format!("{ATHENA_TABS_SCREEN}.TopTabList has no serialized tab registrations")); }
+    if tabs.is_empty() {
+        return Err(format!(
+            "{ATHENA_TABS_SCREEN}.TopTabList has no serialized tab registrations"
+        ));
+    }
     Ok(tabs)
 }
 
@@ -325,44 +431,74 @@ pub fn read_athena_tab_registrations(install: &Path) -> Result<Vec<AthenaTabRegi
 /// serialized on the root UMG tree.  This deliberately derives package names
 /// from the cooked references (`Foo.Foo_C -> Foo`) instead of carrying a
 /// duplicate list of PlayerPanel/Matchmaking/Quest packages in Rust.
-pub fn read_athena_lobby_child_widget_trees(install: &Path) -> Result<Vec<(String, AthenaLobbyWidgetTree)>, String> {
+pub fn read_athena_lobby_child_widget_trees(
+    install: &Path,
+) -> Result<Vec<(String, AthenaLobbyWidgetTree)>, String> {
     let root = read_athena_lobby_widget_tree(install)?;
-    root.widgets.into_iter().filter_map(|widget| {
-        let class_path = widget.class_path?;
-        let (package, object) = class_path.rsplit_once('.')?;
-        object.ends_with("_C").then_some((widget.name, package.to_owned()))
-    }).map(|(name, package)| read_widget_tree(install, &package, "WidgetTree").map(|tree| (name, tree)))
+    root.widgets
+        .into_iter()
+        .filter_map(|widget| {
+            let class_path = widget.class_path?;
+            let (package, object) = class_path.rsplit_once('.')?;
+            object
+                .ends_with("_C")
+                .then_some((widget.name, package.to_owned()))
+        })
+        .map(|(name, package)| {
+            read_widget_tree(install, &package, "WidgetTree").map(|tree| (name, tree))
+        })
         .collect()
 }
 
 fn class_path(pkg: &Package, export: usize) -> Option<String> {
     let index = pkg.exports.get(export)?.class_index;
-    (index < 0).then(|| pkg.import_path(index)).filter(|path| path.starts_with("/Game/"))
+    (index < 0)
+        .then(|| pkg.import_path(index))
+        .filter(|path| path.starts_with("/Game/"))
 }
 
-fn node_from_export(set: &fn_pak::PakSet, pkg: &Package, index: usize, depth: usize) -> Result<CookedWidgetNode, String> {
-    if depth > 32 { return Err("UMG Blueprint nesting exceeds 32 levels".into()); }
-    let export = pkg.exports.get(index).ok_or("UMG node outside export table")?;
+fn node_from_export(
+    set: &fn_pak::PakSet,
+    pkg: &Package,
+    index: usize,
+    depth: usize,
+) -> Result<CookedWidgetNode, String> {
+    if depth > 32 {
+        return Err("UMG Blueprint nesting exceeds 32 levels".into());
+    }
+    let export = pkg
+        .exports
+        .get(index)
+        .ok_or("UMG node outside export table")?;
     let p = export_props(pkg, index)?;
     let class_path = class_path(pkg, index);
     let (brush_resource, brush_size) = brush_resource(pkg, &p);
-    let slot = p.object("Slot").and_then(|slot| (slot > 0).then_some(slot as usize - 1));
-    let (padding, horizontal_alignment, vertical_alignment, slot_size_rule, slot_size_value) = match slot {
-        Some(slot) => {
-            let slot_props = export_props(pkg, slot)?;
-            let (rule, value) = slot_props.fields("Size").map(|size| {
-                (size.text("SizeRule").map(str::to_owned), size.float("Value").map(|value| value as f32))
-            }).unwrap_or((None, None));
-            (
-                margin(&slot_props),
-                slot_props.text("HorizontalAlignment").map(str::to_owned),
-                slot_props.text("VerticalAlignment").map(str::to_owned),
-                rule,
-                value,
-            )
-        }
-        None => ([0.; 4], None, None, None, None),
-    };
+    let slot = p
+        .object("Slot")
+        .and_then(|slot| (slot > 0).then_some(slot as usize - 1));
+    let (padding, horizontal_alignment, vertical_alignment, slot_size_rule, slot_size_value) =
+        match slot {
+            Some(slot) => {
+                let slot_props = export_props(pkg, slot)?;
+                let (rule, value) = slot_props
+                    .fields("Size")
+                    .map(|size| {
+                        (
+                            size.text("SizeRule").map(str::to_owned),
+                            size.float("Value").map(|value| value as f32),
+                        )
+                    })
+                    .unwrap_or((None, None));
+                (
+                    margin(&slot_props),
+                    slot_props.text("HorizontalAlignment").map(str::to_owned),
+                    slot_props.text("VerticalAlignment").map(str::to_owned),
+                    rule,
+                    value,
+                )
+            }
+            None => ([0.; 4], None, None, None, None),
+        };
     let mut children = Vec::new();
     for slot in object_indices(p.array("Slots")) {
         let props = export_props(pkg, slot)?;
@@ -379,7 +515,12 @@ fn node_from_export(set: &fn_pak::PakSet, pkg: &Package, index: usize, depth: us
                     let child_pkg = read_package(set, package)?;
                     if let Ok(tree) = named_props(&child_pkg, package, "WidgetTree") {
                         if let Some(root) = tree.object("RootWidget").filter(|value| *value > 0) {
-                            children.push(node_from_export(set, &child_pkg, root as usize - 1, depth + 1)?);
+                            children.push(node_from_export(
+                                set,
+                                &child_pkg,
+                                root as usize - 1,
+                                depth + 1,
+                            )?);
                         }
                     }
                 }
@@ -388,19 +529,27 @@ fn node_from_export(set: &fn_pak::PakSet, pkg: &Package, index: usize, depth: us
     }
     Ok(CookedWidgetNode {
         name: export.object_name.clone(),
-        class: pkg.export_class(index), class_path,
+        class: pkg.export_class(index),
+        class_path,
         visibility: p.text("Visibility").map(str::to_owned),
-        padding, horizontal_alignment, vertical_alignment,
+        padding,
+        horizontal_alignment,
+        vertical_alignment,
         // CommonButtonBase calls this `Style`; FortTabListWidgetBase calls
         // the same class reference `ButtonStyle`.
-        style: p.object("Style").or_else(|| p.object("ButtonStyle"))
+        style: p
+            .object("Style")
+            .or_else(|| p.object("ButtonStyle"))
             .and_then(|style| object_path(pkg, Some(&PropValue::Object(style)))),
-        slot_size_rule, slot_size_value,
+        slot_size_rule,
+        slot_size_value,
         width_override: p.float("WidthOverride").map(|value| value as f32),
         height_override: p.float("HeightOverride").map(|value| value as f32),
         min_desired_width: p.float("MinDesiredWidth").map(|value| value as f32),
         min_desired_height: p.float("MinDesiredHeight").map(|value| value as f32),
-        brush_resource, brush_size, children,
+        brush_resource,
+        brush_size,
+        children,
     })
 }
 
@@ -411,19 +560,28 @@ pub fn read_athena_lobby_widget_graph(install: &Path) -> Result<CookedWidgetNode
     let set = fn_pak::PakSet::open_install(install).map_err(|error| error.to_string())?;
     let pkg = read_package(&set, ATHENA_LOBBY_WIDGET)?;
     let tree = named_props(&pkg, ATHENA_LOBBY_WIDGET, "WidgetTree")?;
-    let root = tree.object("RootWidget").filter(|value| *value > 0)
+    let root = tree
+        .object("RootWidget")
+        .filter(|value| *value > 0)
         .ok_or_else(|| format!("{ATHENA_LOBBY_WIDGET}: WidgetTree has no root"))?;
     node_from_export(&set, &pkg, root as usize - 1, 0)
 }
 
 /// Reads direct brush/style state for every widget in a cooked WidgetTree.
-pub fn read_widget_visuals(install: &Path, package: &str, tree_name: &str) -> Result<Vec<CookedWidgetVisual>, String> {
+pub fn read_widget_visuals(
+    install: &Path,
+    package: &str,
+    tree_name: &str,
+) -> Result<Vec<CookedWidgetVisual>, String> {
     let set = fn_pak::PakSet::open_install(install).map_err(|e| e.to_string())?;
     let pkg = read_package(&set, package)?;
     let tree = named_props(&pkg, package, tree_name)?;
     let mut out = Vec::new();
     for index in object_indices(tree.array("AllWidgets")) {
-        let export = pkg.exports.get(index).ok_or_else(|| format!("{package}: AllWidgets refers outside the export table"))?;
+        let export = pkg
+            .exports
+            .get(index)
+            .ok_or_else(|| format!("{package}: AllWidgets refers outside the export table"))?;
         let p = export_props(&pkg, index)?;
         let (brush_resource, brush_size) = brush_resource(&pkg, &p);
         out.push(CookedWidgetVisual {
@@ -432,7 +590,9 @@ pub fn read_widget_visuals(install: &Path, package: &str, tree_name: &str) -> Re
             visibility: p.text("Visibility").map(str::to_owned),
             brush_resource,
             brush_size,
-            style: p.object("Style").or_else(|| p.object("ButtonStyle"))
+            style: p
+                .object("Style")
+                .or_else(|| p.object("ButtonStyle"))
                 .and_then(|i| object_path(&pkg, Some(&PropValue::Object(i)))),
         });
     }
@@ -444,7 +604,11 @@ pub fn read_widget_visuals(install: &Path, package: &str, tree_name: &str) -> Re
 /// for the Athena player panel: its `CommonBorder_0` is an archetype child,
 /// but its `Background` is still the authoritative cooked visual and must not
 /// be replaced by a locally selected fill colour.
-pub fn read_named_widget_brush(install: &Path, package: &str, name: &str) -> Result<CookedSlateBrush, String> {
+pub fn read_named_widget_brush(
+    install: &Path,
+    package: &str,
+    name: &str,
+) -> Result<CookedSlateBrush, String> {
     let set = fn_pak::PakSet::open_install(install).map_err(|e| e.to_string())?;
     let pkg = read_package(&set, package)?;
     let p = named_props(&pkg, package, name)?;
@@ -454,10 +618,17 @@ pub fn read_named_widget_brush(install: &Path, package: &str, name: &str) -> Res
 /// Reads the serialized `USizeBox` measurements for a named widget.  Values
 /// remain optional because a missing override is meaningfully different from
 /// an authored zero.  This does not apply layout defaults on behalf of UE.
-pub fn read_named_widget_node(install: &Path, package: &str, name: &str) -> Result<CookedWidgetNode, String> {
+pub fn read_named_widget_node(
+    install: &Path,
+    package: &str,
+    name: &str,
+) -> Result<CookedWidgetNode, String> {
     let set = fn_pak::PakSet::open_install(install).map_err(|e| e.to_string())?;
     let pkg = read_package(&set, package)?;
-    let index = pkg.exports.iter().position(|export| export.object_name == name)
+    let index = pkg
+        .exports
+        .iter()
+        .position(|export| export.object_name == name)
         .ok_or_else(|| format!("{package}: missing widget export {name}"))?;
     node_from_export(&set, &pkg, index, 0)
 }
@@ -473,19 +644,37 @@ pub fn read_athena_lobby_root_layout(install: &Path) -> Result<AthenaLobbyRootLa
     let season = named_props(&pkg, ATHENA_LOBBY_WIDGET, "OverlaySlot_1")?;
     let player = named_props(&pkg, ATHENA_LOBBY_WIDGET, "OverlaySlot_6")?;
     let launch = named_props(&pkg, ATHENA_LOBBY_WIDGET, "OverlaySlot_3")?;
-    let content = |p: &props::PropList| p.object("Content")
-        .and_then(|i| object_path(&pkg, Some(&PropValue::Object(i))));
+    let content = |p: &props::PropList| {
+        p.object("Content")
+            .and_then(|i| object_path(&pkg, Some(&PropValue::Object(i))))
+    };
     let season_content = content(&season);
-    if season_content.as_deref().map(|v| !v.contains("SeasonAndChallengesPanel")).unwrap_or(true) {
+    if season_content
+        .as_deref()
+        .map(|v| !v.contains("SeasonAndChallengesPanel"))
+        .unwrap_or(true)
+    {
         return Err(format!("{ATHENA_LOBBY_WIDGET}: OverlaySlot_1 is not SeasonAndChallengesPanel ({season_content:?})"));
     }
     let player_content = content(&player);
-    if player_content.as_deref().map(|v| !v.contains("PlayerPanel")).unwrap_or(true) {
-        return Err(format!("{ATHENA_LOBBY_WIDGET}: OverlaySlot_6 is not PlayerPanel ({player_content:?})"));
+    if player_content
+        .as_deref()
+        .map(|v| !v.contains("PlayerPanel"))
+        .unwrap_or(true)
+    {
+        return Err(format!(
+            "{ATHENA_LOBBY_WIDGET}: OverlaySlot_6 is not PlayerPanel ({player_content:?})"
+        ));
     }
     let launch_content = content(&launch);
-    if launch_content.as_deref().map(|v| !v.ends_with("Launch")).unwrap_or(true) {
-        return Err(format!("{ATHENA_LOBBY_WIDGET}: OverlaySlot_3 is not Launch ({launch_content:?})"));
+    if launch_content
+        .as_deref()
+        .map(|v| !v.ends_with("Launch"))
+        .unwrap_or(true)
+    {
+        return Err(format!(
+            "{ATHENA_LOBBY_WIDGET}: OverlaySlot_3 is not Launch ({launch_content:?})"
+        ));
     }
     Ok(AthenaLobbyRootLayout {
         season_padding: margin(&season),
@@ -535,20 +724,36 @@ impl ExeDefaults {
     pub fn get() -> &'static ExeDefaults {
         static CELL: std::sync::OnceLock<ExeDefaults> = std::sync::OnceLock::new();
         CELL.get_or_init(|| {
-            let root: serde_json::Value = serde_json::from_str(EXE_DEFAULTS_JSON).expect("exe-defaults.json");
+            let root: serde_json::Value =
+                serde_json::from_str(EXE_DEFAULTS_JSON).expect("exe-defaults.json");
             let mut pps = HashMap::new();
-            if let Some(fields) = root.pointer("/post_process_settings/fields").and_then(|f| f.as_array()) {
+            if let Some(fields) = root
+                .pointer("/post_process_settings/fields")
+                .and_then(|f| f.as_array())
+            {
                 for f in fields {
-                    if let (Some(n), Some(v)) = (f.get("name").and_then(|n| n.as_str()), f.get("value").and_then(json_floats)) { pps.insert(n.to_owned(), v); }
+                    if let (Some(n), Some(v)) = (
+                        f.get("name").and_then(|n| n.as_str()),
+                        f.get("value").and_then(json_floats),
+                    ) {
+                        pps.insert(n.to_owned(), v);
+                    }
                 }
             }
             let mut classes = HashMap::new();
             if let Some(obj) = root.as_object() {
                 for (class, v) in obj {
-                    let Some(defs) = v.get("defaults").and_then(|d| d.as_array()) else { continue };
+                    let Some(defs) = v.get("defaults").and_then(|d| d.as_array()) else {
+                        continue;
+                    };
                     let mut m = HashMap::new();
                     for d in defs {
-                        if let (Some(n), Some(val)) = (d.get("name").and_then(|n| n.as_str()), d.get("value").and_then(json_floats)) { m.insert(n.to_owned(), val); }
+                        if let (Some(n), Some(val)) = (
+                            d.get("name").and_then(|n| n.as_str()),
+                            d.get("value").and_then(json_floats),
+                        ) {
+                            m.insert(n.to_owned(), val);
+                        }
                     }
                     classes.insert(class.clone(), m);
                 }
@@ -557,10 +762,22 @@ impl ExeDefaults {
         })
     }
     /// `FPostProcessSettings` constructor value of `field` (floats of the field; colours as 4 floats).
-    pub fn pps(&self, field: &str) -> Option<&[f32]> { self.pps.get(field).map(|v| v.as_slice()) }
-    pub fn pps1(&self, field: &str) -> f32 { self.pps(field).and_then(|v| v.first().copied()).unwrap_or(0.) }
-    pub fn class(&self, class: &str, field: &str) -> Option<&[f32]> { self.classes.get(class)?.get(field).map(|v| v.as_slice()) }
-    pub fn class1(&self, class: &str, field: &str) -> f32 { self.class(class, field).and_then(|v| v.first().copied()).unwrap_or(0.) }
+    pub fn pps(&self, field: &str) -> Option<&[f32]> {
+        self.pps.get(field).map(|v| v.as_slice())
+    }
+    pub fn pps1(&self, field: &str) -> f32 {
+        self.pps(field)
+            .and_then(|v| v.first().copied())
+            .unwrap_or(0.)
+    }
+    pub fn class(&self, class: &str, field: &str) -> Option<&[f32]> {
+        self.classes.get(class)?.get(field).map(|v| v.as_slice())
+    }
+    pub fn class1(&self, class: &str, field: &str) -> f32 {
+        self.class(class, field)
+            .and_then(|v| v.first().copied())
+            .unwrap_or(0.)
+    }
 }
 
 /// Constructor defaults of `UPointLightComponent` / `USpotLightComponent` recovered from the 1.8 exe with
@@ -579,7 +796,11 @@ pub mod point_defaults {
 
 /// UE `FRotator::Quaternion()` for a serialized `(Pitch, Yaw, Roll)` in degrees.
 pub fn rotator_quat(pyr_deg: [f32; 3]) -> Quat {
-    let (pitch, yaw, roll) = (pyr_deg[0].to_radians() * 0.5, pyr_deg[1].to_radians() * 0.5, pyr_deg[2].to_radians() * 0.5);
+    let (pitch, yaw, roll) = (
+        pyr_deg[0].to_radians() * 0.5,
+        pyr_deg[1].to_radians() * 0.5,
+        pyr_deg[2].to_radians() * 0.5,
+    );
     let (sp, cp) = pitch.sin_cos();
     let (sy, cy) = yaw.sin_cos();
     let (sr, cr) = roll.sin_cos();
@@ -593,18 +814,42 @@ pub fn rotator_quat(pyr_deg: [f32; 3]) -> Quat {
 
 /// An `FTransform` in UE space (centimetres, left-handed X forward / Y right / Z up).
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Xf { pub t: Vec3, pub q: Quat, pub s: Vec3 }
+pub struct Xf {
+    pub t: Vec3,
+    pub q: Quat,
+    pub s: Vec3,
+}
 impl Xf {
-    pub const IDENTITY: Xf = Xf { t: Vec3::ZERO, q: Quat::IDENTITY, s: Vec3::ONE };
-    pub fn from_pyr(loc: [f32; 3], pyr: [f32; 3], scale: [f32; 3]) -> Xf { Xf { t: Vec3::from(loc), q: rotator_quat(pyr), s: Vec3::from(scale) } }
+    pub const IDENTITY: Xf = Xf {
+        t: Vec3::ZERO,
+        q: Quat::IDENTITY,
+        s: Vec3::ONE,
+    };
+    pub fn from_pyr(loc: [f32; 3], pyr: [f32; 3], scale: [f32; 3]) -> Xf {
+        Xf {
+            t: Vec3::from(loc),
+            q: rotator_quat(pyr),
+            s: Vec3::from(scale),
+        }
+    }
     /// `FTransform::operator*(child, parent)` (the component-to-world step): scale, then rotate, then translate by the parent.
     pub fn compose(&self, parent: &Xf) -> Xf {
-        Xf { s: self.s * parent.s, q: parent.q * self.q, t: parent.q * (parent.s * self.t) + parent.t }
+        Xf {
+            s: self.s * parent.s,
+            q: parent.q * self.q,
+            t: parent.q * (parent.s * self.t) + parent.t,
+        }
     }
-    pub fn transform_point(&self, p: Vec3) -> Vec3 { self.q * (self.s * p) + self.t }
-    pub fn matrix(&self) -> Mat4 { Mat4::from_scale_rotation_translation(self.s, self.q, self.t) }
+    pub fn transform_point(&self, p: Vec3) -> Vec3 {
+        self.q * (self.s * p) + self.t
+    }
+    pub fn matrix(&self) -> Mat4 {
+        Mat4::from_scale_rotation_translation(self.s, self.q, self.t)
+    }
     /// Forward (+X) axis in world space.
-    pub fn forward(&self) -> Vec3 { self.q * Vec3::X }
+    pub fn forward(&self) -> Vec3 {
+        self.q * Vec3::X
+    }
     /// Rotation as a UE `FRotator` `(Pitch, Yaw, Roll)` in degrees (for reports).
     pub fn rotator_deg(&self) -> [f32; 3] {
         // FQuat::Rotator()
@@ -614,25 +859,46 @@ impl Xf {
         let yaw_x = 1.0 - 2.0 * (q.y * q.y + q.z * q.z);
         let (pitch, yaw, roll);
         if singularity < -0.4999995 {
-            pitch = -90.0; yaw = yaw_y.atan2(yaw_x).to_degrees();
+            pitch = -90.0;
+            yaw = yaw_y.atan2(yaw_x).to_degrees();
             roll = -(yaw - 2.0 * q.x.atan2(q.w).to_degrees()).rem_euclid(360.0);
         } else if singularity > 0.4999995 {
-            pitch = 90.0; yaw = yaw_y.atan2(yaw_x).to_degrees();
+            pitch = 90.0;
+            yaw = yaw_y.atan2(yaw_x).to_degrees();
             roll = (yaw - 2.0 * q.x.atan2(q.w).to_degrees()).rem_euclid(360.0);
         } else {
             pitch = (2.0 * singularity).asin().to_degrees();
             yaw = yaw_y.atan2(yaw_x).to_degrees();
-            roll = (-2.0 * (q.w * q.x + q.y * q.z)).atan2(1.0 - 2.0 * (q.x * q.x + q.y * q.y)).to_degrees();
+            roll = (-2.0 * (q.w * q.x + q.y * q.z))
+                .atan2(1.0 - 2.0 * (q.x * q.x + q.y * q.y))
+                .to_degrees();
         }
         [pitch, yaw, roll]
     }
 }
 
-fn pv_vec3(p: &PropList, name: &str) -> Option<[f32; 3]> { match p.get(name) { Some(PropValue::Vec3(v)) => Some(*v), _ => None } }
-fn pv_vec4(p: &PropList, name: &str) -> Option<[f32; 4]> { match p.get(name) { Some(PropValue::Vec4(v)) => Some(*v), _ => None } }
+fn pv_vec3(p: &PropList, name: &str) -> Option<[f32; 3]> {
+    match p.get(name) {
+        Some(PropValue::Vec3(v)) => Some(*v),
+        _ => None,
+    }
+}
+fn pv_vec4(p: &PropList, name: &str) -> Option<[f32; 4]> {
+    match p.get(name) {
+        Some(PropValue::Vec4(v)) => Some(*v),
+        _ => None,
+    }
+}
 /// `FColor` as `[r, g, b, a]` (the package stores B, G, R, A).
-fn pv_color(p: &PropList, name: &str) -> Option<[u8; 4]> { match p.get(name) { Some(PropValue::Color(c)) => Some([c[2], c[1], c[0], c[3]]), _ => None } }
-fn pv_f32(p: &PropList, name: &str) -> Option<f32> { p.float(name).map(|v| v as f32) }
+fn pv_color(p: &PropList, name: &str) -> Option<[u8; 4]> {
+    match p.get(name) {
+        Some(PropValue::Color(c)) => Some([c[2], c[1], c[0], c[3]]),
+        _ => None,
+    }
+}
+fn pv_f32(p: &PropList, name: &str) -> Option<f32> {
+    p.float(name).map(|v| v as f32)
+}
 
 /// A package with a lazily parsed property cache per export.
 struct PkgView {
@@ -642,50 +908,102 @@ struct PkgView {
 }
 impl PkgView {
     fn open(set: &fn_pak::PakSet, long: &str, map: bool) -> Result<PkgView, String> {
-        let rd = |ext: &str| set.read_game(long, ext).map(|b| b.into_owned()).unwrap_or_default();
+        let rd = |ext: &str| {
+            set.read_game(long, ext)
+                .map(|b| b.into_owned())
+                .unwrap_or_default()
+        };
         let header = rd(if map { "umap" } else { "uasset" });
-        if header.is_empty() { return Err(format!("{long}: not in the paks")); }
-        let pkg = Package::parse(&header, &rd("uexp"), &rd("ubulk")).map_err(|e| format!("{long}: {e}"))?;
-        Ok(PkgView { long: long.to_owned(), pkg, cache: RefCell::new(HashMap::new()) })
+        if header.is_empty() {
+            return Err(format!("{long}: not in the paks"));
+        }
+        let pkg = Package::parse(&header, &rd("uexp"), &rd("ubulk"))
+            .map_err(|e| format!("{long}: {e}"))?;
+        Ok(PkgView {
+            long: long.to_owned(),
+            pkg,
+            cache: RefCell::new(HashMap::new()),
+        })
     }
     fn props(&self, i: usize) -> Rc<PropList> {
-        if let Some(p) = self.cache.borrow().get(&i) { return p.clone(); }
+        if let Some(p) = self.cache.borrow().get(&i) {
+            return p.clone();
+        }
         let (start, end) = self.pkg.export_range(i);
-        let ctx = props::Ctx { names: &self.pkg.names, file_version: self.pkg.summary.file_version };
+        let ctx = props::Ctx {
+            names: &self.pkg.names,
+            file_version: self.pkg.summary.file_version,
+        };
         let list = if end <= self.pkg.data.len() && start <= end {
-            props::read_props(&mut Reader::at(&self.pkg.data[..end], start), &ctx).unwrap_or_default()
-        } else { PropList::default() };
+            props::read_props(&mut Reader::at(&self.pkg.data[..end], start), &ctx)
+                .unwrap_or_default()
+        } else {
+            PropList::default()
+        };
         let rc = Rc::new(list);
         self.cache.borrow_mut().insert(i, rc.clone());
         rc
     }
-    fn n(&self) -> usize { self.pkg.exports.len() }
-    fn name(&self, i: usize) -> &str { &self.pkg.exports[i].object_name }
-    fn class(&self, i: usize) -> String { self.pkg.export_class(i) }
+    fn n(&self) -> usize {
+        self.pkg.exports.len()
+    }
+    fn name(&self, i: usize) -> &str {
+        &self.pkg.exports[i].object_name
+    }
+    fn class(&self, i: usize) -> String {
+        self.pkg.export_class(i)
+    }
     /// Full class path (`/Game/..Pkg.Class_C` / `/Script/..`) of an export.
     fn class_path(&self, i: usize) -> Option<String> {
         let ci = self.pkg.exports[i].class_index;
-        if ci < 0 { Some(self.pkg.import_path(ci)).filter(|s| !s.is_empty()) } else { None }
+        if ci < 0 {
+            Some(self.pkg.import_path(ci)).filter(|s| !s.is_empty())
+        } else {
+            None
+        }
     }
     /// Export index (0-based) of an object reference into this same package.
     fn export_of(&self, v: Option<&PropValue>) -> Option<usize> {
-        match v { Some(PropValue::Object(i)) if *i > 0 && (*i as usize) <= self.n() => Some(*i as usize - 1), _ => None }
+        match v {
+            Some(PropValue::Object(i)) if *i > 0 && (*i as usize) <= self.n() => {
+                Some(*i as usize - 1)
+            }
+            _ => None,
+        }
     }
     /// Object path of any reference: `Pkg.Obj` for imports, the export's name for same-package objects.
-    fn path_of(&self, v: Option<&PropValue>) -> Option<String> { object_path(&self.pkg, v) }
-    fn soft_or_hard_path(&self, v: Option<&PropValue>) -> Option<String> {
-        match v { Some(PropValue::Str(s)) if !s.is_empty() => Some(s.clone()), _ => self.path_of(v) }
+    fn path_of(&self, v: Option<&PropValue>) -> Option<String> {
+        object_path(&self.pkg, v)
     }
-    fn owner(&self, i: usize) -> Option<usize> { let o = self.pkg.exports[i].outer_index; (o > 0).then(|| o as usize - 1) }
+    fn soft_or_hard_path(&self, v: Option<&PropValue>) -> Option<String> {
+        match v {
+            Some(PropValue::Str(s)) if !s.is_empty() => Some(s.clone()),
+            _ => self.path_of(v),
+        }
+    }
+    fn owner(&self, i: usize) -> Option<usize> {
+        let o = self.pkg.exports[i].outer_index;
+        (o > 0).then(|| o as usize - 1)
+    }
     fn children(&self, owner: usize) -> Vec<usize> {
-        (0..self.n()).filter(|&i| self.pkg.exports[i].outer_index == owner as i32 + 1).collect()
+        (0..self.n())
+            .filter(|&i| self.pkg.exports[i].outer_index == owner as i32 + 1)
+            .collect()
     }
 }
 
 /// `new` over `base`, property by property (instance values replace template values).
 fn overlay(base: &mut PropList, new: &PropList) {
     for p in &new.0 {
-        if let Some(b) = base.0.iter_mut().find(|b| b.name == p.name && b.array_index == p.array_index) { *b = p.clone(); } else { base.0.push(p.clone()); }
+        if let Some(b) = base
+            .0
+            .iter_mut()
+            .find(|b| b.name == p.name && b.array_index == p.array_index)
+        {
+            *b = p.clone();
+        } else {
+            base.0.push(p.clone());
+        }
     }
 }
 
@@ -701,49 +1019,89 @@ struct BpClass {
 }
 impl BpClass {
     fn find_template(&self, name: &str) -> Option<usize> {
-        if let Some(&t) = self.scs.get(name) { return Some(t); }
+        if let Some(&t) = self.scs.get(name) {
+            return Some(t);
+        }
         let gen = format!("{name}_GEN_VARIABLE");
         (0..self.view.n()).find(|&i| {
             let e = &self.view.pkg.exports[i];
-            (e.outer_index == self.class_export as i32 + 1 && e.object_name == gen) || self.cdo.is_some_and(|c| e.outer_index == c as i32 + 1 && e.object_name == name)
+            (e.outer_index == self.class_export as i32 + 1 && e.object_name == gen)
+                || self
+                    .cdo
+                    .is_some_and(|c| e.outer_index == c as i32 + 1 && e.object_name == name)
         })
     }
     /// Object references of a template point into the Blueprint's own package; the merged list must be package independent, so they become
     /// object path strings (`Pkg.Obj`), and `AttachParent` (an export of the Blueprint package) is dropped: the instance supplies it.
     fn localize(&self, p: &PropList) -> PropList {
-        PropList(p.0.iter().filter(|x| x.name != "AttachParent").map(|x| { let mut x = x.clone(); x.value = self.localize_value(&x.value); x }).collect())
+        PropList(
+            p.0.iter()
+                .filter(|x| x.name != "AttachParent")
+                .map(|x| {
+                    let mut x = x.clone();
+                    x.value = self.localize_value(&x.value);
+                    x
+                })
+                .collect(),
+        )
     }
     fn localize_value(&self, v: &PropValue) -> PropValue {
         match v {
             PropValue::Object(i) if *i < 0 => PropValue::Str(self.view.pkg.import_path(*i)),
-            PropValue::Object(i) if *i > 0 => PropValue::Str(format!("{}:{}", self.view.long, self.view.name(*i as usize - 1))),
-            PropValue::Array(a) => PropValue::Array(a.iter().map(|x| self.localize_value(x)).collect()),
-            PropValue::Struct { name, fields } => PropValue::Struct { name: name.clone(), fields: self.localize(fields) },
+            PropValue::Object(i) if *i > 0 => PropValue::Str(format!(
+                "{}:{}",
+                self.view.long,
+                self.view.name(*i as usize - 1)
+            )),
+            PropValue::Array(a) => {
+                PropValue::Array(a.iter().map(|x| self.localize_value(x)).collect())
+            }
+            PropValue::Struct { name, fields } => PropValue::Struct {
+                name: name.clone(),
+                fields: self.localize(fields),
+            },
             other => other.clone(),
         }
     }
     /// Template properties of component `name`, base class first, so a child class's override wins (`InheritableComponentHandler`).
     fn merged(&self, name: &str) -> PropList {
-        let mut out = match &self.parent { Some(p) => p.merged(name), None => PropList::default() };
-        if let Some(t) = self.find_template(name) { overlay(&mut out, &self.localize(&self.view.props(t))); }
+        let mut out = match &self.parent {
+            Some(p) => p.merged(name),
+            None => PropList::default(),
+        };
+        if let Some(t) = self.find_template(name) {
+            overlay(&mut out, &self.localize(&self.view.props(t)));
+        }
         out
     }
     /// `Default__X_C` properties merged down the chain (class defaults of the actor).
     fn cdo_props(&self) -> PropList {
-        let mut out = match &self.parent { Some(p) => p.cdo_props(), None => PropList::default() };
-        if let Some(c) = self.cdo { overlay(&mut out, &self.localize(&self.view.props(c))); }
+        let mut out = match &self.parent {
+            Some(p) => p.cdo_props(),
+            None => PropList::default(),
+        };
+        if let Some(c) = self.cdo {
+            overlay(&mut out, &self.localize(&self.view.props(c)));
+        }
         out
     }
     fn chain_names(&self) -> Vec<String> {
         let mut v = vec![self.view.long.clone()];
-        if let Some(p) = &self.parent { v.extend(p.chain_names()); }
+        if let Some(p) = &self.parent {
+            v.extend(p.chain_names());
+        }
         v
     }
 }
 
 /// One light of the lobby (UE units; `intensity` and colour as serialized / defaulted, see `ExeDefaults`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum LightKind { Directional, Point, Spot, Sky }
+pub enum LightKind {
+    Directional,
+    Point,
+    Spot,
+    Sky,
+}
 
 #[derive(Clone, Debug)]
 pub struct LightInst {
@@ -833,10 +1191,23 @@ pub struct StaticInst {
 }
 
 #[derive(Clone, Debug)]
-pub struct ParticleInst { pub actor: String, pub component: String, pub template: Option<String>, pub xf: Xf, pub visible: bool, pub auto_activate: bool }
+pub struct ParticleInst {
+    pub actor: String,
+    pub component: String,
+    pub template: Option<String>,
+    pub xf: Xf,
+    pub visible: bool,
+    pub auto_activate: bool,
+}
 
 #[derive(Clone, Debug)]
-pub struct SkeletalInst { pub actor: String, pub mesh: Option<String>, pub xf: Xf, pub materials: Vec<Option<String>>, pub note: String }
+pub struct SkeletalInst {
+    pub actor: String,
+    pub mesh: Option<String>,
+    pub xf: Xf,
+    pub materials: Vec<Option<String>>,
+    pub note: String,
+}
 
 #[derive(Clone, Debug)]
 pub struct CameraInfo {
@@ -918,9 +1289,21 @@ pub struct PostSettings {
     pub overridden: Vec<String>,
 }
 impl PostSettings {
-    pub fn get(&self, name: &str) -> &[f32] { self.f.get(name).map(|v| v.as_slice()).unwrap_or(&[]) }
-    pub fn f1(&self, name: &str) -> f32 { self.get(name).first().copied().unwrap_or(0.) }
-    pub fn v4(&self, name: &str) -> [f32; 4] { let v = self.get(name); [*v.first().unwrap_or(&1.), *v.get(1).unwrap_or(&1.), *v.get(2).unwrap_or(&1.), *v.get(3).unwrap_or(&1.)] }
+    pub fn get(&self, name: &str) -> &[f32] {
+        self.f.get(name).map(|v| v.as_slice()).unwrap_or(&[])
+    }
+    pub fn f1(&self, name: &str) -> f32 {
+        self.get(name).first().copied().unwrap_or(0.)
+    }
+    pub fn v4(&self, name: &str) -> [f32; 4] {
+        let v = self.get(name);
+        [
+            *v.first().unwrap_or(&1.),
+            *v.get(1).unwrap_or(&1.),
+            *v.get(2).unwrap_or(&1.),
+            *v.get(3).unwrap_or(&1.),
+        ]
+    }
 }
 
 /// What decides which lobby level the front end shows (all from the packages; see SCENE.md).
@@ -962,7 +1345,13 @@ pub struct LobbySceneData {
 }
 
 /// Actor property helper: the actor's own merged class defaults and instance values.
-struct ActorInfo { name: String, class: String, class_path: Option<String>, hidden: bool, bp: Option<Rc<BpClass>> }
+struct ActorInfo {
+    name: String,
+    class: String,
+    class_path: Option<String>,
+    hidden: bool,
+    bp: Option<Rc<BpClass>>,
+}
 
 struct MapReader<'a> {
     set: &'a fn_pak::PakSet,
@@ -974,30 +1363,61 @@ struct MapReader<'a> {
 
 impl<'a> MapReader<'a> {
     fn open(set: &'a fn_pak::PakSet, long: &str, offset: Vec3) -> Result<MapReader<'a>, String> {
-        Ok(MapReader { set, view: PkgView::open(set, long, true)?, offset, bps: RefCell::new(HashMap::new()), label: long.rsplit('/').next().unwrap_or(long).to_owned() })
+        Ok(MapReader {
+            set,
+            view: PkgView::open(set, long, true)?,
+            offset,
+            bps: RefCell::new(HashMap::new()),
+            label: long.rsplit('/').next().unwrap_or(long).to_owned(),
+        })
     }
 
     fn bp(&self, class_path: &str) -> Option<Rc<BpClass>> {
-        if !class_path.starts_with("/Game/") { return None; }
-        if let Some(c) = self.bps.borrow().get(class_path) { return c.clone(); }
+        if !class_path.starts_with("/Game/") {
+            return None;
+        }
+        if let Some(c) = self.bps.borrow().get(class_path) {
+            return c.clone();
+        }
         let r = self.load_bp(class_path);
-        self.bps.borrow_mut().insert(class_path.to_owned(), r.clone());
+        self.bps
+            .borrow_mut()
+            .insert(class_path.to_owned(), r.clone());
         r
     }
     fn load_bp(&self, class_path: &str) -> Option<Rc<BpClass>> {
         let (long, class_name) = class_path.split_once('.')?;
         let view = PkgView::open(self.set, long, false).ok()?;
-        let class_export = (0..view.n()).find(|&i| view.name(i) == class_name && view.class(i).ends_with("GeneratedClass"))?;
+        let class_export = (0..view.n())
+            .find(|&i| view.name(i) == class_name && view.class(i).ends_with("GeneratedClass"))?;
         let cdo = (0..view.n()).find(|&i| view.name(i) == format!("Default__{class_name}"));
         let sup = view.pkg.exports[class_export].super_index;
-        let parent = if sup < 0 { let p = view.pkg.import_path(sup); self.bp(&p) } else { None };
+        let parent = if sup < 0 {
+            let p = view.pkg.import_path(sup);
+            self.bp(&p)
+        } else {
+            None
+        };
         let mut scs = HashMap::new();
         for i in 0..view.n() {
-            if view.class(i) != "SCS_Node" { continue; }
+            if view.class(i) != "SCS_Node" {
+                continue;
+            }
             let p = view.props(i);
-            if let (Some(name), Some(t)) = (p.text("InternalVariableName"), view.export_of(p.get("ComponentTemplate"))) { scs.insert(name.to_owned(), t); }
+            if let (Some(name), Some(t)) = (
+                p.text("InternalVariableName"),
+                view.export_of(p.get("ComponentTemplate")),
+            ) {
+                scs.insert(name.to_owned(), t);
+            }
         }
-        Some(Rc::new(BpClass { view, class_export, cdo, parent, scs }))
+        Some(Rc::new(BpClass {
+            view,
+            class_export,
+            cdo,
+            parent,
+            scs,
+        }))
     }
 
     fn actor_info(&self, a: usize) -> ActorInfo {
@@ -1016,14 +1436,20 @@ impl<'a> MapReader<'a> {
     fn comp_props(&self, comp: usize) -> PropList {
         let mut out = PropList::default();
         if let Some(a) = self.view.owner(comp) {
-            if let Some(bp) = self.view.class_path(a).as_deref().and_then(|p| self.bp(p)) { out = bp.merged(self.view.name(comp)); }
+            if let Some(bp) = self.view.class_path(a).as_deref().and_then(|p| self.bp(p)) {
+                out = bp.merged(self.view.name(comp));
+            }
         }
         overlay(&mut out, &self.view.props(comp));
         out
     }
 
     fn rel_xf(p: &PropList) -> Xf {
-        Xf::from_pyr(pv_vec3(p, "RelativeLocation").unwrap_or([0.; 3]), pv_vec3(p, "RelativeRotation").unwrap_or([0.; 3]), pv_vec3(p, "RelativeScale3D").unwrap_or([1.; 3]))
+        Xf::from_pyr(
+            pv_vec3(p, "RelativeLocation").unwrap_or([0.; 3]),
+            pv_vec3(p, "RelativeRotation").unwrap_or([0.; 3]),
+            pv_vec3(p, "RelativeScale3D").unwrap_or([1.; 3]),
+        )
     }
 
     /// Component-to-world transform (centimetres), composed through `AttachParent`; the streaming-level offset is added at the chain's root.
@@ -1031,31 +1457,57 @@ impl<'a> MapReader<'a> {
         let mut chain = vec![];
         let mut cur = Some(comp);
         while let Some(c) = cur {
-            if chain.len() > 32 || chain.contains(&c) { break; }
+            if chain.len() > 32 || chain.contains(&c) {
+                break;
+            }
             chain.push(c);
             let p = self.comp_props(c);
             cur = self.view.export_of(p.get("AttachParent"));
         }
         let mut world = Xf::IDENTITY;
-        for &c in chain.iter().rev() { world = Self::rel_xf(&self.comp_props(c)).compose(&world); }
+        for &c in chain.iter().rev() {
+            world = Self::rel_xf(&self.comp_props(c)).compose(&world);
+        }
         world.t += self.offset;
         world
     }
 
     fn comp_visible(&self, p: &PropList, actor: &ActorInfo) -> bool {
-        p.bool("bVisible").unwrap_or(true) && !p.bool("bHiddenInGame").unwrap_or(false) && !actor.hidden
+        p.bool("bVisible").unwrap_or(true)
+            && !p.bool("bHiddenInGame").unwrap_or(false)
+            && !actor.hidden
     }
 
     fn is_actor(&self, i: usize) -> bool {
         let c = self.view.class(i);
-        !c.ends_with("Component") && !c.ends_with("Property") && !matches!(c.as_str(), "Function" | "Model" | "BodySetup" | "InterpGroup" | "InterpData" | "SCS_Node" | "SimpleConstructionScript")
+        !c.ends_with("Component")
+            && !c.ends_with("Property")
+            && !matches!(
+                c.as_str(),
+                "Function"
+                    | "Model"
+                    | "BodySetup"
+                    | "InterpGroup"
+                    | "InterpData"
+                    | "SCS_Node"
+                    | "SimpleConstructionScript"
+            )
             && self.view.pkg.exports[i].outer_index > 0
-            && self.view.class(self.view.pkg.exports[i].outer_index as usize - 1) == "Level"
+            && self
+                .view
+                .class(self.view.pkg.exports[i].outer_index as usize - 1)
+                == "Level"
     }
 }
 fn paths_of_array(view: &PkgView, v: Option<&PropValue>) -> Vec<Option<String>> {
     match v {
-        Some(PropValue::Array(a)) => a.iter().map(|x| match x { PropValue::Object(0) => None, other => view.soft_or_hard_path(Some(other)) }).collect(),
+        Some(PropValue::Array(a)) => a
+            .iter()
+            .map(|x| match x {
+                PropValue::Object(0) => None,
+                other => view.soft_or_hard_path(Some(other)),
+            })
+            .collect(),
         Some(other) => vec![view.soft_or_hard_path(Some(other))],
         None => vec![],
     }
@@ -1064,9 +1516,14 @@ fn paths_of_array(view: &PkgView, v: Option<&PropValue>) -> Vec<Option<String>> 
 fn blackbody_linear(temp_k: f32) -> [f32; 3] {
     // FLinearColor::MakeFromColorTemperature (UE 4.16 Color.cpp / LinearColor): Planckian locus approximation in CIE 1960 UCS, BT.709 primaries.
     let t = temp_k.clamp(1000., 15000.) as f64;
-    let u = (0.860117757 + 1.54118254e-4 * t + 1.28641212e-7 * t * t) / (1.0 + 8.42420235e-4 * t + 7.08145163e-7 * t * t);
-    let v = (0.317398726 + 4.22806245e-5 * t + 4.20481691e-8 * t * t) / (1.0 - 2.89741816e-5 * t + 1.61456053e-7 * t * t);
-    let (x, y) = (3. * u / (2. * u - 8. * v + 4.), 2. * v / (2. * u - 8. * v + 4.));
+    let u = (0.860117757 + 1.54118254e-4 * t + 1.28641212e-7 * t * t)
+        / (1.0 + 8.42420235e-4 * t + 7.08145163e-7 * t * t);
+    let v = (0.317398726 + 4.22806245e-5 * t + 4.20481691e-8 * t * t)
+        / (1.0 - 2.89741816e-5 * t + 1.61456053e-7 * t * t);
+    let (x, y) = (
+        3. * u / (2. * u - 8. * v + 4.),
+        2. * v / (2. * u - 8. * v + 4.),
+    );
     let z = 1. - x - y;
     let (cx, cy, cz) = (1. / y * x, 1.0, 1. / y * z);
     [
@@ -1079,17 +1536,41 @@ fn blackbody_linear(temp_k: f32) -> [f32; 3] {
 impl LightInst {
     /// Linear light colour: `LightColor` (sRGB FColor to linear) times the black-body colour when `bUseTemperature`.
     pub fn linear_color(&self) -> [f32; 3] {
-        let lin = |c: u8| { let c = c as f32 / 255.; if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) } };
-        let mut c = [lin(self.color_srgb[0]), lin(self.color_srgb[1]), lin(self.color_srgb[2])];
-        if self.use_temperature { let b = blackbody_linear(self.temperature); for i in 0..3 { c[i] *= b[i]; } }
+        let lin = |c: u8| {
+            let c = c as f32 / 255.;
+            if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        let mut c = [
+            lin(self.color_srgb[0]),
+            lin(self.color_srgb[1]),
+            lin(self.color_srgb[2]),
+        ];
+        if self.use_temperature {
+            let b = blackbody_linear(self.temperature);
+            for i in 0..3 {
+                c[i] *= b[i];
+            }
+        }
         c
     }
 }
 
 impl<'a> MapReader<'a> {
-    fn actors(&self) -> Vec<usize> { (0..self.view.n()).filter(|&i| self.is_actor(i)).collect() }
+    fn actors(&self) -> Vec<usize> {
+        (0..self.view.n()).filter(|&i| self.is_actor(i)).collect()
+    }
 
-    fn light_from(&self, kind: LightKind, actor: &ActorInfo, comp: usize, p: &PropList) -> LightInst {
+    fn light_from(
+        &self,
+        kind: LightKind,
+        actor: &ActorInfo,
+        comp: usize,
+        p: &PropList,
+    ) -> LightInst {
         let d = ExeDefaults::get();
         let (dir, sky) = ("UDirectionalLightComponent", "USkyLightComponent");
         let intensity = pv_f32(p, "Intensity").unwrap_or(match kind {
@@ -1109,17 +1590,26 @@ impl<'a> MapReader<'a> {
             color_srgb: [color[0], color[1], color[2]],
             use_temperature: p.bool("bUseTemperature").unwrap_or(false),
             temperature: pv_f32(p, "Temperature").unwrap_or(d.class1(dir, "Temperature")),
-            attenuation_radius: pv_f32(p, "AttenuationRadius").unwrap_or(point_defaults::ATTENUATION_RADIUS),
-            falloff_exponent: pv_f32(p, "LightFalloffExponent").unwrap_or(point_defaults::FALLOFF_EXPONENT),
+            attenuation_radius: pv_f32(p, "AttenuationRadius")
+                .unwrap_or(point_defaults::ATTENUATION_RADIUS),
+            falloff_exponent: pv_f32(p, "LightFalloffExponent")
+                .unwrap_or(point_defaults::FALLOFF_EXPONENT),
             inverse_squared: p.bool("bUseInverseSquaredFalloff").unwrap_or(true),
             source_radius: pv_f32(p, "SourceRadius").unwrap_or(point_defaults::SOURCE_RADIUS),
             source_length: pv_f32(p, "SourceLength").unwrap_or(point_defaults::SOURCE_LENGTH),
-            inner_cone_deg: pv_f32(p, "InnerConeAngle").unwrap_or(point_defaults::SPOT_INNER_CONE_DEG),
-            outer_cone_deg: pv_f32(p, "OuterConeAngle").unwrap_or(point_defaults::SPOT_OUTER_CONE_DEG),
+            inner_cone_deg: pv_f32(p, "InnerConeAngle")
+                .unwrap_or(point_defaults::SPOT_INNER_CONE_DEG),
+            outer_cone_deg: pv_f32(p, "OuterConeAngle")
+                .unwrap_or(point_defaults::SPOT_OUTER_CONE_DEG),
             cast_shadows: p.bool("CastShadows").unwrap_or(true),
-            cascades: p.int("DynamicShadowCascades").map(|v| v as i32).unwrap_or(d.class1(dir, "DynamicShadowCascades") as i32),
-            shadow_distance: pv_f32(p, "DynamicShadowDistanceMovableLight").unwrap_or(d.class1(dir, "DynamicShadowDistanceMovableLight")),
-            light_source_angle: pv_f32(p, "LightSourceAngle").unwrap_or(d.class1(dir, "LightSourceAngle")),
+            cascades: p
+                .int("DynamicShadowCascades")
+                .map(|v| v as i32)
+                .unwrap_or(d.class1(dir, "DynamicShadowCascades") as i32),
+            shadow_distance: pv_f32(p, "DynamicShadowDistanceMovableLight")
+                .unwrap_or(d.class1(dir, "DynamicShadowDistanceMovableLight")),
+            light_source_angle: pv_f32(p, "LightSourceAngle")
+                .unwrap_or(d.class1(dir, "LightSourceAngle")),
             volumetric_scattering: pv_f32(p, "VolumetricScatteringIntensity").unwrap_or(1.0),
             indirect_intensity: pv_f32(p, "IndirectLightingIntensity").unwrap_or(1.0),
             max_draw_distance: pv_f32(p, "MaxDrawDistance").unwrap_or(0.),
@@ -1131,45 +1621,79 @@ impl<'a> MapReader<'a> {
             specular_scale: pv_f32(p, "SpecularScale").unwrap_or(1.0),
             cubemap: self.view.soft_or_hard_path(p.get("Cubemap")),
             cubemap_angle_deg: pv_f32(p, "SourceCubemapAngle").unwrap_or(0.),
-            lower_hemisphere_color: pv_vec4(p, "LowerHemisphereColor").map(|c| [c[0], c[1], c[2]]).unwrap_or([0., 0., 0.]),
-            source: match &actor.class_path { Some(c) if c.starts_with("/Game/") => format!("blueprint {}", c.rsplit('.').next().unwrap_or(c)), _ => "level actor".into() },
+            lower_hemisphere_color: pv_vec4(p, "LowerHemisphereColor")
+                .map(|c| [c[0], c[1], c[2]])
+                .unwrap_or([0., 0., 0.]),
+            source: match &actor.class_path {
+                Some(c) if c.starts_with("/Game/") => {
+                    format!("blueprint {}", c.rsplit('.').next().unwrap_or(c))
+                }
+                _ => "level actor".into(),
+            },
         }
     }
 
     fn fog_from(&self, actor: &ActorInfo, comp: usize, p: &PropList) -> FogInst {
         let d = ExeDefaults::get();
         let f = "UExponentialHeightFogComponent";
-        let c4 = |name: &str, def: &str| pv_vec4(p, name).unwrap_or_else(|| { let v = d.class(f, def).unwrap_or(&[1., 1., 1., 1.]); [v[0], v[1], v[2], v[3]] });
+        let c4 = |name: &str, def: &str| {
+            pv_vec4(p, name).unwrap_or_else(|| {
+                let v = d.class(f, def).unwrap_or(&[1., 1., 1., 1.]);
+                [v[0], v[1], v[2], v[3]]
+            })
+        };
         FogInst {
             actor: actor.name.clone(),
             xf: self.world_xf(comp),
             visible: self.comp_visible(p, actor),
             density: pv_f32(p, "FogDensity").unwrap_or(d.class1(f, "FogDensity")),
-            height_falloff: pv_f32(p, "FogHeightFalloff").unwrap_or(d.class1(f, "FogHeightFalloff")),
+            height_falloff: pv_f32(p, "FogHeightFalloff")
+                .unwrap_or(d.class1(f, "FogHeightFalloff")),
             max_opacity: pv_f32(p, "FogMaxOpacity").unwrap_or(d.class1(f, "FogMaxOpacity")),
             start_distance: pv_f32(p, "StartDistance").unwrap_or(d.class1(f, "StartDistance")),
-            cutoff_distance: pv_f32(p, "FogCutoffDistance").unwrap_or(d.class1(f, "FogCutoffDistance")),
+            cutoff_distance: pv_f32(p, "FogCutoffDistance")
+                .unwrap_or(d.class1(f, "FogCutoffDistance")),
             inscattering_color: c4("FogInscatteringColor", "FogInscatteringColor"),
             inscattering_texture_tint: c4("InscatteringTextureTint", "InscatteringTextureTint"),
-            directional_color: c4("DirectionalInscatteringColor", "DirectionalInscatteringColor"),
-            directional_exponent: pv_f32(p, "DirectionalInscatteringExponent").unwrap_or(d.class1(f, "DirectionalInscatteringExponent")),
-            directional_start_distance: pv_f32(p, "DirectionalInscatteringStartDistance").unwrap_or(d.class1(f, "DirectionalInscatteringStartDistance")),
-            fully_directional_distance: pv_f32(p, "FullyDirectionalInscatteringColorDistance").unwrap_or(d.class1(f, "FullyDirectionalInscatteringColorDistance")),
-            non_directional_distance: pv_f32(p, "NonDirectionalInscatteringColorDistance").unwrap_or(d.class1(f, "NonDirectionalInscatteringColorDistance")),
+            directional_color: c4(
+                "DirectionalInscatteringColor",
+                "DirectionalInscatteringColor",
+            ),
+            directional_exponent: pv_f32(p, "DirectionalInscatteringExponent")
+                .unwrap_or(d.class1(f, "DirectionalInscatteringExponent")),
+            directional_start_distance: pv_f32(p, "DirectionalInscatteringStartDistance")
+                .unwrap_or(d.class1(f, "DirectionalInscatteringStartDistance")),
+            fully_directional_distance: pv_f32(p, "FullyDirectionalInscatteringColorDistance")
+                .unwrap_or(d.class1(f, "FullyDirectionalInscatteringColorDistance")),
+            non_directional_distance: pv_f32(p, "NonDirectionalInscatteringColorDistance")
+                .unwrap_or(d.class1(f, "NonDirectionalInscatteringColorDistance")),
             volumetric: p.bool("bEnableVolumetricFog").unwrap_or(false),
-            volumetric_distance: pv_f32(p, "VolumetricFogDistance").unwrap_or(d.class1(f, "VolumetricFogDistance")),
-            volumetric_scattering_distribution: pv_f32(p, "VolumetricFogScatteringDistribution").unwrap_or(d.class1(f, "VolumetricFogScatteringDistribution")),
-            volumetric_scattering_scale: pv_f32(p, "VolumetricFogScatteringScale").unwrap_or(d.class1(f, "VolumetricFogScatteringScale")),
-            volumetric_absorption_scale: pv_f32(p, "VolumetricFogAbsorptionScale").unwrap_or(d.class1(f, "VolumetricFogAbsorptionScale")),
-            override_light_colors: p.bool("bOverrideLightColorsWithFogInscatteringColors").unwrap_or(false),
+            volumetric_distance: pv_f32(p, "VolumetricFogDistance")
+                .unwrap_or(d.class1(f, "VolumetricFogDistance")),
+            volumetric_scattering_distribution: pv_f32(p, "VolumetricFogScatteringDistribution")
+                .unwrap_or(d.class1(f, "VolumetricFogScatteringDistribution")),
+            volumetric_scattering_scale: pv_f32(p, "VolumetricFogScatteringScale")
+                .unwrap_or(d.class1(f, "VolumetricFogScatteringScale")),
+            volumetric_absorption_scale: pv_f32(p, "VolumetricFogAbsorptionScale")
+                .unwrap_or(d.class1(f, "VolumetricFogAbsorptionScale")),
+            override_light_colors: p
+                .bool("bOverrideLightColorsWithFogInscatteringColors")
+                .unwrap_or(false),
         }
     }
 
     /// Everything renderable / lighting related of one actor of this level into `out`.
     fn collect_actor(&self, a: usize, out: &mut LobbySceneData) {
         let actor = self.actor_info(a);
-        let bp_name = actor.class_path.as_deref().filter(|c| c.starts_with("/Game/")).map(|c| c.rsplit('.').next().unwrap_or(c).to_owned());
-        let source = match &bp_name { Some(n) => format!("blueprint {n}"), None => "level actor".into() };
+        let bp_name = actor
+            .class_path
+            .as_deref()
+            .filter(|c| c.starts_with("/Game/"))
+            .map(|c| c.rsplit('.').next().unwrap_or(c).to_owned());
+        let source = match &bp_name {
+            Some(n) => format!("blueprint {n}"),
+            None => "level actor".into(),
+        };
         for c in self.view.children(a) {
             let class = self.view.class(c);
             let p = self.comp_props(c);
@@ -1214,46 +1738,99 @@ impl<'a> MapReader<'a> {
 
     /// `FoliageInstancedStaticMeshComponent`: the per-instance transforms are native data after the tagged properties
     /// (`[i32 LODData count][i32 elementSize, i32 count, count * FInstancedStaticMeshInstanceData{FMatrix, 2 x FVector2D}][cluster tree]`).
-    fn collect_instanced(&self, a: usize, c: usize, actor: &ActorInfo, p: &PropList, source: &str, out: &mut LobbySceneData) {
+    fn collect_instanced(
+        &self,
+        a: usize,
+        c: usize,
+        actor: &ActorInfo,
+        p: &PropList,
+        source: &str,
+        out: &mut LobbySceneData,
+    ) {
         let tag = format!("{}:{}", actor.name, self.view.name(c));
         let Some(mesh) = self.view.soft_or_hard_path(p.get("StaticMesh")) else {
-            out.unrendered.push(("InstancedStaticMeshComponent".into(), tag, "no StaticMesh".into())); return;
+            out.unrendered.push((
+                "InstancedStaticMeshComponent".into(),
+                tag,
+                "no StaticMesh".into(),
+            ));
+            return;
         };
         let n = p.int("NumBuiltInstances").unwrap_or(0) as usize;
         // find the end of the tagged properties: re-read them and keep the reader position
         let (start, end) = self.view.pkg.export_range(c);
-        let ctx = props::Ctx { names: &self.view.pkg.names, file_version: self.view.pkg.summary.file_version };
+        let ctx = props::Ctx {
+            names: &self.view.pkg.names,
+            file_version: self.view.pkg.summary.file_version,
+        };
         let mut r = Reader::at(&self.view.pkg.data[..end], start);
-        if props::read_props(&mut r, &ctx).is_err() { out.missing.push(format!("{tag}: properties unreadable, {n} instances not placed")); return; }
+        if props::read_props(&mut r, &ctx).is_err() {
+            out.missing.push(format!(
+                "{tag}: properties unreadable, {n} instances not placed"
+            ));
+            return;
+        }
         let parse = |r: &mut Reader| -> Result<Vec<Mat4>, String> {
             let head: Vec<u8> = r.data[r.pos..(r.pos + 48).min(r.data.len())].to_vec();
             let lod = r.i32().map_err(|e| e.to_string())?;
-            if lod != 0 { return Err(format!("{lod} LOD data blocks before the instance array")); }
+            if lod != 0 {
+                return Err(format!("{lod} LOD data blocks before the instance array"));
+            }
             let spare = r.i32().map_err(|e| e.to_string())?; // a second zero i32 precedes the bulk array in the 1.8 cook (verified on the lobby foliage)
-            if spare != 0 { return Err(format!("unexpected spare value {spare} before the instance array")); }
+            if spare != 0 {
+                return Err(format!(
+                    "unexpected spare value {spare} before the instance array"
+                ));
+            }
             let elem = r.i32().map_err(|e| e.to_string())? as usize;
             let count = r.i32().map_err(|e| e.to_string())? as usize;
-            if elem != 80 { return Err(format!("instance element size {elem}, expected 80 (bytes after the properties: {head:02x?})")); }
+            if elem != 80 {
+                return Err(format!("instance element size {elem}, expected 80 (bytes after the properties: {head:02x?})"));
+            }
             let mut v = Vec::with_capacity(count);
             for _ in 0..count {
                 let mut f = [0f32; 20];
-                for x in f.iter_mut() { *x = r.f32().map_err(|e| e.to_string())?; }
+                for x in f.iter_mut() {
+                    *x = r.f32().map_err(|e| e.to_string())?;
+                }
                 // FMatrix is row-major with the translation in row 3: glam columns = the UE rows
-                v.push(Mat4::from_cols_array(&[f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11], f[12], f[13], f[14], f[15]]));
+                v.push(Mat4::from_cols_array(&[
+                    f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11],
+                    f[12], f[13], f[14], f[15],
+                ]));
             }
             Ok(v)
         };
-        let mats = match parse(&mut r) { Ok(m) => m, Err(e) => { out.missing.push(format!("{tag}: {e}; {n} instances not placed")); return; } };
-        if mats.len() != n && n != 0 { out.missing.push(format!("{tag}: NumBuiltInstances {n} but {} matrices", mats.len())); }
+        let mats = match parse(&mut r) {
+            Ok(m) => m,
+            Err(e) => {
+                out.missing
+                    .push(format!("{tag}: {e}; {n} instances not placed"));
+                return;
+            }
+        };
+        if mats.len() != n && n != 0 {
+            out.missing.push(format!(
+                "{tag}: NumBuiltInstances {n} but {} matrices",
+                mats.len()
+            ));
+        }
         let parent = self.world_xf(c);
         let materials = paths_of_array(&self.view, p.get("OverrideMaterials"));
         let visible = self.comp_visible(p, actor);
         for (k, m) in mats.iter().enumerate() {
             let (s, q, t) = m.to_scale_rotation_translation();
             out.statics.push(StaticInst {
-                actor: actor.name.clone(), component: format!("{}[{k}]", self.view.name(c)), export: c, mesh: mesh.clone(),
-                xf: Xf { s, q, t }.compose(&parent), material_overrides: materials.clone(), visible,
-                cast_shadow: p.bool("CastShadow").unwrap_or(true), max_draw_distance: pv_f32(p, "LDMaxDrawDistance").unwrap_or(0.), translucency_sort_priority: 0,
+                actor: actor.name.clone(),
+                component: format!("{}[{k}]", self.view.name(c)),
+                export: c,
+                mesh: mesh.clone(),
+                xf: Xf { s, q, t }.compose(&parent),
+                material_overrides: materials.clone(),
+                visible,
+                cast_shadow: p.bool("CastShadow").unwrap_or(true),
+                max_draw_distance: pv_f32(p, "LDMaxDrawDistance").unwrap_or(0.),
+                translucency_sort_priority: 0,
                 source: format!("{source} (instanced foliage)"),
             });
         }
@@ -1265,30 +1842,68 @@ impl<'a> MapReader<'a> {
     /// listed particle systems become visible; the low-detail directional light is the shadow-quality-0 alternative and stays hidden.
     fn apply_light_switcher(&self, out: &mut LobbySceneData) {
         for a in self.actors() {
-            if self.view.class(a) != "BP_FortniteLobbyLightSwitcher_C" { continue; }
+            if self.view.class(a) != "BP_FortniteLobbyLightSwitcher_C" {
+                continue;
+            }
             let p = self.view.props(a);
-            let name_of = |v: Option<&PropValue>| self.view.export_of(v).map(|i| self.view.name(i).to_owned());
+            let name_of = |v: Option<&PropValue>| {
+                self.view.export_of(v).map(|i| self.view.name(i).to_owned())
+            };
             let mut on: Vec<String> = vec![];
-            for key in ["DirectionLight", "SkyLight", "ExponentialHeightfog"] { if let Some(n) = name_of(p.get(key)) { on.push(n); } }
-            if let Some(PropValue::Array(arr)) = p.get("Pointlights") { for v in arr { if let Some(n) = name_of(Some(v)) { on.push(n); } } }
+            for key in ["DirectionLight", "SkyLight", "ExponentialHeightfog"] {
+                if let Some(n) = name_of(p.get(key)) {
+                    on.push(n);
+                }
+            }
+            if let Some(PropValue::Array(arr)) = p.get("Pointlights") {
+                for v in arr {
+                    if let Some(n) = name_of(Some(v)) {
+                        on.push(n);
+                    }
+                }
+            }
             let mut particles: Vec<String> = vec![];
-            if let Some(PropValue::Array(arr)) = p.get("ParticleSystems") { for v in arr { if let Some(n) = name_of(Some(v)) { particles.push(n); } } }
+            if let Some(PropValue::Array(arr)) = p.get("ParticleSystems") {
+                for v in arr {
+                    if let Some(n) = name_of(Some(v)) {
+                        particles.push(n);
+                    }
+                }
+            }
             let low = name_of(p.get("DirectionalLight_LowDetailMode"));
             for l in out.lights.iter_mut() {
-                if on.contains(&l.actor) { l.visible = true; }
-                if low.as_deref() == Some(l.actor.as_str()) { l.visible = false; }
+                if on.contains(&l.actor) {
+                    l.visible = true;
+                }
+                if low.as_deref() == Some(l.actor.as_str()) {
+                    l.visible = false;
+                }
             }
-            for f in out.fogs.iter_mut() { if on.contains(&f.actor) { f.visible = true; } }
-            for pt in out.particles.iter_mut() { if particles.contains(&pt.actor) { pt.visible = true; } }
+            for f in out.fogs.iter_mut() {
+                if on.contains(&f.actor) {
+                    f.visible = true;
+                }
+            }
+            for pt in out.particles.iter_mut() {
+                if particles.contains(&pt.actor) {
+                    pt.visible = true;
+                }
+            }
         }
     }
 
     fn collect_post_volumes(&self, out: &mut LobbySceneData) {
         for a in self.actors() {
-            if self.view.class(a) != "PostProcessVolume" { continue; }
+            if self.view.class(a) != "PostProcessVolume" {
+                continue;
+            }
             let p = self.view.props(a);
             let name = self.view.name(a).to_owned();
-            let brush = self.view.children(a).into_iter().find(|&c| self.view.class(c) == "BrushComponent");
+            let brush = self
+                .view
+                .children(a)
+                .into_iter()
+                .find(|&c| self.view.class(c) == "BrushComponent");
             let mut bounds = None;
             if let Some(b) = brush {
                 let bp = self.comp_props(b);
@@ -1304,32 +1919,80 @@ impl<'a> MapReader<'a> {
                             let bx = e.as_fields().and_then(|f| f.get("ElemBox"));
                             let (mn, mx) = match bx {
                                 Some(PropValue::Raw(b)) if b.len() >= 24 => {
-                                    let f = |i: usize| f32::from_le_bytes([b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]]);
+                                    let f = |i: usize| {
+                                        f32::from_le_bytes([
+                                            b[i * 4],
+                                            b[i * 4 + 1],
+                                            b[i * 4 + 2],
+                                            b[i * 4 + 3],
+                                        ])
+                                    };
                                     (Some([f(0), f(1), f(2)]), Some([f(3), f(4), f(5)]))
                                 }
-                                Some(PropValue::Struct { fields, .. }) => (pv_vec3(fields, "Min"), pv_vec3(fields, "Max")),
+                                Some(PropValue::Struct { fields, .. }) => {
+                                    (pv_vec3(fields, "Min"), pv_vec3(fields, "Max"))
+                                }
                                 _ => (None, None),
                             };
-                            if let (Some(mn), Some(mx)) = (mn, mx) { lo = lo.min(Vec3::from(mn)); hi = hi.max(Vec3::from(mx)); }
+                            if let (Some(mn), Some(mx)) = (mn, mx) {
+                                lo = lo.min(Vec3::from(mn));
+                                hi = hi.max(Vec3::from(mx));
+                            }
                         }
                     }
                     if lo.x <= hi.x {
-                        let w = rel.compose(&Xf { t: self.offset, ..Xf::IDENTITY });
-                        let corners: Vec<Vec3> = (0..8).map(|k| w.transform_point(Vec3::new(if k & 1 == 0 { lo.x } else { hi.x }, if k & 2 == 0 { lo.y } else { hi.y }, if k & 4 == 0 { lo.z } else { hi.z }))).collect();
-                        let (mn, mx) = corners.iter().fold((Vec3::splat(f32::MAX), Vec3::splat(f32::MIN)), |(a, b), c| (a.min(*c), b.max(*c)));
+                        let w = rel.compose(&Xf {
+                            t: self.offset,
+                            ..Xf::IDENTITY
+                        });
+                        let corners: Vec<Vec3> = (0..8)
+                            .map(|k| {
+                                w.transform_point(Vec3::new(
+                                    if k & 1 == 0 { lo.x } else { hi.x },
+                                    if k & 2 == 0 { lo.y } else { hi.y },
+                                    if k & 4 == 0 { lo.z } else { hi.z },
+                                ))
+                            })
+                            .collect();
+                        let (mn, mx) = corners.iter().fold(
+                            (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN)),
+                            |(a, b), c| (a.min(*c), b.max(*c)),
+                        );
                         bounds = Some(((mn + mx) * 0.5, (mx - mn) * 0.5));
                     }
                 }
             }
             out.post_volumes.push(PostVolumeInfo {
-                name, map: self.label.clone(), priority: pv_f32(&p, "Priority").unwrap_or(0.), blend_radius: pv_f32(&p, "BlendRadius").unwrap_or(ExeDefaults::get().class1("APostProcessVolume", "BlendRadius")),
-                blend_weight: pv_f32(&p, "BlendWeight").unwrap_or(ExeDefaults::get().class1("APostProcessVolume", "BlendWeight")),
-                enabled: p.bool("bEnabled").unwrap_or(true), unbound: p.bool("bUnbound").unwrap_or(false), bounds,
-                lut: p.fields("Settings").and_then(|s| self.view.path_of(s.get("ColorGradingLUT"))),
-                blendables: p.fields("Settings").and_then(|s| s.fields("WeightedBlendables")).map(|wb| wb.array("Array").into_iter().flatten().filter_map(|e| {
-                    let f = e.as_fields()?;
-                    Some((self.view.path_of(f.get("Object"))?, f.float("Weight").unwrap_or(1.) as f32))
-                }).collect()).unwrap_or_default(),
+                name,
+                map: self.label.clone(),
+                priority: pv_f32(&p, "Priority").unwrap_or(0.),
+                blend_radius: pv_f32(&p, "BlendRadius")
+                    .unwrap_or(ExeDefaults::get().class1("APostProcessVolume", "BlendRadius")),
+                blend_weight: pv_f32(&p, "BlendWeight")
+                    .unwrap_or(ExeDefaults::get().class1("APostProcessVolume", "BlendWeight")),
+                enabled: p.bool("bEnabled").unwrap_or(true),
+                unbound: p.bool("bUnbound").unwrap_or(false),
+                bounds,
+                lut: p
+                    .fields("Settings")
+                    .and_then(|s| self.view.path_of(s.get("ColorGradingLUT"))),
+                blendables: p
+                    .fields("Settings")
+                    .and_then(|s| s.fields("WeightedBlendables"))
+                    .map(|wb| {
+                        wb.array("Array")
+                            .into_iter()
+                            .flatten()
+                            .filter_map(|e| {
+                                let f = e.as_fields()?;
+                                Some((
+                                    self.view.path_of(f.get("Object"))?,
+                                    f.float("Weight").unwrap_or(1.) as f32,
+                                ))
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default(),
                 settings: p.fields("Settings").cloned().unwrap_or_default(),
             });
         }
@@ -1341,30 +2004,52 @@ impl<'a> MapReader<'a> {
 pub fn stack_post_settings(volumes: &[PostVolumeInfo], at: Vec3) -> PostSettings {
     let d = ExeDefaults::get();
     let mut ps = PostSettings::default();
-    for (k, v) in d.pps.iter() { ps.f.insert(k.clone(), v.clone()); }
-    let mut vols: Vec<&PostVolumeInfo> = volumes.iter().filter(|v| v.enabled && (v.unbound || v.bounds.is_some_and(|(c, h)| (at - c).abs().cmple(h).all()))).collect();
-    vols.sort_by(|a, b| a.priority.partial_cmp(&b.priority).unwrap_or(std::cmp::Ordering::Equal));
+    for (k, v) in d.pps.iter() {
+        ps.f.insert(k.clone(), v.clone());
+    }
+    let mut vols: Vec<&PostVolumeInfo> = volumes
+        .iter()
+        .filter(|v| {
+            v.enabled && (v.unbound || v.bounds.is_some_and(|(c, h)| (at - c).abs().cmple(h).all()))
+        })
+        .collect();
+    vols.sort_by(|a, b| {
+        a.priority
+            .partial_cmp(&b.priority)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     for v in vols {
         for prop in &v.settings.0 {
-            let Some(field) = prop.name.strip_prefix("bOverride_") else { continue };
-            if !matches!(prop.value, PropValue::Bool(true)) { continue; }
+            let Some(field) = prop.name.strip_prefix("bOverride_") else {
+                continue;
+            };
+            if !matches!(prop.value, PropValue::Bool(true)) {
+                continue;
+            }
             let val: Option<Vec<f32>> = match v.settings.get(field) {
                 Some(PropValue::Float(f)) => Some(vec![*f as f32]),
                 Some(PropValue::Int(i)) => Some(vec![*i as f32]),
                 Some(PropValue::Bool(b)) => Some(vec![*b as u8 as f32]),
                 Some(PropValue::Vec4(c)) => Some(c.to_vec()),
                 Some(PropValue::Vec3(c)) => Some(c.to_vec()),
-                Some(PropValue::Enum(e)) if field == "DepthOfFieldMethod" => { ps.dof_method = e.clone(); None }
+                Some(PropValue::Enum(e)) if field == "DepthOfFieldMethod" => {
+                    ps.dof_method = e.clone();
+                    None
+                }
                 _ => None,
             };
             match field {
                 "ColorGradingLUT" => ps.color_grading_lut = v.lut.clone(),
                 _ => {
-                    let value = val.or_else(|| d.pps(field).map(|s| s.to_vec())).unwrap_or_else(|| vec![0.]);
+                    let value = val
+                        .or_else(|| d.pps(field).map(|s| s.to_vec()))
+                        .unwrap_or_else(|| vec![0.]);
                     ps.f.insert(field.to_owned(), value);
                 }
             }
-            if !ps.overridden.iter().any(|n| n == field) { ps.overridden.push(field.to_owned()); }
+            if !ps.overridden.iter().any(|n| n == field) {
+                ps.overridden.push(field.to_owned());
+            }
         }
         // blendables accumulate (they have no override flag)
         ps.blendables.extend(v.blendables.iter().cloned());
@@ -1372,11 +2057,18 @@ pub fn stack_post_settings(volumes: &[PostVolumeInfo], at: Vec3) -> PostSettings
     ps
 }
 /// `UserDefinedEnum.DisplayNameMap`: `(enumerator, display text)` in declaration order.
-pub fn read_enum_labels(set: &fn_pak::PakSet, package: &str) -> Result<Vec<(String, String)>, String> {
+pub fn read_enum_labels(
+    set: &fn_pak::PakSet,
+    package: &str,
+) -> Result<Vec<(String, String)>, String> {
     let view = PkgView::open(set, package, false)?;
-    let i = (0..view.n()).find(|&i| view.class(i) == "UserDefinedEnum").ok_or_else(|| format!("{package}: no UserDefinedEnum export"))?;
+    let i = (0..view.n())
+        .find(|&i| view.class(i) == "UserDefinedEnum")
+        .ok_or_else(|| format!("{package}: no UserDefinedEnum export"))?;
     let p = view.props(i);
-    let Some(PropValue::Raw(bytes)) = p.get("DisplayNameMap") else { return Err(format!("{package}: DisplayNameMap is not a raw map")) };
+    let Some(PropValue::Raw(bytes)) = p.get("DisplayNameMap") else {
+        return Err(format!("{package}: DisplayNameMap is not a raw map"));
+    };
     let mut r = Reader::new(bytes);
     let _remove = r.i32().map_err(|e| e.to_string())?;
     let count = r.i32().map_err(|e| e.to_string())?;
@@ -1384,11 +2076,24 @@ pub fn read_enum_labels(set: &fn_pak::PakSet, package: &str) -> Result<Vec<(Stri
     for _ in 0..count {
         let idx = r.i32().map_err(|e| e.to_string())?;
         let num = r.i32().map_err(|e| e.to_string())?;
-        let key = view.pkg.names.get(idx as usize).cloned().unwrap_or_default();
-        let key = if num > 0 { format!("{key}_{}", num - 1) } else { key };
+        let key = view
+            .pkg
+            .names
+            .get(idx as usize)
+            .cloned()
+            .unwrap_or_default();
+        let key = if num > 0 {
+            format!("{key}_{}", num - 1)
+        } else {
+            key
+        };
         let _flags = r.u32().map_err(|e| e.to_string())?;
         let history = r.i8().map_err(|e| e.to_string())?;
-        if history != 0 { return Err(format!("{package}: FText history type {history} not supported")); }
+        if history != 0 {
+            return Err(format!(
+                "{package}: FText history type {history} not supported"
+            ));
+        }
         let _ns = r.fstring().map_err(|e| e.to_string())?;
         let _k = r.fstring().map_err(|e| e.to_string())?;
         let text = r.fstring().map_err(|e| e.to_string())?;
@@ -1401,11 +2106,18 @@ pub fn read_enum_labels(set: &fn_pak::PakSet, package: &str) -> Result<Vec<(Stri
 fn read_frontend_streaming(fe: &MapReader) -> Vec<(String, String, Vec3)> {
     let mut v = vec![];
     for i in 0..fe.view.n() {
-        if !fe.view.class(i).starts_with("LevelStreaming") { continue; }
+        if !fe.view.class(i).starts_with("LevelStreaming") {
+            continue;
+        }
         let p = fe.view.props(i);
-        let Some(asset) = fe.view.soft_or_hard_path(p.get("WorldAsset")) else { continue };
+        let Some(asset) = fe.view.soft_or_hard_path(p.get("WorldAsset")) else {
+            continue;
+        };
         let long = asset.split('.').next().unwrap_or(&asset).to_owned();
-        let t = p.fields("LevelTransform").and_then(|f| pv_vec3(f, "Translation")).unwrap_or([0.; 3]);
+        let t = p
+            .fields("LevelTransform")
+            .and_then(|f| pv_vec3(f, "Translation"))
+            .unwrap_or([0.; 3]);
         v.push((fe.view.name(i).to_owned(), long, Vec3::from(t)));
     }
     v
@@ -1415,11 +2127,15 @@ fn read_frontend_streaming(fe: &MapReader) -> Vec<(String, String, Vec3)> {
 fn read_camera_pairs(fe: &MapReader) -> Vec<(String, usize)> {
     let mut out = vec![];
     for i in 0..fe.view.n() {
-        if fe.view.class(i) != "FrontEndSettingsBP_C" || fe.view.name(i).starts_with("Default__") { continue; }
+        if fe.view.class(i) != "FrontEndSettingsBP_C" || fe.view.name(i).starts_with("Default__") {
+            continue;
+        }
         let p = fe.view.props(i);
         for e in p.array("Cameras").into_iter().flatten() {
             let Some(f) = e.as_fields() else { continue };
-            if let (Some(ty), Some(actor)) = (f.text("Type"), fe.view.export_of(f.get("Camera"))) { out.push((ty.to_owned(), actor)); }
+            if let (Some(ty), Some(actor)) = (f.text("Type"), fe.view.export_of(f.get("Camera"))) {
+                out.push((ty.to_owned(), actor));
+            }
         }
     }
     out
@@ -1428,10 +2144,15 @@ fn read_camera_pairs(fe: &MapReader) -> Vec<(String, usize)> {
 /// Default of `Frontend_Lobby_C.LobbySelect` in the selector level.
 fn read_lobby_select(set: &fn_pak::PakSet) -> Result<String, String> {
     let v = PkgView::open(set, LOBBY_SELECTOR_MAP, true)?;
-    let cdo = (0..v.n()).find(|&i| v.name(i) == "Default__Frontend_Lobby_C").ok_or("no Default__Frontend_Lobby_C")?;
-    let inst = (0..v.n()).find(|&i| v.class(i) == "Frontend_Lobby_C" && !v.name(i).starts_with("Default__"));
+    let cdo = (0..v.n())
+        .find(|&i| v.name(i) == "Default__Frontend_Lobby_C")
+        .ok_or("no Default__Frontend_Lobby_C")?;
+    let inst = (0..v.n())
+        .find(|&i| v.class(i) == "Frontend_Lobby_C" && !v.name(i).starts_with("Default__"));
     let from_inst = inst.and_then(|i| v.props(i).text("LobbySelect").map(str::to_owned));
-    from_inst.or_else(|| v.props(cdo).text("LobbySelect").map(str::to_owned)).ok_or_else(|| "LobbySelect not serialized".to_owned())
+    from_inst
+        .or_else(|| v.props(cdo).text("LobbySelect").map(str::to_owned))
+        .ok_or_else(|| "LobbySelect not serialized".to_owned())
 }
 
 /// Radius (cm) around the camera inside which other actors of the persistent front-end level would be part of the view.
@@ -1444,20 +2165,46 @@ pub fn read_lobby_scene_from(set: &fn_pak::PakSet) -> Result<LobbySceneData, Str
     let streaming = read_frontend_streaming(&fe);
     let lobby_select = read_lobby_select(set)?;
     let labels = read_enum_labels(set, LOBBY_ENUM_PACKAGE)?;
-    let enumerator = lobby_select.rsplit("::").next().unwrap_or(&lobby_select).to_owned();
-    let label = labels.iter().find(|(k, _)| *k == enumerator).map(|(_, t)| t.clone()).ok_or_else(|| format!("enumerator {enumerator} not in FortniteLobby"))?;
+    let enumerator = lobby_select
+        .rsplit("::")
+        .next()
+        .unwrap_or(&lobby_select)
+        .to_owned();
+    let label = labels
+        .iter()
+        .find(|(k, _)| *k == enumerator)
+        .map(|(_, t)| t.clone())
+        .ok_or_else(|| format!("enumerator {enumerator} not in FortniteLobby"))?;
     // Frontend_Lobby_C.ReceiveBeginPlay: case NewEnumerator0 -> LoadStreamLevel(Frontend_Lobby_Default), case NewEnumerator1 -> LoadStreamLevel(Frontend_Lobby_Halloween)
-    let map = match label.as_str() { "Halloween" => HALLOWEEN_MAP, "Default" => DEFAULT_LOBBY_MAP, other => return Err(format!("unknown lobby label {other}")) };
+    let map = match label.as_str() {
+        "Halloween" => HALLOWEEN_MAP,
+        "Default" => DEFAULT_LOBBY_MAP,
+        other => return Err(format!("unknown lobby label {other}")),
+    };
     let pairs = read_camera_pairs(&fe);
     out.selection = Some(LobbySelection {
-        frontend_streaming: streaming.clone(), lobby_select: lobby_select.clone(), lobby_select_label: label, map: map.to_owned(),
-        camera_pairs: pairs.iter().map(|(t, a)| (t.clone(), fe.view.name(*a).to_owned())).collect(),
+        frontend_streaming: streaming.clone(),
+        lobby_select: lobby_select.clone(),
+        lobby_select_label: label,
+        map: map.to_owned(),
+        camera_pairs: pairs
+            .iter()
+            .map(|(t, a)| (t.clone(), fe.view.name(*a).to_owned()))
+            .collect(),
     });
-    let offset_of = |long: &str| streaming.iter().find(|s| s.1 == long).map(|s| s.2).unwrap_or(Vec3::ZERO);
+    let offset_of = |long: &str| {
+        streaming
+            .iter()
+            .find(|s| s.1 == long)
+            .map(|s| s.2)
+            .unwrap_or(Vec3::ZERO)
+    };
 
     // ---- the chosen lobby level (every actor) ----
     let lobby = MapReader::open(set, map, offset_of(map))?;
-    for a in lobby.actors() { lobby.collect_actor(a, &mut out); }
+    for a in lobby.actors() {
+        lobby.collect_actor(a, &mut out);
+    }
     lobby.apply_light_switcher(&mut out);
     lobby.collect_post_volumes(&mut out);
     // ---- the selector level (its post-process volume; its level blueprint has no renderable actor) ----
@@ -1465,45 +2212,88 @@ pub fn read_lobby_scene_from(set: &fn_pak::PakSet) -> Result<LobbySceneData, Str
     sel.collect_post_volumes(&mut out);
 
     // ---- the persistent front-end level: camera, party slots, anything else within the view radius ----
-    let hero_actor = pairs.iter().find(|(t, _)| t.ends_with("::HeroSelect")).map(|(_, a)| *a).ok_or("FrontEndSettings maps no HeroSelect camera")?;
+    let hero_actor = pairs
+        .iter()
+        .find(|(t, _)| t.ends_with("::HeroSelect"))
+        .map(|(_, a)| *a)
+        .ok_or("FrontEndSettings maps no HeroSelect camera")?;
     let cam_actor = fe.actor_info(hero_actor);
-    let cam_comp = fe.view.children(hero_actor).into_iter().find(|&c| fe.view.name(c) == "CameraComponent" && fe.view.class(c) == "CameraComponent").ok_or("camera actor has no CameraComponent")?;
+    let cam_comp = fe
+        .view
+        .children(hero_actor)
+        .into_iter()
+        .find(|&c| fe.view.name(c) == "CameraComponent" && fe.view.class(c) == "CameraComponent")
+        .ok_or("camera actor has no CameraComponent")?;
     let cp = fe.comp_props(cam_comp);
-    let child = fe.view.children(hero_actor).into_iter().find(|&c| fe.view.name(c) == "CameraActor_0" && fe.view.class(c) == "CameraComponent");
+    let child = fe
+        .view
+        .children(hero_actor)
+        .into_iter()
+        .find(|&c| fe.view.name(c) == "CameraActor_0" && fe.view.class(c) == "CameraComponent");
     out.camera = Some(CameraInfo {
-        actor: cam_actor.name.clone(), actor_class: cam_actor.class.clone(), xf: fe.world_xf(cam_comp),
-        fov_deg: pv_f32(&cp, "FieldOfView").unwrap_or(90.), aspect_ratio: pv_f32(&cp, "AspectRatio").unwrap_or(1.777778),
+        actor: cam_actor.name.clone(),
+        actor_class: cam_actor.class.clone(),
+        xf: fe.world_xf(cam_comp),
+        fov_deg: pv_f32(&cp, "FieldOfView").unwrap_or(90.),
+        aspect_ratio: pv_f32(&cp, "AspectRatio").unwrap_or(1.777778),
         post_process_blend_weight: pv_f32(&cp, "PostProcessBlendWeight").unwrap_or(1.0),
-        child_camera: child.map(|c| { let p = fe.comp_props(c); (fe.world_xf(c), pv_f32(&p, "FieldOfView").unwrap_or(90.)) }),
+        child_camera: child.map(|c| {
+            let p = fe.comp_props(c);
+            (fe.world_xf(c), pv_f32(&p, "FieldOfView").unwrap_or(90.))
+        }),
     });
     let cam_pos = out.camera.as_ref().unwrap().xf.t;
     // the camera actor's own lights / fog (templates say bVisible false: recorded, inactive)
     fe.collect_actor(hero_actor, &mut out);
     for a in fe.actors() {
-        if a == hero_actor { continue; }
+        if a == hero_actor {
+            continue;
+        }
         let class = fe.view.class(a);
         if class == "PartyCharacterPlacementHelper_C" {
             fe.collect_actor(a, &mut out);
             let ai = fe.actor_info(a);
             let props = fe.view.props(a);
-            let find = |name: &str| fe.view.children(a).into_iter().find(|&c| fe.view.name(c) == name);
+            let find = |name: &str| {
+                fe.view
+                    .children(a)
+                    .into_iter()
+                    .find(|&c| fe.view.name(c) == name)
+            };
             let widget = |n: &str| find(n).map(|c| fe.world_xf(c)).unwrap_or(Xf::IDENTITY);
             let winfo = |n: &str| {
                 let p = find(n).map(|c| fe.comp_props(c)).unwrap_or_default();
-                let v2 = |k: &str, d: [f32; 2]| match p.get(k) { Some(PropValue::Vec2(v)) => *v, _ => d };
+                let v2 = |k: &str, d: [f32; 2]| match p.get(k) {
+                    Some(PropValue::Vec2(v)) => *v,
+                    _ => d,
+                };
                 WidgetCompInfo {
                     widget_class: p.text("WidgetClass").unwrap_or("").to_owned(),
                     screen_space: p.text("Space").map_or(false, |s| s.ends_with("Screen")),
-                    pivot: v2("Pivot", [0.5, 0.5]), draw_size: v2("DrawSize", [500., 500.]),
+                    pivot: v2("Pivot", [0.5, 0.5]),
+                    draw_size: v2("DrawSize", [500., 500.]),
                     draw_at_desired_size: p.bool("bDrawAtDesiredSize").unwrap_or(false),
                 }
             };
-            let (Some(root), Some(place)) = (find("Root"), find("CharacterPlacement")) else { out.missing.push(format!("{}: no Root / CharacterPlacement component", ai.name)); continue };
+            let (Some(root), Some(place)) = (find("Root"), find("CharacterPlacement")) else {
+                out.missing.push(format!(
+                    "{}: no Root / CharacterPlacement component",
+                    ai.name
+                ));
+                continue;
+            };
             out.placements.push(PlacementInfo {
-                actor: ai.name.clone(), player_id: props.int("PlayerID").unwrap_or(0) as i32, hidden: ai.hidden,
-                player_on_pad: props.bool("PlayerOnPad").unwrap_or(false), root: fe.world_xf(root), character: fe.world_xf(place),
-                top_widget: widget("LobbyPlayerPadTop"), add_widget: widget("LobbyPlayerAddPlayer"), gadgets_widget: widget("LobbyPlayerPadGadgets"),
-                top_info: winfo("LobbyPlayerPadTop"), add_info: winfo("LobbyPlayerAddPlayer"),
+                actor: ai.name.clone(),
+                player_id: props.int("PlayerID").unwrap_or(0) as i32,
+                hidden: ai.hidden,
+                player_on_pad: props.bool("PlayerOnPad").unwrap_or(false),
+                root: fe.world_xf(root),
+                character: fe.world_xf(place),
+                top_widget: widget("LobbyPlayerPadTop"),
+                add_widget: widget("LobbyPlayerAddPlayer"),
+                gadgets_widget: widget("LobbyPlayerPadGadgets"),
+                top_info: winfo("LobbyPlayerPadTop"),
+                add_info: winfo("LobbyPlayerAddPlayer"),
             });
             continue;
         }
@@ -1511,8 +2301,20 @@ pub fn read_lobby_scene_from(set: &fn_pak::PakSet) -> Result<LobbySceneData, Str
         let root = fe.view.export_of(fe.view.props(a).get("RootComponent"));
         let Some(root) = root else { continue };
         let pos = fe.world_xf(root).t;
-        if pos.distance(cam_pos) <= NEARBY_RADIUS_CM && !matches!(class.as_str(), "FortWorldSettings" | "LevelBounds" | "Level") {
-            out.unrendered.push((class.clone(), fe.view.name(a).to_owned(), format!("persistent-level actor {:.0} cm from the camera: collected generically", pos.distance(cam_pos))));
+        if pos.distance(cam_pos) <= NEARBY_RADIUS_CM
+            && !matches!(
+                class.as_str(),
+                "FortWorldSettings" | "LevelBounds" | "Level"
+            )
+        {
+            out.unrendered.push((
+                class.clone(),
+                fe.view.name(a).to_owned(),
+                format!(
+                    "persistent-level actor {:.0} cm from the camera: collected generically",
+                    pos.distance(cam_pos)
+                ),
+            ));
             fe.collect_actor(a, &mut out);
         }
     }
@@ -1520,7 +2322,20 @@ pub fn read_lobby_scene_from(set: &fn_pak::PakSet) -> Result<LobbySceneData, Str
     // PartyCharacterPlacementHelper (OnTeamMemberAdded / RefreshWidgets, the `PlayerOnPad` branch of its graph): a pad with a player sets TopSpotLight,
     // RimSpotLight, UnderlightBluePoint01/02 and UnderlightBlue01/02 visible (and the pad material's Occupied = 1); an empty pad keeps them hidden.
     for p in out.placements.iter().filter(|p| p.player_on_pad) {
-        for l in out.lights.iter_mut().filter(|l| l.actor == p.actor && matches!(l.component.as_str(), "TopSpotLight" | "RimSpotLight" | "UnderlightBluePoint01" | "UnderlightBluePoint02" | "UnderlightBlue01" | "UnderlightBlue02")) { l.visible = true; }
+        for l in out.lights.iter_mut().filter(|l| {
+            l.actor == p.actor
+                && matches!(
+                    l.component.as_str(),
+                    "TopSpotLight"
+                        | "RimSpotLight"
+                        | "UnderlightBluePoint01"
+                        | "UnderlightBluePoint02"
+                        | "UnderlightBlue01"
+                        | "UnderlightBlue02"
+                )
+        }) {
+            l.visible = true;
+        }
     }
     // the Frontend persistent level's post volumes (they sit at other y offsets; kept for the containment test)
     fe.collect_post_volumes(&mut out);
@@ -1551,40 +2366,100 @@ pub fn read_cosmetics_scene_from(set: &fn_pak::PakSet) -> Result<LobbySceneData,
     let mut out = LobbySceneData::default();
     let fe = MapReader::open(set, FRONTEND_MAP, Vec3::ZERO)?;
     let streaming = read_frontend_streaming(&fe);
-    let offset_of = |long: &str| streaming.iter().find(|s| s.1 == long).map(|s| s.2).unwrap_or(Vec3::ZERO);
+    let offset_of = |long: &str| {
+        streaming
+            .iter()
+            .find(|s| s.1 == long)
+            .map(|s| s.2)
+            .unwrap_or(Vec3::ZERO)
+    };
     let pairs = read_camera_pairs(&fe);
-    let cam_actor = pairs.iter().find(|(t, _)| t.ends_with("::Cosmetics")).map(|(_, a)| *a).ok_or("FrontEndSettings maps no Cosmetics camera")?;
+    let cam_actor = pairs
+        .iter()
+        .find(|(t, _)| t.ends_with("::Cosmetics"))
+        .map(|(_, a)| *a)
+        .ok_or("FrontEndSettings maps no Cosmetics camera")?;
     let ai = fe.actor_info(cam_actor);
-    let cam_comp = fe.view.children(cam_actor).into_iter().find(|&c| fe.view.name(c) == "CameraComponent" && fe.view.class(c) == "CameraComponent").ok_or("Cosmetics camera actor has no CameraComponent")?;
+    let cam_comp = fe
+        .view
+        .children(cam_actor)
+        .into_iter()
+        .find(|&c| fe.view.name(c) == "CameraComponent" && fe.view.class(c) == "CameraComponent")
+        .ok_or("Cosmetics camera actor has no CameraComponent")?;
     let cp = fe.comp_props(cam_comp);
     out.camera = Some(CameraInfo {
-        actor: ai.name.clone(), actor_class: ai.class.clone(), xf: fe.world_xf(cam_comp), fov_deg: pv_f32(&cp, "FieldOfView").unwrap_or(90.), aspect_ratio: pv_f32(&cp, "AspectRatio").unwrap_or(1.777778),
-        post_process_blend_weight: pv_f32(&cp, "PostProcessBlendWeight").unwrap_or(1.0), child_camera: None,
+        actor: ai.name.clone(),
+        actor_class: ai.class.clone(),
+        xf: fe.world_xf(cam_comp),
+        fov_deg: pv_f32(&cp, "FieldOfView").unwrap_or(90.),
+        aspect_ratio: pv_f32(&cp, "AspectRatio").unwrap_or(1.777778),
+        post_process_blend_weight: pv_f32(&cp, "PostProcessBlendWeight").unwrap_or(1.0),
+        child_camera: None,
     });
     let cam_pos = out.camera.as_ref().unwrap().xf.t;
     // the backdrop: every static of Frontend_BG_Main within the sphere around the camera
     let bg = MapReader::open(set, BG_MAIN_MAP, offset_of(BG_MAIN_MAP))?;
     let mut scratch = LobbySceneData::default();
-    for a in bg.actors() { bg.collect_actor(a, &mut scratch); }
-    out.statics = scratch.statics.into_iter().filter(|s| s.xf.t.distance(cam_pos) <= COSMETICS_ENV_RADIUS_CM).collect();
-    out.lights = scratch.lights.into_iter().filter(|l| l.xf.t.distance(cam_pos) <= COSMETICS_ENV_RADIUS_CM).collect();
+    for a in bg.actors() {
+        bg.collect_actor(a, &mut scratch);
+    }
+    out.statics = scratch
+        .statics
+        .into_iter()
+        .filter(|s| s.xf.t.distance(cam_pos) <= COSMETICS_ENV_RADIUS_CM)
+        .collect();
+    out.lights = scratch
+        .lights
+        .into_iter()
+        .filter(|l| l.xf.t.distance(cam_pos) <= COSMETICS_ENV_RADIUS_CM)
+        .collect();
     // persistent level: the Vault hero placement, the item preview point and the Vault lighting
     for a in fe.actors() {
         let class = fe.view.class(a);
-        let find = |name: &str| fe.view.children(a).into_iter().find(|&c| fe.view.name(c) == name);
+        let find = |name: &str| {
+            fe.view
+                .children(a)
+                .into_iter()
+                .find(|&c| fe.view.name(c) == name)
+        };
         match class.as_str() {
             "VaultCharacterPlacementHelper_C" => {
-                let (Some(root), Some(place)) = (find("Root"), find("CharacterPlacement")) else { continue };
-                let wi = WidgetCompInfo { widget_class: String::new(), screen_space: true, pivot: [0.5, 0.5], draw_size: [500., 500.], draw_at_desired_size: false };
-                out.placements.push(PlacementInfo { actor: fe.view.name(a).to_owned(), player_id: 0, hidden: false, player_on_pad: false, root: fe.world_xf(root), character: fe.world_xf(place),
-                    top_widget: Xf::IDENTITY, add_widget: Xf::IDENTITY, gadgets_widget: Xf::IDENTITY, top_info: wi.clone(), add_info: wi });
+                let (Some(root), Some(place)) = (find("Root"), find("CharacterPlacement")) else {
+                    continue;
+                };
+                let wi = WidgetCompInfo {
+                    widget_class: String::new(),
+                    screen_space: true,
+                    pivot: [0.5, 0.5],
+                    draw_size: [500., 500.],
+                    draw_at_desired_size: false,
+                };
+                out.placements.push(PlacementInfo {
+                    actor: fe.view.name(a).to_owned(),
+                    player_id: 0,
+                    hidden: false,
+                    player_on_pad: false,
+                    root: fe.world_xf(root),
+                    character: fe.world_xf(place),
+                    top_widget: Xf::IDENTITY,
+                    add_widget: Xf::IDENTITY,
+                    gadgets_widget: Xf::IDENTITY,
+                    top_info: wi.clone(),
+                    add_info: wi,
+                });
             }
-            "VaultWeaponPlacementHelper_C" => { if let Some(place) = find("CharacterPlacement") { out.item_preview = Some(fe.world_xf(place)); } }
+            "VaultWeaponPlacementHelper_C" => {
+                if let Some(place) = find("CharacterPlacement") {
+                    out.item_preview = Some(fe.world_xf(place));
+                }
+            }
             "VaultCharacterLightingBP_C" => fe.collect_actor(a, &mut out),
             _ => {}
         }
     }
-    if out.placements.is_empty() { return Err("no VaultCharacterPlacementHelper in the persistent level".into()); }
+    if out.placements.is_empty() {
+        return Err("no VaultCharacterPlacementHelper in the persistent level".into());
+    }
     fe.collect_post_volumes(&mut out);
     bg.collect_post_volumes(&mut out);
     out.post = stack_post_settings(&out.post_volumes, cam_pos);
@@ -1596,14 +2471,22 @@ pub fn read_cosmetics_scene_from(set: &fn_pak::PakSet) -> Result<LobbySceneData,
 pub fn read_mpc_defaults(set: &fn_pak::PakSet, long: &str) -> Result<Vec<[f32; 4]>, String> {
     let v = PkgView::open(set, long, false)?;
     let name = long.rsplit('/').next().unwrap_or(long);
-    let i = (0..v.n()).find(|&i| v.name(i) == name).ok_or("collection export not found")?;
+    let i = (0..v.n())
+        .find(|&i| v.name(i) == name)
+        .ok_or("collection export not found")?;
     let p = v.props(i);
     let mut out: Vec<[f32; 4]> = vec![];
-    for e in p.array("VectorParameters").into_iter().flatten() { if let Some(f) = e.as_fields() { out.push(pv_vec4(f, "DefaultValue").unwrap_or([0.; 4])); } }
+    for e in p.array("VectorParameters").into_iter().flatten() {
+        if let Some(f) = e.as_fields() {
+            out.push(pv_vec4(f, "DefaultValue").unwrap_or([0.; 4]));
+        }
+    }
     let mut k = 0usize;
     for e in p.array("ScalarParameters").into_iter().flatten() {
         let Some(f) = e.as_fields() else { continue };
-        if k % 4 == 0 { out.push([0.; 4]); }
+        if k % 4 == 0 {
+            out.push([0.; 4]);
+        }
         let last = out.len() - 1;
         out[last][k % 4] = pv_f32(f, "DefaultValue").unwrap_or(0.);
         k += 1;
@@ -1615,41 +2498,89 @@ pub fn read_mpc_defaults(set: &fn_pak::PakSet, long: &str) -> Result<Vec<[f32; 4
 /// the camera actor `FrontEndSettingsBP_31.Cameras[camera]`, and every static / light / fog of the persistent level and of the always-loaded streaming levels
 /// (`FrontEndStore`, `Frontend_BG_Main`, `Frontend_SkillTree`, with their `LevelTransform`) within `radius_cm` of that camera, plus the post-process volumes at the camera.
 /// `camera` is the enumerator name (`"Store"`, `"StoreItemInspect"`, ...). Which levels contributed is listed in `unrendered` as `("source", level, "...")`.
-pub fn read_view_scene_from(set: &fn_pak::PakSet, camera: &str, radius_cm: f32) -> Result<LobbySceneData, String> {
+pub fn read_view_scene_from(
+    set: &fn_pak::PakSet,
+    camera: &str,
+    radius_cm: f32,
+) -> Result<LobbySceneData, String> {
     let mut out = LobbySceneData::default();
     let fe = MapReader::open(set, FRONTEND_MAP, Vec3::ZERO)?;
     let streaming = read_frontend_streaming(&fe);
     let pairs = read_camera_pairs(&fe);
     let suffix = format!("::{camera}");
-    let cam_actor = pairs.iter().find(|(t, _)| t.ends_with(&suffix)).map(|(_, a)| *a).ok_or_else(|| format!("FrontEndSettings maps no {camera} camera"))?;
+    let cam_actor = pairs
+        .iter()
+        .find(|(t, _)| t.ends_with(&suffix))
+        .map(|(_, a)| *a)
+        .ok_or_else(|| format!("FrontEndSettings maps no {camera} camera"))?;
     let ai = fe.actor_info(cam_actor);
-    let cam_comp = fe.view.children(cam_actor).into_iter().find(|&c| fe.view.name(c) == "CameraComponent" && fe.view.class(c) == "CameraComponent").ok_or("camera actor has no CameraComponent")?;
+    let cam_comp = fe
+        .view
+        .children(cam_actor)
+        .into_iter()
+        .find(|&c| fe.view.name(c) == "CameraComponent" && fe.view.class(c) == "CameraComponent")
+        .ok_or("camera actor has no CameraComponent")?;
     let cp = fe.comp_props(cam_comp);
     out.camera = Some(CameraInfo {
-        actor: ai.name.clone(), actor_class: ai.class.clone(), xf: fe.world_xf(cam_comp), fov_deg: pv_f32(&cp, "FieldOfView").unwrap_or(90.), aspect_ratio: pv_f32(&cp, "AspectRatio").unwrap_or(1.777778),
-        post_process_blend_weight: pv_f32(&cp, "PostProcessBlendWeight").unwrap_or(1.0), child_camera: None,
+        actor: ai.name.clone(),
+        actor_class: ai.class.clone(),
+        xf: fe.world_xf(cam_comp),
+        fov_deg: pv_f32(&cp, "FieldOfView").unwrap_or(90.),
+        aspect_ratio: pv_f32(&cp, "AspectRatio").unwrap_or(1.777778),
+        post_process_blend_weight: pv_f32(&cp, "PostProcessBlendWeight").unwrap_or(1.0),
+        child_camera: None,
     });
     let cam_pos = out.camera.as_ref().unwrap().xf.t;
     let mut push_level = |out: &mut LobbySceneData, r: &MapReader, name: &str| {
         let mut scratch = LobbySceneData::default();
         for a in r.actors() {
             let class = r.view.class(a);
-            if matches!(class.as_str(), "FortWorldSettings" | "LevelBounds" | "Level" | "WorldSettings") { continue; }
+            if matches!(
+                class.as_str(),
+                "FortWorldSettings" | "LevelBounds" | "Level" | "WorldSettings"
+            ) {
+                continue;
+            }
             // an actor belongs to the view when its root component is within the radius (the camera's own actor is included: its lights are bVisible=false templates)
-            let Some(root) = r.view.export_of(r.view.props(a).get("RootComponent")) else { continue };
-            if r.world_xf(root).t.distance(cam_pos) > radius_cm { continue; }
+            let Some(root) = r.view.export_of(r.view.props(a).get("RootComponent")) else {
+                continue;
+            };
+            if r.world_xf(root).t.distance(cam_pos) > radius_cm {
+                continue;
+            }
             r.collect_actor(a, &mut scratch);
         }
-        let s = scratch.statics.into_iter().filter(|s| s.xf.t.distance(cam_pos) <= radius_cm).collect::<Vec<_>>();
-        let l = scratch.lights.into_iter().filter(|l| l.xf.t.distance(cam_pos) <= radius_cm).collect::<Vec<_>>();
-        out.unrendered.push(("source".into(), name.to_owned(), format!("{} statics, {} lights, {} fogs, {} particles within {radius_cm} cm of the camera", s.len(), l.len(), scratch.fogs.len(), scratch.particles.len())));
+        let s = scratch
+            .statics
+            .into_iter()
+            .filter(|s| s.xf.t.distance(cam_pos) <= radius_cm)
+            .collect::<Vec<_>>();
+        let l = scratch
+            .lights
+            .into_iter()
+            .filter(|l| l.xf.t.distance(cam_pos) <= radius_cm)
+            .collect::<Vec<_>>();
+        out.unrendered.push((
+            "source".into(),
+            name.to_owned(),
+            format!(
+                "{} statics, {} lights, {} fogs, {} particles within {radius_cm} cm of the camera",
+                s.len(),
+                l.len(),
+                scratch.fogs.len(),
+                scratch.particles.len()
+            ),
+        ));
         out.statics.extend(s);
         out.lights.extend(l);
         out.fogs.extend(scratch.fogs);
         out.particles.extend(scratch.particles);
     };
     push_level(&mut out, &fe, FRONTEND_MAP);
-    for (_, long, off) in streaming.iter().filter(|s| s.0.starts_with("LevelStreamingAlwaysLoaded")) {
+    for (_, long, off) in streaming
+        .iter()
+        .filter(|s| s.0.starts_with("LevelStreamingAlwaysLoaded"))
+    {
         let r = MapReader::open(set, long, *off)?;
         push_level(&mut out, &r, long);
         r.collect_post_volumes(&mut out);
@@ -1659,7 +2590,13 @@ pub fn read_view_scene_from(set: &fn_pak::PakSet, camera: &str, radius_cm: f32) 
     // `StoreCamera_Blueprint` (the actor of `EFrontEndCamera::Store`) calls `Mesh-DarkenBG.SetVisibility(true)` (ubergraph 0x3d2 / 0x489, `DarkenBGVisibility(Enable)`) and
     // `SetScalarParameterValue(MPC_Pinata, BGChange, 1)`: its template has `bVisible = false`, the activated camera shows the darkening plane (INFERENCE: these run when the camera activates).
     if camera == "Store" {
-        for s in out.statics.iter_mut().filter(|s| s.component == "Mesh-DarkenBG") { s.visible = true; }
+        for s in out
+            .statics
+            .iter_mut()
+            .filter(|s| s.component == "Mesh-DarkenBG")
+        {
+            s.visible = true;
+        }
         // the Store materials read `MPC_Pinata` (`M_StoreBGDarken`: BGChange); its asset defaults are the values in effect (BGChange = 1 is also what the camera Kismet sets)
         out.mpc = read_mpc_defaults(set, "/Game/FrontEnd/Store/Pinata/Assets/Shared/MPC_Pinata")?;
     }
@@ -1672,9 +2609,15 @@ mod tests {
     use super::*;
     #[test]
     fn athena_lobby_root_slots_are_read_from_the_18_widget_tree() {
-        let root = std::env::var_os("FN_ROOT").map(std::path::PathBuf::from)
-            .unwrap_or_else(|| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
-        if !root.exists() { eprintln!("1.8 install missing: skipped"); return; }
+        let root = std::env::var_os("FN_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into()
+            });
+        if !root.exists() {
+            eprintln!("1.8 install missing: skipped");
+            return;
+        }
         let layout = read_athena_lobby_root_layout(&root).unwrap();
         assert_eq!(layout.season_padding, [32., 32., 0., 0.]);
         assert_eq!(layout.player_padding, [0., 0., 0., 134.]);
@@ -1685,114 +2628,264 @@ mod tests {
 
     #[test]
     fn athena_lobby_widget_tree_preserves_serialized_root_children() {
-        let root = std::env::var_os("FN_ROOT").map(std::path::PathBuf::from)
-            .unwrap_or_else(|| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
-        if !root.exists() { eprintln!("1.8 install missing: skipped"); return; }
+        let root = std::env::var_os("FN_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into()
+            });
+        if !root.exists() {
+            eprintln!("1.8 install missing: skipped");
+            return;
+        }
         let tree = read_athena_lobby_widget_tree(&root).unwrap();
         assert_eq!(tree.root, "SafeZone_0");
-        let overlay = tree.widgets.iter().find(|w| w.name == "OverlayMain").unwrap();
+        let overlay = tree
+            .widgets
+            .iter()
+            .find(|w| w.name == "OverlayMain")
+            .unwrap();
         assert_eq!(overlay.class, "Overlay");
-        assert_eq!(overlay.children, ["SeasonAndChallengesPanel", "PlayerPanel", "Launch", "ButtonGamepadSelect", "SizeBox_0"]);
-        let player = tree.widgets.iter().find(|w| w.name == "PlayerPanel").unwrap();
-        assert_eq!(player.class_path.as_deref(), Some("/Game/Athena/UI/Frontend/AthenaLobbyPlayerPanel.AthenaLobbyPlayerPanel_C"));
+        assert_eq!(
+            overlay.children,
+            [
+                "SeasonAndChallengesPanel",
+                "PlayerPanel",
+                "Launch",
+                "ButtonGamepadSelect",
+                "SizeBox_0"
+            ]
+        );
+        let player = tree
+            .widgets
+            .iter()
+            .find(|w| w.name == "PlayerPanel")
+            .unwrap();
+        assert_eq!(
+            player.class_path.as_deref(),
+            Some("/Game/Athena/UI/Frontend/AthenaLobbyPlayerPanel.AthenaLobbyPlayerPanel_C")
+        );
         let launch = tree.widgets.iter().find(|w| w.name == "Launch").unwrap();
-        assert_eq!(launch.class_path.as_deref(), Some("/Game/Athena/UI/AthenaMatchmakingWidget.AthenaMatchmakingWidget_C"));
+        assert_eq!(
+            launch.class_path.as_deref(),
+            Some("/Game/Athena/UI/AthenaMatchmakingWidget.AthenaMatchmakingWidget_C")
+        );
         assert!(tree.widgets.iter().any(|w| w.name == "Image_0"));
     }
 
     #[test]
     fn athena_lobby_child_trees_are_loaded_through_serialized_blueprint_paths() {
-        let root = std::env::var_os("FN_ROOT").map(std::path::PathBuf::from)
-            .unwrap_or_else(|| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
-        if !root.exists() { eprintln!("1.8 install missing: skipped"); return; }
+        let root = std::env::var_os("FN_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into()
+            });
+        if !root.exists() {
+            eprintln!("1.8 install missing: skipped");
+            return;
+        }
         let children = read_athena_lobby_child_widget_trees(&root).unwrap();
         let names: Vec<_> = children.iter().map(|(name, _)| name.as_str()).collect();
         assert!(names.contains(&"PlayerPanel"));
         assert!(names.contains(&"Launch"));
         assert!(names.contains(&"ButtonGamepadSelect"));
-        assert!(children.iter().any(|(name, tree)| name == "Launch" && tree.widgets.iter().any(|widget| widget.name == "PlayButton")));
+        assert!(children.iter().any(|(name, tree)| name == "Launch"
+            && tree
+                .widgets
+                .iter()
+                .any(|widget| widget.name == "PlayButton")));
     }
 
     #[test]
     fn athena_lobby_graph_expands_real_player_and_matchmaking_widget_trees() {
         fn contains_node(node: &CookedWidgetNode, wanted: &str) -> bool {
-            node.name == wanted || node.children.iter().any(|child| contains_node(child, wanted))
+            node.name == wanted
+                || node
+                    .children
+                    .iter()
+                    .any(|child| contains_node(child, wanted))
         }
         fn named<'a>(node: &'a CookedWidgetNode, wanted: &str) -> Option<&'a CookedWidgetNode> {
-            if node.name == wanted { Some(node) } else { node.children.iter().find_map(|child| named(child, wanted)) }
+            if node.name == wanted {
+                Some(node)
+            } else {
+                node.children.iter().find_map(|child| named(child, wanted))
+            }
         }
 
-        let root = std::env::var_os("FN_ROOT").map(std::path::PathBuf::from)
-            .unwrap_or_else(|| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
-        if !root.exists() { eprintln!("1.8 install missing: skipped"); return; }
+        let root = std::env::var_os("FN_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into()
+            });
+        if !root.exists() {
+            eprintln!("1.8 install missing: skipped");
+            return;
+        }
         let graph = read_athena_lobby_widget_graph(&root).unwrap();
         assert_eq!(graph.name, "SafeZone_0");
-        let overlay = graph.children.iter().find(|node| node.name == "OverlayMain").unwrap();
-        let player = overlay.children.iter().find(|node| node.name == "PlayerPanel").unwrap();
-        assert_eq!(player.class_path.as_deref(), Some("/Game/Athena/UI/Frontend/AthenaLobbyPlayerPanel.AthenaLobbyPlayerPanel_C"));
-        assert!(!player.children.is_empty(), "PlayerPanel must expand its child WidgetTree");
-        let launch = overlay.children.iter().find(|node| node.name == "Launch").unwrap();
-        assert!(!launch.children.is_empty(), "Launch must expand its child WidgetTree: {launch:#?}");
-        assert!(contains_node(launch, "PlayButton"), "expanded Launch tree must contain the real PlayButton");
-        let season = overlay.children.iter().find(|node| node.name == "SeasonAndChallengesPanel").unwrap();
+        let overlay = graph
+            .children
+            .iter()
+            .find(|node| node.name == "OverlayMain")
+            .unwrap();
+        let player = overlay
+            .children
+            .iter()
+            .find(|node| node.name == "PlayerPanel")
+            .unwrap();
+        assert_eq!(
+            player.class_path.as_deref(),
+            Some("/Game/Athena/UI/Frontend/AthenaLobbyPlayerPanel.AthenaLobbyPlayerPanel_C")
+        );
+        assert!(
+            !player.children.is_empty(),
+            "PlayerPanel must expand its child WidgetTree"
+        );
+        let launch = overlay
+            .children
+            .iter()
+            .find(|node| node.name == "Launch")
+            .unwrap();
+        assert!(
+            !launch.children.is_empty(),
+            "Launch must expand its child WidgetTree: {launch:#?}"
+        );
+        assert!(
+            contains_node(launch, "PlayButton"),
+            "expanded Launch tree must contain the real PlayButton"
+        );
+        let season = overlay
+            .children
+            .iter()
+            .find(|node| node.name == "SeasonAndChallengesPanel")
+            .unwrap();
         let size_box = named(season, "SizeBox_1").expect("serialized PlayerEmblemAndXp SizeBox");
         assert_eq!(size_box.width_override, Some(464.));
     }
 
     #[test]
     fn athena_tabs_are_owned_by_the_real_parent_screen_not_the_lobby_shell() {
-        let root = std::env::var_os("FN_ROOT").map(std::path::PathBuf::from)
-            .unwrap_or_else(|| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
-        if !root.exists() { eprintln!("1.8 install missing: skipped"); return; }
+        let root = std::env::var_os("FN_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into()
+            });
+        if !root.exists() {
+            eprintln!("1.8 install missing: skipped");
+            return;
+        }
         let tree = read_athena_tabs_widget_tree(&root).unwrap();
         assert_eq!(tree.root, "VerticalBox_1");
-        let tabs = tree.widgets.iter().find(|widget| widget.name == "TopTabList").unwrap();
+        let tabs = tree
+            .widgets
+            .iter()
+            .find(|widget| widget.name == "TopTabList")
+            .unwrap();
         assert_eq!(tabs.class, "HorizontalTabList_C");
-        assert!(tabs.children.is_empty(), "the UMG class template owns the tab buttons");
+        assert!(
+            tabs.children.is_empty(),
+            "the UMG class template owns the tab buttons"
+        );
     }
 
     #[test]
     fn athena_tab_registrations_keep_the_cooked_labels_routes_and_visibility() {
-        let root = std::env::var_os("FN_ROOT").map(std::path::PathBuf::from)
-            .unwrap_or_else(|| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
-        if !root.exists() { eprintln!("1.8 install missing: skipped"); return; }
+        let root = std::env::var_os("FN_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into()
+            });
+        if !root.exists() {
+            eprintln!("1.8 install missing: skipped");
+            return;
+        }
         let tabs = read_athena_tab_registrations(&root).unwrap();
-        let visible: Vec<_> = tabs.iter().filter(|tab| !tab.hidden).map(|tab| tab.label.as_str()).collect();
-        assert_eq!(visible, ["Lobby", "Locker", "Item Shop", "Season Shop", "Stats", "Leaderboards", "Store"]);
+        let visible: Vec<_> = tabs
+            .iter()
+            .filter(|tab| !tab.hidden)
+            .map(|tab| tab.label.as_str())
+            .collect();
+        assert_eq!(
+            visible,
+            [
+                "Lobby",
+                "Locker",
+                "Item Shop",
+                "Season Shop",
+                "Stats",
+                "Leaderboards",
+                "Store"
+            ]
+        );
         let lobby = tabs.iter().find(|tab| tab.id == "Lobby").unwrap();
-        assert_eq!(lobby.content_class.as_deref(), Some("/Game/Athena/UI/Frontend/AthenaLobby.AthenaLobby_C"));
+        assert_eq!(
+            lobby.content_class.as_deref(),
+            Some("/Game/Athena/UI/Frontend/AthenaLobby.AthenaLobby_C")
+        );
     }
 
     #[test]
     fn frontend_top_bar_tree_contains_the_real_currency_and_social_widgets() {
-        let root = std::env::var_os("FN_ROOT").map(std::path::PathBuf::from)
-            .unwrap_or_else(|| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
-        if !root.exists() { eprintln!("1.8 install missing: skipped"); return; }
+        let root = std::env::var_os("FN_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into()
+            });
+        if !root.exists() {
+            eprintln!("1.8 install missing: skipped");
+            return;
+        }
         let tree = read_widget_tree(&root, FRONTEND_TOP_BAR_WIDGET, "WidgetTree_475").unwrap();
         assert_eq!(tree.root, "Overlay_1");
-        for (name, class) in [("FortniteLogo", "Image"), ("BRCurrency", "BRCurrency_C"), ("Social", "IconTextButton_C"), ("MiniPartyBar", "MiniPartyBar_C")] {
-            assert!(tree.widgets.iter().any(|w| w.name == name && w.class == class), "missing {name}:{class}");
+        for (name, class) in [
+            ("FortniteLogo", "Image"),
+            ("BRCurrency", "BRCurrency_C"),
+            ("Social", "IconTextButton_C"),
+            ("MiniPartyBar", "MiniPartyBar_C"),
+        ] {
+            assert!(
+                tree.widgets
+                    .iter()
+                    .any(|w| w.name == name && w.class == class),
+                "missing {name}:{class}"
+            );
         }
     }
 
     #[test]
     fn frontend_top_bar_visuals_use_the_serialized_logo_and_social_brushes() {
-        let root = std::env::var_os("FN_ROOT").map(std::path::PathBuf::from)
-            .unwrap_or_else(|| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
-        if !root.exists() { eprintln!("1.8 install missing: skipped"); return; }
-        let visuals = read_widget_visuals(&root, FRONTEND_TOP_BAR_WIDGET, "WidgetTree_475").unwrap();
+        let root = std::env::var_os("FN_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into()
+            });
+        if !root.exists() {
+            eprintln!("1.8 install missing: skipped");
+            return;
+        }
+        let visuals =
+            read_widget_visuals(&root, FRONTEND_TOP_BAR_WIDGET, "WidgetTree_475").unwrap();
         let logo = visuals.iter().find(|v| v.name == "FortniteLogo").unwrap();
         assert_eq!(logo.brush_size, Some([204., 64.]));
-        assert_eq!(logo.brush_resource.as_deref(), Some("/Game/UI/Foundation/Textures/Logo/T-Logo-Wordmark-1024.T-Logo-Wordmark-1024"));
+        assert_eq!(
+            logo.brush_resource.as_deref(),
+            Some("/Game/UI/Foundation/Textures/Logo/T-Logo-Wordmark-1024.T-Logo-Wordmark-1024")
+        );
         let social = visuals.iter().find(|v| v.name == "Social").unwrap();
         assert_eq!(social.brush_resource.as_deref(), Some("/Game/UI/Foundation/Textures/Icons/Social/T-Icon-Chat-Party-XL.T-Icon-Chat-Party-XL"));
     }
 
     #[test]
     fn athena_play_button_uses_the_serialized_primary_large_style() {
-        let root = std::env::var_os("FN_ROOT").map(std::path::PathBuf::from)
-            .unwrap_or_else(|| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
-        if !root.exists() { eprintln!("1.8 install missing: skipped"); return; }
+        let root = std::env::var_os("FN_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into()
+            });
+        if !root.exists() {
+            eprintln!("1.8 install missing: skipped");
+            return;
+        }
         let style = read_button_style(&root, "/Game/UI/Foundation/Buttons/ButtonStyles/Primary/ButtonStyle-Primary-L.ButtonStyle-Primary-L_C").unwrap();
         assert_eq!(style.min_size, [192., 56.]);
         assert_eq!(style.normal.resource, "/Game/UI/Foundation/Buttons/Materials/Primary/M-Button-Primary-L-Base.M-Button-Primary-L-Base");
@@ -1806,28 +2899,54 @@ mod tests {
     // ---------------------------------------------------------------- scene data: every value below is the literal serialized value of the 1.8 package
     // (decoded independently with `fn-inspect props` while auditing, see parity/lobby/SCENE.md)
     fn install() -> Option<std::path::PathBuf> {
-        let root = std::env::var_os("FN_ROOT").map(std::path::PathBuf::from).unwrap_or_else(|| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
-        if root.exists() { Some(root) } else { eprintln!("1.8 install missing: skipped"); None }
+        let root = std::env::var_os("FN_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into()
+            });
+        if root.exists() {
+            Some(root)
+        } else {
+            eprintln!("1.8 install missing: skipped");
+            None
+        }
     }
-    fn scene() -> Option<LobbySceneData> { Some(read_lobby_scene(&install()?).expect("lobby scene")) }
-    fn near(a: f32, b: f32) -> bool { (a - b).abs() < 1e-3 * b.abs().max(1.) }
+    fn scene() -> Option<LobbySceneData> {
+        Some(read_lobby_scene(&install()?).expect("lobby scene"))
+    }
+    fn near(a: f32, b: f32) -> bool {
+        (a - b).abs() < 1e-3 * b.abs().max(1.)
+    }
 
     #[test]
     fn xf_composition_and_rotator_match_ue() {
         let q = rotator_quat([0., 90., 0.]);
-        assert!((q * Vec3::X - Vec3::Y).length() < 1e-6, "yaw +90 turns +X into +Y");
+        assert!(
+            (q * Vec3::X - Vec3::Y).length() < 1e-6,
+            "yaw +90 turns +X into +Y"
+        );
         let parent = Xf::from_pyr([10., 20., 30.], [0., 90., 0.], [2., 2., 2.]);
         let child = Xf::from_pyr([1., 0., 0.], [0., 0., 0.], [1., 1., 1.]);
         let w = child.compose(&parent);
-        assert!((w.t - Vec3::new(10., 22., 30.)).length() < 1e-5, "{:?}", w.t);
+        assert!(
+            (w.t - Vec3::new(10., 22., 30.)).length() < 1e-5,
+            "{:?}",
+            w.t
+        );
         let r = Xf::from_pyr([0.; 3], [-4.4, -90.2, 7.0], [1.; 3]).rotator_deg();
-        assert!((r[0] + 4.4).abs() < 1e-3 && (r[1] + 90.2).abs() < 1e-3 && (r[2] - 7.0).abs() < 1e-3, "{r:?}");
+        assert!(
+            (r[0] + 4.4).abs() < 1e-3 && (r[1] + 90.2).abs() < 1e-3 && (r[2] - 7.0).abs() < 1e-3,
+            "{r:?}"
+        );
     }
 
     #[test]
     fn blackbody_6500k_is_near_white_and_12000k_is_blue() {
         let w = blackbody_linear(6500.);
-        assert!((w[0] - 1.).abs() < 0.08 && (w[2] - 1.).abs() < 0.12, "{w:?}");
+        assert!(
+            (w[0] - 1.).abs() < 0.08 && (w[2] - 1.).abs() < 0.12,
+            "{w:?}"
+        );
         let b = blackbody_linear(12000.);
         assert!(b[2] > b[0], "{b:?}");
     }
@@ -1839,11 +2958,22 @@ mod tests {
         assert_eq!(sel.lobby_select, "FortniteLobby::NewEnumerator1");
         assert_eq!(sel.lobby_select_label, "Halloween");
         assert_eq!(sel.map, HALLOWEEN_MAP);
-        let off = |m: &str| sel.frontend_streaming.iter().find(|s| s.1 == m).map(|s| s.2).unwrap();
+        let off = |m: &str| {
+            sel.frontend_streaming
+                .iter()
+                .find(|s| s.1 == m)
+                .map(|s| s.2)
+                .unwrap()
+        };
         assert_eq!(off(HALLOWEEN_MAP), Vec3::ZERO);
         assert_eq!(off(LOBBY_SELECTOR_MAP), Vec3::new(0., 125397.5625, 0.));
         for ty in ["EFrontEndCamera::HeroSelect", "EFrontEndCamera::Party"] {
-            assert!(sel.camera_pairs.iter().any(|(t, a)| t == ty && a == "Frontend_Lobby"), "{ty}");
+            assert!(
+                sel.camera_pairs
+                    .iter()
+                    .any(|(t, a)| t == ty && a == "Frontend_Lobby"),
+                "{ty}"
+            );
         }
     }
 
@@ -1851,15 +2981,25 @@ mod tests {
     fn camera_is_the_frontend_lobby_actor_root_camera() {
         let Some(d) = scene() else { return };
         let c = d.camera.as_ref().unwrap();
-        assert_eq!((c.actor.as_str(), c.actor_class.as_str()), ("Frontend_Lobby", "FortnitePartyBackdrop_Camera_C"));
+        assert_eq!(
+            (c.actor.as_str(), c.actor_class.as_str()),
+            ("Frontend_Lobby", "FortnitePartyBackdrop_Camera_C")
+        );
         assert!((c.xf.t - Vec3::new(-10.0, 125992.5, 90.4527587890625)).length() < 1e-3);
         let r = c.xf.rotator_deg();
-        assert!(r[0].abs() < 1e-3 && (r[1] + 90.).abs() < 1e-3 && r[2].abs() < 1e-3, "{r:?}");
-        assert_eq!(c.fov_deg, 55.0, "Default__FortnitePartyBackdrop_Camera_C CameraComponent FieldOfView");
+        assert!(
+            r[0].abs() < 1e-3 && (r[1] + 90.).abs() < 1e-3 && r[2].abs() < 1e-3,
+            "{r:?}"
+        );
+        assert_eq!(
+            c.fov_deg, 55.0,
+            "Default__FortnitePartyBackdrop_Camera_C CameraComponent FieldOfView"
+        );
         assert_eq!(c.post_process_blend_weight, -1.0);
         let (cx, cf) = c.child_camera.unwrap();
         assert_eq!(cf, 35.0, "CameraComponent_0 template");
-        let want = c.xf.t + c.xf.q * Vec3::new(-541.2623901367188, -41.0029296875, 133.9656982421875);
+        let want =
+            c.xf.t + c.xf.q * Vec3::new(-541.2623901367188, -41.0029296875, 133.9656982421875);
         assert!((cx.t - want).length() < 0.05, "{:?} vs {want:?}", cx.t);
     }
 
@@ -1879,64 +3019,198 @@ mod tests {
         assert!(near(p1.root.rotator_deg()[1], 100.00008392333984));
         // template CharacterPlacement (StaticMeshComponent_231): (20, 0, 0), yaw -90
         let want = p1.root.t + p1.root.q * Vec3::new(20., 0., 0.);
-        assert!((p1.character.t - want).length() < 1e-2, "{:?} vs {want:?}", p1.character.t);
+        assert!(
+            (p1.character.t - want).length() < 1e-2,
+            "{:?} vs {want:?}",
+            p1.character.t
+        );
         assert!((p1.character.rotator_deg()[1] - 10.00008).abs() < 1e-2);
         assert!(d.placements[4].hidden && !d.placements[1].hidden && !d.placements[3].hidden);
-        assert!((d.placements[2].root.t - Vec3::new(-126.0546875, 125302.96875, 3.939453125)).length() < 1e-2);
-        assert!((d.placements[3].root.t - Vec3::new(257.9453125, 125198.96875, 3.939453125)).length() < 1e-2);
-        assert!((p0.top_widget.t - (p0.root.t + Vec3::new(0., 0., 165.))).length() < 1e-2, "LobbyPlayerPadTop RelativeLocation z=165 on Player0");
+        assert!(
+            (d.placements[2].root.t - Vec3::new(-126.0546875, 125302.96875, 3.939453125)).length()
+                < 1e-2
+        );
+        assert!(
+            (d.placements[3].root.t - Vec3::new(257.9453125, 125198.96875, 3.939453125)).length()
+                < 1e-2
+        );
+        assert!(
+            (p0.top_widget.t - (p0.root.t + Vec3::new(0., 0., 165.))).length() < 1e-2,
+            "LobbyPlayerPadTop RelativeLocation z=165 on Player0"
+        );
         // WidgetComponent data of the pad blueprint templates (LobbyPlayerPadTop_GEN_VARIABLE / LobbyPlayerAddPlayer_GEN_VARIABLE)
         for p in &d.placements {
-            assert!(p.top_info.screen_space && p.add_info.screen_space && p.top_info.draw_at_desired_size && p.add_info.draw_at_desired_size);
-            assert_eq!(p.top_info.pivot, [0.5, 1.0], "name plate pivot: bottom centre on the projected point");
-            assert_eq!(p.add_info.pivot, [0.5, 0.5], "+ marker: ctor default pivot (not serialized)");
-            assert!(p.top_info.widget_class.ends_with("LobbyPlayerPadTop.LobbyPlayerPadTop_C") && p.add_info.widget_class.ends_with("LobbyPlayerAddPlayer.LobbyPlayerAddPlayer_C"));
+            assert!(
+                p.top_info.screen_space
+                    && p.add_info.screen_space
+                    && p.top_info.draw_at_desired_size
+                    && p.add_info.draw_at_desired_size
+            );
+            assert_eq!(
+                p.top_info.pivot,
+                [0.5, 1.0],
+                "name plate pivot: bottom centre on the projected point"
+            );
+            assert_eq!(
+                p.add_info.pivot,
+                [0.5, 0.5],
+                "+ marker: ctor default pivot (not serialized)"
+            );
+            assert!(
+                p.top_info
+                    .widget_class
+                    .ends_with("LobbyPlayerPadTop.LobbyPlayerPadTop_C")
+                    && p.add_info
+                        .widget_class
+                        .ends_with("LobbyPlayerAddPlayer.LobbyPlayerAddPlayer_C")
+            );
         }
     }
 
     #[test]
     fn statics_include_the_matte_plane_terrain_foliage_and_pads() {
         let Some(d) = scene() else { return };
-        let matte: Vec<_> = d.statics.iter().filter(|s| s.material_overrides.iter().flatten().any(|m| m.ends_with("M_LobbyMatte.M_LobbyMatte"))).collect();
+        let matte: Vec<_> = d
+            .statics
+            .iter()
+            .filter(|s| {
+                s.material_overrides
+                    .iter()
+                    .flatten()
+                    .any(|m| m.ends_with("M_LobbyMatte.M_LobbyMatte"))
+            })
+            .collect();
         assert_eq!(matte.len(), 1);
         let m = matte[0];
         assert!(m.mesh.ends_with("TechContent/S_plane_01.S_plane_01"));
-        assert_eq!(m.xf.t, Vec3::new(-721.65380859375, 121141.90625, 585.1259765625));
+        assert_eq!(
+            m.xf.t,
+            Vec3::new(-721.65380859375, 121141.90625, 585.1259765625)
+        );
         assert!(near(m.xf.s.x, 15.396615028381348) && near(m.xf.s.z, 15.396615028381348));
         assert!((m.xf.rotator_deg()[0] + 2.2536754608154297).abs() < 1e-3);
-        assert_eq!(d.statics.iter().filter(|s| s.mesh.ends_with("SM_Terrain_HalloweenLobby.SM_Terrain_HalloweenLobby")).count(), 8);
-        assert_eq!(d.statics.iter().filter(|s| s.component.starts_with("FoliageInstancedStaticMeshComponent_0[")).count(), 380, "NumBuiltInstances");
-        assert!(d.statics.iter().filter(|s| s.mesh.ends_with("SM_Lobby_Character_Pad.SM_Lobby_Character_Pad")).count() == 5);
+        assert_eq!(
+            d.statics
+                .iter()
+                .filter(|s| s
+                    .mesh
+                    .ends_with("SM_Terrain_HalloweenLobby.SM_Terrain_HalloweenLobby"))
+                .count(),
+            8
+        );
+        assert_eq!(
+            d.statics
+                .iter()
+                .filter(|s| s
+                    .component
+                    .starts_with("FoliageInstancedStaticMeshComponent_0["))
+                .count(),
+            380,
+            "NumBuiltInstances"
+        );
+        assert!(
+            d.statics
+                .iter()
+                .filter(|s| s
+                    .mesh
+                    .ends_with("SM_Lobby_Character_Pad.SM_Lobby_Character_Pad"))
+                .count()
+                == 5
+        );
         // the hidden CharacterPlacement helper mesh is kept but not visible
-        assert!(d.statics.iter().filter(|s| s.mesh.ends_with("S_FE_CharacterPlacementHelper.S_FE_CharacterPlacementHelper")).all(|s| !s.visible));
-        assert!(d.missing.iter().all(|m| !m.contains("instances not placed")), "{:?}", d.missing);
+        assert!(d
+            .statics
+            .iter()
+            .filter(|s| s
+                .mesh
+                .ends_with("S_FE_CharacterPlacementHelper.S_FE_CharacterPlacementHelper"))
+            .all(|s| !s.visible));
+        assert!(
+            d.missing
+                .iter()
+                .all(|m| !m.contains("instances not placed")),
+            "{:?}",
+            d.missing
+        );
     }
 
     #[test]
     fn lights_fog_and_post_match_the_package_values() {
         let Some(d) = scene() else { return };
-        let sun = d.lights.iter().find(|l| l.actor == "DirectionalLight_1").unwrap();
+        let sun = d
+            .lights
+            .iter()
+            .find(|l| l.actor == "DirectionalLight_1")
+            .unwrap();
         assert!(sun.visible && sun.use_temperature && sun.temperature == 12000.0);
         assert!(near(sun.intensity, 2.7522940635681152));
         let r = sun.xf.rotator_deg();
-        assert!(near(r[0], -11.517631530761719) && near(r[1], 101.17805480957031), "{r:?}");
-        assert!(!d.lights.iter().find(|l| l.actor == "DirectionalLight_LOWquality").unwrap().visible, "shadow quality != 0: the low-detail light stays off");
-        let sky = d.lights.iter().find(|l| l.kind == LightKind::Sky && l.actor == "SkyLight_1").unwrap();
-        assert!(near(sky.intensity, 0.7339450120925903) && sky.cubemap.as_deref() == Some("/Engine/MapTemplates/daylight.daylight"));
+        assert!(
+            near(r[0], -11.517631530761719) && near(r[1], 101.17805480957031),
+            "{r:?}"
+        );
+        assert!(
+            !d.lights
+                .iter()
+                .find(|l| l.actor == "DirectionalLight_LOWquality")
+                .unwrap()
+                .visible,
+            "shadow quality != 0: the low-detail light stays off"
+        );
+        let sky = d
+            .lights
+            .iter()
+            .find(|l| l.kind == LightKind::Sky && l.actor == "SkyLight_1")
+            .unwrap();
+        assert!(
+            near(sky.intensity, 0.7339450120925903)
+                && sky.cubemap.as_deref() == Some("/Engine/MapTemplates/daylight.daylight")
+        );
         // pad lights: only Player0's TopSpotLight is visible (bVisible serialized true on that instance)
-        let tops: Vec<_> = d.lights.iter().filter(|l| l.component == "TopSpotLight").collect();
+        let tops: Vec<_> = d
+            .lights
+            .iter()
+            .filter(|l| l.component == "TopSpotLight")
+            .collect();
         assert_eq!(tops.len(), 5);
         assert!(tops.iter().all(|l| l.visible == (l.actor == "Player0")));
         let t = tops.iter().find(|l| l.actor == "Player0").unwrap();
-        assert_eq!((t.intensity, t.attenuation_radius, t.inner_cone_deg, t.outer_cone_deg), (18000.0, 500.0, 12.0, 20.0), "TopSpotLight template");
+        assert_eq!(
+            (
+                t.intensity,
+                t.attenuation_radius,
+                t.inner_cone_deg,
+                t.outer_cone_deg
+            ),
+            (18000.0, 500.0, 12.0, 20.0),
+            "TopSpotLight template"
+        );
         let fog = d.fogs.iter().find(|f| f.visible).unwrap();
-        assert!(near(fog.density, 0.017431000247597694) && fog.height_falloff == 2.0 && fog.volumetric);
+        assert!(
+            near(fog.density, 0.017431000247597694) && fog.height_falloff == 2.0 && fog.volumetric
+        );
         // post: the priority 200 volume overrides the priority 100 one; the LUT / blendables come from the lobby level volume
-        assert!(near(d.post.f1("FilmSlope"), 0.9174309968948364) && near(d.post.f1("FilmToe"), 0.42844000458717346));
-        assert_eq!((d.post.f1("AutoExposureMinBrightness"), d.post.f1("AutoExposureMaxBrightness")), (1.0, 1.0));
+        assert!(
+            near(d.post.f1("FilmSlope"), 0.9174309968948364)
+                && near(d.post.f1("FilmToe"), 0.42844000458717346)
+        );
+        assert_eq!(
+            (
+                d.post.f1("AutoExposureMinBrightness"),
+                d.post.f1("AutoExposureMaxBrightness")
+            ),
+            (1.0, 1.0)
+        );
         assert!(near(d.post.f1("VignetteIntensity"), 0.583486020565033));
-        assert_eq!(d.post.color_grading_lut.as_deref(), Some("/Game/Environments/World/LUT/T_LUT_Vibrant02.T_LUT_Vibrant02"));
-        assert!(d.post.blendables.iter().any(|b| b.0.ends_with("M_Lobby_UI.M_Lobby_UI")));
+        assert_eq!(
+            d.post.color_grading_lut.as_deref(),
+            Some("/Game/Environments/World/LUT/T_LUT_Vibrant02.T_LUT_Vibrant02")
+        );
+        assert!(d
+            .post
+            .blendables
+            .iter()
+            .any(|b| b.0.ends_with("M_Lobby_UI.M_Lobby_UI")));
         let sat = d.post.v4("ColorSaturationMidtones");
         assert!(near(sat[0], 1.149999976158142) && near(sat[1], 0.9200000166893005));
     }

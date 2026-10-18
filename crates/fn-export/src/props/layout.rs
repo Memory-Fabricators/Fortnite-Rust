@@ -20,7 +20,11 @@ pub struct Xf {
     pub s: [f64; 3],
 }
 
-pub const IDENT: Xf = Xf { q: [0.0, 0.0, 0.0, 1.0], t: [0.0; 3], s: [1.0; 3] };
+pub const IDENT: Xf = Xf {
+    q: [0.0, 0.0, 0.0, 1.0],
+    t: [0.0; 3],
+    s: [1.0; 3],
+};
 
 fn qmul(a: [f64; 4], b: [f64; 4]) -> [f64; 4] {
     [
@@ -34,11 +38,21 @@ fn qmul(a: [f64; 4], b: [f64; 4]) -> [f64; 4] {
 fn qrot(q: [f64; 4], v: [f64; 3]) -> [f64; 3] {
     // v' = v + 2w(q x v) + 2 q x (q x v)
     let u = [q[0], q[1], q[2]];
-    let c = |a: [f64; 3], b: [f64; 3]| [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    let c = |a: [f64; 3], b: [f64; 3]| {
+        [
+            a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0],
+        ]
+    };
     let t = c(u, v);
     let t = [2.0 * t[0], 2.0 * t[1], 2.0 * t[2]];
     let u2 = c(u, t);
-    [v[0] + q[3] * t[0] + u2[0], v[1] + q[3] * t[1] + u2[1], v[2] + q[3] * t[2] + u2[2]]
+    [
+        v[0] + q[3] * t[0] + u2[0],
+        v[1] + q[3] * t[1] + u2[1],
+        v[2] + q[3] * t[2] + u2[2],
+    ]
 }
 
 /// `FRotator(Pitch, Yaw, Roll)` degrees -> `FQuat` (UE `FRotator::Quaternion`).
@@ -47,7 +61,12 @@ pub fn rot_to_quat(r: [f64; 3]) -> [f64; 4] {
     let (sp, cp) = h(r[0]);
     let (sy, cy) = h(r[1]);
     let (sr, cr) = h(r[2]);
-    [cr * sp * sy - sr * cp * cy, -cr * sp * cy - sr * cp * sy, cr * cp * sy - sr * sp * cy, cr * cp * cy + sr * sp * sy]
+    [
+        cr * sp * sy - sr * cp * cy,
+        -cr * sp * cy - sr * cp * sy,
+        cr * cp * sy - sr * sp * cy,
+        cr * cp * cy + sr * sp * sy,
+    ]
 }
 
 /// `FQuat::Rotator`: (Pitch, Yaw, Roll) degrees.
@@ -73,16 +92,34 @@ pub fn quat_to_rot(q: [f64; 4]) -> [f64; 3] {
         let yaw = yaw_y.atan2(yaw_x).to_degrees();
         (90.0, yaw, norm(yaw - 2.0 * x.atan2(w).to_degrees()))
     } else {
-        ((2.0 * st).asin().to_degrees(), yaw_y.atan2(yaw_x).to_degrees(), (-2.0 * (w * x + y * z)).atan2(1.0 - 2.0 * (x * x + y * y)).to_degrees())
+        (
+            (2.0 * st).asin().to_degrees(),
+            yaw_y.atan2(yaw_x).to_degrees(),
+            (-2.0 * (w * x + y * z))
+                .atan2(1.0 - 2.0 * (x * x + y * y))
+                .to_degrees(),
+        )
     };
     [p, yw, r]
 }
 
 /// `child * parent` in UE FTransform convention (apply child first, then parent).
 pub fn compose(child: Xf, parent: Xf) -> Xf {
-    let sc = [parent.s[0] * child.t[0], parent.s[1] * child.t[1], parent.s[2] * child.t[2]];
+    let sc = [
+        parent.s[0] * child.t[0],
+        parent.s[1] * child.t[1],
+        parent.s[2] * child.t[2],
+    ];
     let r = qrot(parent.q, sc);
-    Xf { q: qmul(parent.q, child.q), t: [r[0] + parent.t[0], r[1] + parent.t[1], r[2] + parent.t[2]], s: [child.s[0] * parent.s[0], child.s[1] * parent.s[1], child.s[2] * parent.s[2]] }
+    Xf {
+        q: qmul(parent.q, child.q),
+        t: [r[0] + parent.t[0], r[1] + parent.t[1], r[2] + parent.t[2]],
+        s: [
+            child.s[0] * parent.s[0],
+            child.s[1] * parent.s[1],
+            child.s[2] * parent.s[2],
+        ],
+    }
 }
 
 fn arr(v: Option<&Value>, n: usize) -> Option<Vec<f64>> {
@@ -117,16 +154,24 @@ pub struct Level {
 pub fn levels(src: &Source) -> Result<Vec<Level>, String> {
     let pd = PackageData::load(&src.set, MAP).map_err(|e| e.to_string())?;
     let pkg = pd.package().map_err(|e| e.to_string())?;
-    let mut out = vec![Level { package: MAP.to_string(), xf: IDENT }];
+    let mut out = vec![Level {
+        package: MAP.to_string(),
+        xf: IDENT,
+    }];
     for i in 0..pkg.exports.len() {
         if !pkg.export_class_name(i).starts_with("LevelStreaming") {
             continue;
         }
         let o = pkg.read_export(i).map_err(|e| e.to_string())?;
         let j = o.props.to_json(&pkg);
-        let Some(wa) = j.get("WorldAsset").and_then(|v| v.as_str()) else { continue };
+        let Some(wa) = j.get("WorldAsset").and_then(|v| v.as_str()) else {
+            continue;
+        };
         let xf = j.get("LevelTransform").map(xf_from_json).unwrap_or(IDENT);
-        out.push(Level { package: package_of(wa).to_string(), xf });
+        out.push(Level {
+            package: package_of(wa).to_string(),
+            xf,
+        });
     }
     Ok(out)
 }
@@ -147,7 +192,8 @@ pub struct LevelScan {
 
 /// All Blueprint actors (`*_C`) of a level with their world transform.
 pub fn scan_level(src: &Source, lv: &Level) -> Result<LevelScan, String> {
-    let pd = PackageData::load(&src.set, &lv.package).map_err(|e| format!("{}: {e}", lv.package))?;
+    let pd =
+        PackageData::load(&src.set, &lv.package).map_err(|e| format!("{}: {e}", lv.package))?;
     let pkg = pd.package().map_err(|e| format!("{}: {e}", lv.package))?;
     let mut placements = vec![];
     let mut other = BTreeMap::new();
@@ -156,7 +202,14 @@ pub fn scan_level(src: &Source, lv: &Level) -> Result<LevelScan, String> {
         let cn = pkg.export_class_name(i);
         let ex = &pkg.exports[i];
         if !cn.ends_with("_C") || ex.name.starts_with("Default__") {
-            if matches!(cn.as_str(), "InstancedFoliageActor" | "HierarchicalInstancedStaticMeshComponent" | "InstancedStaticMeshComponent" | "FoliageType_InstancedStaticMesh" | "FoliageInstancedStaticMeshComponent") {
+            if matches!(
+                cn.as_str(),
+                "InstancedFoliageActor"
+                    | "HierarchicalInstancedStaticMeshComponent"
+                    | "InstancedStaticMeshComponent"
+                    | "FoliageType_InstancedStaticMesh"
+                    | "FoliageInstancedStaticMeshComponent"
+            ) {
                 *other.entry(cn).or_insert(0) += 1;
             }
             continue;
@@ -179,10 +232,23 @@ pub fn scan_level(src: &Source, lv: &Level) -> Result<LevelScan, String> {
         let loc = arr(j.get("RelativeLocation"), 3).unwrap_or(vec![0.0; 3]);
         let rot = arr(j.get("RelativeRotation"), 3).unwrap_or(vec![0.0; 3]);
         let scl = arr(j.get("RelativeScale3D"), 3).unwrap_or(vec![1.0; 3]);
-        let rel = Xf { q: rot_to_quat([rot[0], rot[1], rot[2]]), t: [loc[0], loc[1], loc[2]], s: [scl[0], scl[1], scl[2]] };
-        placements.push(Placement { class: cn.trim_end_matches("_C").to_string(), bp, level: lv.package.clone(), xf: compose(rel, lv.xf) });
+        let rel = Xf {
+            q: rot_to_quat([rot[0], rot[1], rot[2]]),
+            t: [loc[0], loc[1], loc[2]],
+            s: [scl[0], scl[1], scl[2]],
+        };
+        placements.push(Placement {
+            class: cn.trim_end_matches("_C").to_string(),
+            bp,
+            level: lv.package.clone(),
+            xf: compose(rel, lv.xf),
+        });
     }
-    Ok(LevelScan { placements, other_classes: other, no_root })
+    Ok(LevelScan {
+        placements,
+        other_classes: other,
+        no_root,
+    })
 }
 
 pub struct Gathered {
@@ -218,7 +284,10 @@ pub fn gather(src: &Source, jobs: usize) -> Result<Gathered, String> {
     let mut no_root = 0;
     for (l, s) in lvls.iter().zip(scans) {
         let s = s?;
-        per_level.insert(l.package.clone(), json!({"actors": s.placements.len(), "translation": l.xf.t, "rotation": l.xf.q}));
+        per_level.insert(
+            l.package.clone(),
+            json!({"actors": s.placements.len(), "translation": l.xf.t, "rotation": l.xf.q}),
+        );
         for (k, v) in s.other_classes {
             *foliage.entry(k).or_insert(0) += v;
         }
@@ -237,7 +306,13 @@ pub fn gather(src: &Source, jobs: usize) -> Result<Gathered, String> {
     for (p, b) in uniq.iter().zip(loaded) {
         bps.insert(p.clone(), b);
     }
-    Ok(Gathered { all, bps, per_level, foliage, no_root })
+    Ok(Gathered {
+        all,
+        bps,
+        per_level,
+        foliage,
+        no_root,
+    })
 }
 
 pub fn run(src: &Source, a: &PropsArgs) -> Result<(), String> {
@@ -251,7 +326,9 @@ pub fn run_with(g: &Gathered, a: &PropsArgs) -> Result<(), String> {
     let mut harv: Vec<&Placement> = vec![];
     for p in &g.all {
         if let Some((cat, sub, rt, mesh)) = g.kind_of(&p.bp) {
-            let e = hist.entry(p.class.clone()).or_insert((0, cat, sub, rt, mesh));
+            let e = hist
+                .entry(p.class.clone())
+                .or_insert((0, cat, sub, rt, mesh));
             e.0 += 1;
             harv.push(p);
         }
@@ -260,23 +337,47 @@ pub fn run_with(g: &Gathered, a: &PropsArgs) -> Result<(), String> {
     // compact full list: [class, x,y,z, pitch,yaw,roll, sx,sy,sz]
     let mut classes: Vec<String> = hist.keys().cloned().collect();
     classes.sort();
-    let cidx: HashMap<&str, usize> = classes.iter().enumerate().map(|(i, c)| (c.as_str(), i)).collect();
+    let cidx: HashMap<&str, usize> = classes
+        .iter()
+        .enumerate()
+        .map(|(i, c)| (c.as_str(), i))
+        .collect();
     let inst: Vec<Value> = harv
         .iter()
         .map(|p| {
             let r = quat_to_rot(p.xf.q);
-            json!([cidx[p.class.as_str()], round(p.xf.t[0]), round(p.xf.t[1]), round(p.xf.t[2]), round(r[0]), round(r[1]), round(r[2]), round3(p.xf.s[0]), round3(p.xf.s[1]), round3(p.xf.s[2])])
+            json!([
+                cidx[p.class.as_str()],
+                round(p.xf.t[0]),
+                round(p.xf.t[1]),
+                round(p.xf.t[2]),
+                round(r[0]),
+                round(r[1]),
+                round(r[2]),
+                round3(p.xf.s[0]),
+                round3(p.xf.s[1]),
+                round3(p.xf.s[2])
+            ])
         })
         .collect();
     let all_doc = json!({
         "version": 1, "map": MAP, "units": "cm, UE world space (left handed, Z up); rotation = FRotator (pitch, yaw, roll) degrees",
         "fields": ["class", "x", "y", "z", "pitch", "yaw", "roll", "sx", "sy", "sz"], "classes": classes, "instances": inst,
     });
-    write_file(&a.out.join("layout/all.json"), serde_json::to_string(&all_doc).unwrap().as_bytes())?;
+    write_file(
+        &a.out.join("layout/all.json"),
+        serde_json::to_string(&all_doc).unwrap().as_bytes(),
+    )?;
 
     // statistics
-    let is_tree = |c: &str| hist.get(c).map_or(false, |h| h.3 == "Wood" && h.1.starts_with("Resource"));
-    let is_rock = |c: &str| hist.get(c).map_or(false, |h| h.3 == "Stone" && h.1.starts_with("Resource"));
+    let is_tree = |c: &str| {
+        hist.get(c)
+            .map_or(false, |h| h.3 == "Wood" && h.1.starts_with("Resource"))
+    };
+    let is_rock = |c: &str| {
+        hist.get(c)
+            .map_or(false, |h| h.3 == "Stone" && h.1.starts_with("Resource"))
+    };
     let (mut minx, mut maxx, mut miny, mut maxy) = (f64::MAX, f64::MIN, f64::MAX, f64::MIN);
     for p in &harv {
         minx = minx.min(p.xf.t[0]);
@@ -287,7 +388,10 @@ pub fn run_with(g: &Gathered, a: &PropsArgs) -> Result<(), String> {
     let cell = 10_000.0;
     let mut grid: HashMap<(i64, i64), (usize, usize)> = HashMap::new();
     for p in &harv {
-        let k = ((p.xf.t[0] / cell).floor() as i64, (p.xf.t[1] / cell).floor() as i64);
+        let k = (
+            (p.xf.t[0] / cell).floor() as i64,
+            (p.xf.t[1] / cell).floor() as i64,
+        );
         let e = grid.entry(k).or_insert((0, 0));
         if is_tree(&p.class) {
             e.0 += 1;
@@ -298,10 +402,17 @@ pub fn run_with(g: &Gathered, a: &PropsArgs) -> Result<(), String> {
     }
     let mut tree_cells: Vec<usize> = grid.values().map(|v| v.0).filter(|&n| n > 0).collect();
     tree_cells.sort();
-    let pct = |v: &Vec<usize>, p: f64| v.get(((v.len() as f64 - 1.0) * p) as usize).copied().unwrap_or(0);
+    let pct = |v: &Vec<usize>, p: f64| {
+        v.get(((v.len() as f64 - 1.0) * p) as usize)
+            .copied()
+            .unwrap_or(0)
+    };
 
     // sample centre: maximise min(trees, rocks) within 4000 cm (ties by total)
-    let resource: Vec<&&Placement> = harv.iter().filter(|p| is_tree(&p.class) || is_rock(&p.class)).collect();
+    let resource: Vec<&&Placement> = harv
+        .iter()
+        .filter(|p| is_tree(&p.class) || is_rock(&p.class))
+        .collect();
     let mut best = (0usize, 0usize, [0.0f64; 3]);
     let r2 = 4000.0f64 * 4000.0;
     for c in resource.iter().step_by(1) {
@@ -322,7 +433,15 @@ pub fn run_with(g: &Gathered, a: &PropsArgs) -> Result<(), String> {
         }
     }
     let center = best.2;
-    let mut near: Vec<(&Placement, f64)> = harv.iter().map(|p| (*p, ((p.xf.t[0] - center[0]).powi(2) + (p.xf.t[1] - center[1]).powi(2)).sqrt())).collect();
+    let mut near: Vec<(&Placement, f64)> = harv
+        .iter()
+        .map(|p| {
+            (
+                *p,
+                ((p.xf.t[0] - center[0]).powi(2) + (p.xf.t[1] - center[1]).powi(2)).sqrt(),
+            )
+        })
+        .collect();
     near.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
     let sample: Vec<Value> = near
         .iter()
@@ -339,11 +458,24 @@ pub fn run_with(g: &Gathered, a: &PropsArgs) -> Result<(), String> {
         "center_abs": [round(center[0]), round(center[1]), round(center[2])], "radius_cm": round(sample_radius),
         "selection": "centre = harvestable tree/rock maximising min(#trees,#rocks) within 4000 cm; sample = 40 nearest harvestable actors",
         "instances": sample});
-    write_file(&a.out.join("layout/sample.json"), serde_json::to_string_pretty(&sample_doc).unwrap().as_bytes())?;
+    write_file(
+        &a.out.join("layout/sample.json"),
+        serde_json::to_string_pretty(&sample_doc)
+            .unwrap()
+            .as_bytes(),
+    )?;
 
     let area_km2 = (maxx - minx) * (maxy - miny) / 1e10;
-    let n_tree: usize = hist.iter().filter(|(c, _)| is_tree(c)).map(|(_, v)| v.0).sum();
-    let n_rock: usize = hist.iter().filter(|(c, _)| is_rock(c)).map(|(_, v)| v.0).sum();
+    let n_tree: usize = hist
+        .iter()
+        .filter(|(c, _)| is_tree(c))
+        .map(|(_, v)| v.0)
+        .sum();
+    let n_rock: usize = hist
+        .iter()
+        .filter(|(c, _)| is_rock(c))
+        .map(|(_, v)| v.0)
+        .sum();
     let hist_json: Vec<Value> = {
         let mut v: Vec<_> = hist.iter().collect();
         v.sort_by(|a, b| b.1 .0.cmp(&a.1 .0));
@@ -365,7 +497,10 @@ pub fn run_with(g: &Gathered, a: &PropsArgs) -> Result<(), String> {
         },
         "per_class": hist_json,
     });
-    write_file(&a.out.join("layout/stats.json"), serde_json::to_string_pretty(&stats).unwrap().as_bytes())?;
+    write_file(
+        &a.out.join("layout/stats.json"),
+        serde_json::to_string_pretty(&stats).unwrap().as_bytes(),
+    )?;
     println!(
         "harvestable placements {} (trees {n_tree}, rocks {n_rock}); bbox area {:.1} km2; sample centre {:?} radius {:.0} cm",
         harv.len(),
@@ -389,7 +524,12 @@ mod tests {
 
     #[test]
     fn rotator_quat_roundtrip() {
-        for r in [[0.0, 45.0, 0.0], [10.0, -120.0, 30.0], [0.0, 179.0, 0.0], [-20.0, 33.0, -45.0]] {
+        for r in [
+            [0.0, 45.0, 0.0],
+            [10.0, -120.0, 30.0],
+            [0.0, 179.0, 0.0],
+            [-20.0, 33.0, -45.0],
+        ] {
             let q = rot_to_quat(r);
             let r2 = quat_to_rot(q);
             for i in 0..3 {
@@ -408,9 +548,21 @@ mod tests {
 
     #[test]
     fn compose_applies_child_then_parent() {
-        let parent = Xf { q: rot_to_quat([0.0, 90.0, 0.0]), t: [100.0, 0.0, 0.0], s: [1.0; 3] };
-        let child = Xf { q: IDENT.q, t: [10.0, 0.0, 5.0], s: [1.0; 3] };
+        let parent = Xf {
+            q: rot_to_quat([0.0, 90.0, 0.0]),
+            t: [100.0, 0.0, 0.0],
+            s: [1.0; 3],
+        };
+        let child = Xf {
+            q: IDENT.q,
+            t: [10.0, 0.0, 5.0],
+            s: [1.0; 3],
+        };
         let w = compose(child, parent);
-        assert!((w.t[0] - 100.0).abs() < 1e-9 && (w.t[1] - 10.0).abs() < 1e-9 && (w.t[2] - 5.0).abs() < 1e-9);
+        assert!(
+            (w.t[0] - 100.0).abs() < 1e-9
+                && (w.t[1] - 10.0).abs() < 1e-9
+                && (w.t[2] - 5.0).abs() < 1e-9
+        );
     }
 }

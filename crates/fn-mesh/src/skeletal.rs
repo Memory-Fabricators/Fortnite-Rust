@@ -92,7 +92,11 @@ impl UvChannelInfo {
         for x in d.iter_mut() {
             *x = r.f32()?;
         }
-        Ok(UvChannelInfo { initialized, override_densities, local_uv_densities: d })
+        Ok(UvChannelInfo {
+            initialized,
+            override_densities,
+            local_uv_densities: d,
+        })
     }
 }
 
@@ -213,7 +217,15 @@ impl SkeletalLod {
         let inf = &self.influences[vertex];
         let n = if self.extra_bone_influences { 8 } else { 4 };
         let map = &self.sections[section].bone_map;
-        (0..n).filter(|&i| inf.weights[i] != 0).map(|i| (map.get(inf.bones[i] as usize).copied().unwrap_or(0), inf.weights[i])).collect()
+        (0..n)
+            .filter(|&i| inf.weights[i] != 0)
+            .map(|i| {
+                (
+                    map.get(inf.bones[i] as usize).copied().unwrap_or(0),
+                    inf.weights[i],
+                )
+            })
+            .collect()
     }
 }
 
@@ -248,7 +260,11 @@ impl SkeletalMesh {
     /// Decode the first `SkeletalMesh` export of the package.
     pub fn parse(pkg: &Package) -> Result<SkeletalMesh> {
         let idx = find_class(pkg, "SkeletalMesh")?;
-        let ExportBody { props, mut reader, end } = export_body(pkg, idx)?;
+        let ExportBody {
+            props,
+            mut reader,
+            end,
+        } = export_body(pkg, idx)?;
         let names = &pkg.names;
         let has_vertex_colors = props.bool("bHasVertexColors").unwrap_or(false);
         let r = &mut reader;
@@ -262,14 +278,20 @@ impl SkeletalMesh {
             let slot_name = fname(r, names)?;
             // FEditorObjectVersion >= RefactorMeshEditorMaterials: no bEnableShadowCasting / bRecomputeTangent here.
             let uv_channel = UvChannelInfo::read(r)?;
-            materials.push(SkeletalMaterial { slot_name, material: object_path(pkg, mref), material_name: object_name(pkg, mref), uv_channel });
+            materials.push(SkeletalMaterial {
+                slot_name,
+                material: object_path(pkg, mref),
+                material_name: object_name(pkg, mref),
+                uv_channel,
+            });
         }
         let ref_skeleton = read_ref_skeleton(r, names)?;
 
         let n_lods = array_count(r, 4)?;
         let mut lods = Vec::with_capacity(n_lods);
         for li in 0..n_lods {
-            let lod = read_lod(r, has_vertex_colors).map_err(|e| fn_ueio::Error::Invalid(format!("LOD {li}: {e}")))?;
+            let lod = read_lod(r, has_vertex_colors)
+                .map_err(|e| fn_ueio::Error::Invalid(format!("LOD {li}: {e}")))?;
             lods.push(lod);
         }
         if r.tell() > end {
@@ -284,10 +306,18 @@ impl SkeletalMesh {
                     .map(|v| {
                         let f = v.as_fields();
                         LodInfo {
-                            screen_size: f.and_then(|f| f.float("ScreenSize").or_else(|| f.float("DisplayFactor"))).unwrap_or(1.0) as f32,
-                            hysteresis: f.and_then(|f| f.float("LODHysteresis")).unwrap_or(0.0) as f32,
+                            screen_size: f
+                                .and_then(|f| {
+                                    f.float("ScreenSize").or_else(|| f.float("DisplayFactor"))
+                                })
+                                .unwrap_or(1.0) as f32,
+                            hysteresis: f.and_then(|f| f.float("LODHysteresis")).unwrap_or(0.0)
+                                as f32,
                             lod_material_map: match f.and_then(|f| f.get("LODMaterialMap")) {
-                                Some(PropValue::Array(m)) => m.iter().map(|x| x.as_f64().unwrap_or(-1.0) as i32).collect(),
+                                Some(PropValue::Array(m)) => m
+                                    .iter()
+                                    .map(|x| x.as_f64().unwrap_or(-1.0) as i32)
+                                    .collect(),
                                 _ => Vec::new(),
                             },
                         }
@@ -296,7 +326,17 @@ impl SkeletalMesh {
             })
             .unwrap_or_default();
         let sockets = read_sockets(pkg, props.array("Sockets"));
-        Ok(SkeletalMesh { name: pkg.exports[idx].object_name.clone(), bounds, materials, ref_skeleton, skeleton_path, has_vertex_colors, lods, lod_info, sockets })
+        Ok(SkeletalMesh {
+            name: pkg.exports[idx].object_name.clone(),
+            bounds,
+            materials,
+            ref_skeleton,
+            skeleton_path,
+            has_vertex_colors,
+            lods,
+            lod_info,
+            sockets,
+        })
     }
 
     /// Material slot used by `section` of `lod`, honouring `LODMaterialMap` the way UEViewer does.
@@ -364,9 +404,16 @@ fn read_index_container(r: &mut Reader) -> Result<(Vec<u32>, bool)> {
         return Ok((Vec::new(), data_size == 4));
     }
     match (data_size, esize) {
-        (2, 2) => Ok(((0..count).map(|_| r.u16().map(u32::from)).collect::<Result<_>>()?, false)),
+        (2, 2) => Ok((
+            (0..count)
+                .map(|_| r.u16().map(u32::from))
+                .collect::<Result<_>>()?,
+            false,
+        )),
         (4, 4) | (0, 4) => Ok(((0..count).map(|_| r.u32()).collect::<Result<_>>()?, true)),
-        _ => invalid(format!("unsupported index buffer: dataSize {data_size} elemSize {esize}")),
+        _ => invalid(format!(
+            "unsupported index buffer: dataSize {data_size} elemSize {esize}"
+        )),
     }
 }
 
@@ -447,7 +494,10 @@ fn read_lod(r: &mut Reader, has_vertex_colors: bool) -> Result<SkeletalLod> {
         if lod.num_vertices == 0 {
             lod.num_vertices = count;
         } else if lod.num_vertices != count {
-            return invalid(format!("LOD NumVertices {} != vertex buffer count {count}", lod.num_vertices));
+            return invalid(format!(
+                "LOD NumVertices {} != vertex buffer count {count}",
+                lod.num_vertices
+            ));
         }
     }
 
@@ -463,7 +513,10 @@ fn read_lod(r: &mut Reader, has_vertex_colors: bool) -> Result<SkeletalLod> {
             return invalid(format!("skin weight stride {esize} != {}", n * 2));
         }
         if count != lod.positions.len() || wnum as usize != count {
-            return invalid(format!("skin weight count {count} (header {wnum}) != vertex count {}", lod.positions.len()));
+            return invalid(format!(
+                "skin weight count {count} (header {wnum}) != vertex count {}",
+                lod.positions.len()
+            ));
         }
         lod.influences.reserve(count);
         for _ in 0..count {

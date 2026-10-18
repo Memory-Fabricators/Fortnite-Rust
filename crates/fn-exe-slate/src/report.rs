@@ -1,4 +1,4 @@
-﻿//! Builds `reports/exe-loading-screen.json`: the findings plus the evidence tables (user string offsets, SNew sweep, dictionary, framework facts, what could not be recovered).
+//! Builds `reports/exe-loading-screen.json`: the findings plus the evidence tables (user string offsets, SNew sweep, dictionary, framework facts, what could not be recovered).
 use crate::findings::{self, Findings};
 use crate::pe::Pe;
 use crate::slate;
@@ -31,10 +31,27 @@ pub fn build(pe: &Pe, idx: &XrefIndex, f: &Findings) -> Value {
     }).collect();
     let sites = slate::sweep_constructs(pe, idx);
     let table = slate::construct_table(&sites);
-    let sweep_classes: serde_json::Map<String, Value> = table.iter().map(|(k, v)| (k.clone(), json!(v.iter().take(3).map(|(r, n)| json!({"construct_va": format!("{:#x}", pe.va(*r)), "sites": n})).collect::<Vec<_>>()))).collect();
-    let by_file = |tail: &str| sites.iter().filter(|s| s.file_tail == tail).map(|s| json!({"at": format!("{:#x}", s.at), "class": s.class, "line": s.line, "construct": s.construct.map(|c| format!("{:#x}", pe.va(c)))})).collect::<Vec<_>>();
+    let sweep_classes: serde_json::Map<String, Value> = table
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.clone(),
+                json!(v
+                    .iter()
+                    .take(3)
+                    .map(|(r, n)| json!({"construct_va": format!("{:#x}", pe.va(*r)), "sites": n}))
+                    .collect::<Vec<_>>()),
+            )
+        })
+        .collect();
+    let by_file = |tail: &str| {
+        sites.iter().filter(|s| s.file_tail == tail).map(|s| json!({"at": format!("{:#x}", s.at), "class": s.class, "line": s.line, "construct": s.construct.map(|c| format!("{:#x}", pe.va(c)))})).collect::<Vec<_>>()
+    };
     let dict: Vec<Value> = slate::dictionary().iter().map(|e| json!({"va": format!("{:#x}", pe.va(e.rva)), "name": e.name, "xmm_args": e.xmm, "stack_args": e.stack, "fluent_returns_this": e.fluent})).collect();
-    let reasons: Vec<Value> = findings::manager_reasons(pe).into_iter().map(|(r, s)| json!({"rva": format!("{r:#x}"), "text": s})).collect();
+    let reasons: Vec<Value> = findings::manager_reasons(pe)
+        .into_iter()
+        .map(|(r, s)| json!({"rva": format!("{r:#x}"), "text": s}))
+        .collect();
     let sfls = slate::locate_by_source_file(pe, idx, "SFortLoadingScreen.cpp");
     let sfls_tree: Vec<Value> = sfls.first().and_then(|(b, _)| pe.funcs.iter().find(|f| f.0 == *b).map(|f| slate::emu_snew_list(pe, f.0, f.1))).unwrap_or_default().iter()
         .map(|s| json!({"at": format!("{:#x}", s.at), "class": s.class, "line": s.line, "thunk_va": s.construct.map(|c| format!("{:#x}", pe.va(c)))})).collect();
@@ -88,4 +105,3 @@ fn framework(pe: &Pe) -> Value {
         },
     })
 }
-

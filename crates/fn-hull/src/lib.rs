@@ -1,4 +1,4 @@
-﻿//! `fn-hull`: convex hulls rebuilt from point sets.
+//! `fn-hull`: convex hulls rebuilt from point sets.
 //!
 //! The cooked 1.8 collision data (`fn-propdata` `Shape::Convex`) stores the hull VERTICES only; the faces live in the PhysX blob, which is not decoded.
 //! This crate rebuilds the polytope (incremental 3D hull, exact for the 8-18 point hulls the engine bakes) and offers what the game needs:
@@ -49,9 +49,19 @@ fn make_face(pts: &[Vec3], a: u32, b: u32, c: u32, inside: Vec3) -> Option<Face>
     }
     let d = n.dot(pa);
     if n.dot(inside) - d > 0. {
-        Some(Face { v: [a, c, b], n: -n, d: -d, alive: true })
+        Some(Face {
+            v: [a, c, b],
+            n: -n,
+            d: -d,
+            alive: true,
+        })
     } else {
-        Some(Face { v: [a, b, c], n, d, alive: true })
+        Some(Face {
+            v: [a, b, c],
+            n,
+            d,
+            alive: true,
+        })
     }
 }
 
@@ -74,7 +84,11 @@ pub fn segment_segment(p1: Vec3, q1: Vec3, p2: Vec3, q2: Vec3) -> (f32, f32) {
         } else {
             let b = d1.dot(d2);
             let denom = a * e - b * b;
-            let mut s0 = if denom > 1e-12 { ((b * f - c * e) / denom).clamp(0., 1.) } else { 0. };
+            let mut s0 = if denom > 1e-12 {
+                ((b * f - c * e) / denom).clamp(0., 1.)
+            } else {
+                0.
+            };
             let mut t0 = (b * s0 + f) / e;
             if t0 < 0. {
                 t0 = 0.;
@@ -144,25 +158,42 @@ impl Hull {
         }
         let eps = scale * 1e-5;
         // initial tetrahedron from extreme points
-        let i0 = (0..pts.len()).min_by(|&a, &b| pts[a].x.total_cmp(&pts[b].x)).unwrap_or(0);
-        let i1 = (0..pts.len()).max_by(|&a, &b| (pts[a] - pts[i0]).length_squared().total_cmp(&(pts[b] - pts[i0]).length_squared()))?;
+        let i0 = (0..pts.len())
+            .min_by(|&a, &b| pts[a].x.total_cmp(&pts[b].x))
+            .unwrap_or(0);
+        let i1 = (0..pts.len()).max_by(|&a, &b| {
+            (pts[a] - pts[i0])
+                .length_squared()
+                .total_cmp(&(pts[b] - pts[i0]).length_squared())
+        })?;
         let e = pts[i1] - pts[i0];
         if e.length() <= eps {
             return None;
         }
-        let i2 = (0..pts.len()).max_by(|&a, &b| e.cross(pts[a] - pts[i0]).length_squared().total_cmp(&e.cross(pts[b] - pts[i0]).length_squared()))?;
+        let i2 = (0..pts.len()).max_by(|&a, &b| {
+            e.cross(pts[a] - pts[i0])
+                .length_squared()
+                .total_cmp(&e.cross(pts[b] - pts[i0]).length_squared())
+        })?;
         let n = e.cross(pts[i2] - pts[i0]);
         if n.length() <= eps * e.length() {
             return None;
         }
         let nn = n.normalize();
-        let i3 = (0..pts.len()).max_by(|&a, &b| nn.dot(pts[a] - pts[i0]).abs().total_cmp(&nn.dot(pts[b] - pts[i0]).abs()))?;
+        let i3 = (0..pts.len()).max_by(|&a, &b| {
+            nn.dot(pts[a] - pts[i0])
+                .abs()
+                .total_cmp(&nn.dot(pts[b] - pts[i0]).abs())
+        })?;
         if nn.dot(pts[i3] - pts[i0]).abs() <= eps {
             return None;
         }
         let inside = (pts[i0] + pts[i1] + pts[i2] + pts[i3]) * 0.25;
         let (a, b, c, d) = (i0 as u32, i1 as u32, i2 as u32, i3 as u32);
-        let mut faces: Vec<Face> = [(a, b, c), (a, b, d), (a, c, d), (b, c, d)].iter().filter_map(|&(x, y, z)| make_face(&pts, x, y, z, inside)).collect();
+        let mut faces: Vec<Face> = [(a, b, c), (a, b, d), (a, c, d), (b, c, d)]
+            .iter()
+            .filter_map(|&(x, y, z)| make_face(&pts, x, y, z, inside))
+            .collect();
         if faces.len() != 4 {
             return None;
         }
@@ -171,7 +202,9 @@ impl Hull {
             if i == a || i == b || i == c || i == d {
                 continue;
             }
-            let visible: Vec<usize> = (0..faces.len()).filter(|&f| faces[f].alive && faces[f].n.dot(*p) - faces[f].d > eps).collect();
+            let visible: Vec<usize> = (0..faces.len())
+                .filter(|&f| faces[f].alive && faces[f].n.dot(*p) - faces[f].d > eps)
+                .collect();
             if visible.is_empty() {
                 continue;
             }
@@ -180,7 +213,11 @@ impl Hull {
                 let v = faces[f].v;
                 edges.extend([(v[0], v[1]), (v[1], v[2]), (v[2], v[0])]);
             }
-            let horizon: Vec<(u32, u32)> = edges.iter().copied().filter(|&(x, y)| !edges.contains(&(y, x))).collect();
+            let horizon: Vec<(u32, u32)> = edges
+                .iter()
+                .copied()
+                .filter(|&(x, y)| !edges.contains(&(y, x)))
+                .collect();
             for &f in &visible {
                 faces[f].alive = false;
             }
@@ -219,7 +256,11 @@ impl Hull {
                 *i = remap[*i as usize];
             }
         }
-        let centroid = if vs.is_empty() { Vec3::ZERO } else { vs.iter().copied().sum::<Vec3>() / vs.len() as f32 };
+        let centroid = if vs.is_empty() {
+            Vec3::ZERO
+        } else {
+            vs.iter().copied().sum::<Vec3>() / vs.len() as f32
+        };
         let mut planes = Vec::with_capacity(tris.len());
         for t in &mut tris {
             let (a, b, c) = (vs[t[0] as usize], vs[t[1] as usize], vs[t[2] as usize]);
@@ -241,16 +282,38 @@ impl Hull {
         }
         let center = (lo + hi) * 0.5;
         let radius = vs.iter().map(|v| (*v - center).length()).fold(0., f32::max);
-        let mut edges: Vec<[u32; 2]> = tris.iter().flat_map(|t| [[t[0].min(t[1]), t[0].max(t[1])], [t[1].min(t[2]), t[1].max(t[2])], [t[2].min(t[0]), t[2].max(t[0])]]).collect();
+        let mut edges: Vec<[u32; 2]> = tris
+            .iter()
+            .flat_map(|t| {
+                [
+                    [t[0].min(t[1]), t[0].max(t[1])],
+                    [t[1].min(t[2]), t[1].max(t[2])],
+                    [t[2].min(t[0]), t[2].max(t[0])],
+                ]
+            })
+            .collect();
         edges.sort_unstable();
         edges.dedup();
-        Hull { verts: vs, tris, planes, edges, center, radius, min: lo, max: hi }
+        Hull {
+            verts: vs,
+            tris,
+            planes,
+            edges,
+            center,
+            radius,
+            min: lo,
+            max: hi,
+        }
     }
 
     /// The same hull with every vertex passed through `f` (must be affine). A reflection (axis swap, negative scale) needs `flip = true`.
     pub fn mapped(&self, f: impl Fn(Vec3) -> Vec3, flip: bool) -> Hull {
         let verts: Vec<Vec3> = self.verts.iter().map(|&v| f(v)).collect();
-        let tris = self.tris.iter().map(|t| if flip { [t[0], t[2], t[1]] } else { *t }).collect();
+        let tris = self
+            .tris
+            .iter()
+            .map(|t| if flip { [t[0], t[2], t[1]] } else { *t })
+            .collect();
         Hull::finish(verts, tris)
     }
 
@@ -275,7 +338,12 @@ impl Hull {
         }
         let mut best = f32::MAX;
         for t in &self.tris {
-            let q = closest_on_triangle(p, self.verts[t[0] as usize], self.verts[t[1] as usize], self.verts[t[2] as usize]);
+            let q = closest_on_triangle(
+                p,
+                self.verts[t[0] as usize],
+                self.verts[t[1] as usize],
+                self.verts[t[2] as usize],
+            );
             best = best.min((p - q).length_squared());
         }
         best.sqrt()
@@ -293,11 +361,20 @@ impl Hull {
         }
         if m.0 <= 0. {
             let (n, _) = self.planes[m.1];
-            return Closest { dist: m.0, point: p - n * m.0, normal: n };
+            return Closest {
+                dist: m.0,
+                point: p - n * m.0,
+                normal: n,
+            };
         }
         let tri = |i: usize| {
             let t = &self.tris[i];
-            let q = closest_on_triangle(p, self.verts[t[0] as usize], self.verts[t[1] as usize], self.verts[t[2] as usize]);
+            let q = closest_on_triangle(
+                p,
+                self.verts[t[0] as usize],
+                self.verts[t[1] as usize],
+                self.verts[t[2] as usize],
+            );
             ((p - q).length(), q)
         };
         let mut best = (f32::MAX, Vec3::ZERO, 0usize);
@@ -318,7 +395,11 @@ impl Hull {
                 }
             }
         }
-        Closest { dist: best.0, point: best.1, normal: self.planes[best.2].0 }
+        Closest {
+            dist: best.0,
+            point: best.1,
+            normal: self.planes[best.2].0,
+        }
     }
 
     /// Parameter `t` (0..1) of the point of the segment `a..b` nearest to the hull, EXACT, when the segment does not touch the hull; `None` when it overlaps it
@@ -361,7 +442,8 @@ impl Hull {
             best = (db, 1.);
         }
         for e in &self.edges {
-            let (s, dist) = segment_segment(a, b, self.verts[e[0] as usize], self.verts[e[1] as usize]);
+            let (s, dist) =
+                segment_segment(a, b, self.verts[e[0] as usize], self.verts[e[1] as usize]);
             if dist < best.0 {
                 best = (dist, s);
             }
@@ -421,8 +503,15 @@ impl HullSet {
             hi = hi.max(h.max);
         }
         let center = (lo + hi) * 0.5;
-        let radius = hulls.iter().map(|h| (h.center - center).length() + h.radius).fold(0., f32::max);
-        HullSet { hulls, center, radius }
+        let radius = hulls
+            .iter()
+            .map(|h| (h.center - center).length() + h.radius)
+            .fold(0., f32::max);
+        HullSet {
+            hulls,
+            center,
+            radius,
+        }
     }
     pub fn is_empty(&self) -> bool {
         self.hulls.is_empty()
@@ -445,7 +534,11 @@ impl HullSet {
     pub fn segment_clearance(&self, a: Vec3, b: Vec3) -> f32 {
         let ab = b - a;
         let l2 = ab.length_squared();
-        let t = if l2 > 0. { ((self.center - a).dot(ab) / l2).clamp(0., 1.) } else { 0. };
+        let t = if l2 > 0. {
+            ((self.center - a).dot(ab) / l2).clamp(0., 1.)
+        } else {
+            0.
+        };
         (a + ab * t - self.center).length() - self.radius
     }
     /// Sphere sweep of `radius` from `from` to `to`: fraction of the segment at first contact (`Some(0.)` when it starts overlapping), `None` when clear.
@@ -458,11 +551,22 @@ impl HullSet {
         let len = seg.length();
         let seg_clear = |h: &Hull| {
             let l2 = seg.length_squared();
-            let t = if l2 > 0. { ((h.center - from).dot(seg) / l2).clamp(0., 1.) } else { 0. };
+            let t = if l2 > 0. {
+                ((h.center - from).dot(seg) / l2).clamp(0., 1.)
+            } else {
+                0.
+            };
             (from + seg * t - h.center).length() - h.radius
         };
-        let (slo, shi) = (from.min(to) - Vec3::splat(radius), from.max(to) + Vec3::splat(radius));
-        let cands: Vec<&Hull> = self.hulls.iter().filter(|h| seg_clear(h) <= radius && h.aabb_gap(slo, shi) <= 0.).collect();
+        let (slo, shi) = (
+            from.min(to) - Vec3::splat(radius),
+            from.max(to) + Vec3::splat(radius),
+        );
+        let cands: Vec<&Hull> = self
+            .hulls
+            .iter()
+            .filter(|h| seg_clear(h) <= radius && h.aabb_gap(slo, shi) <= 0.)
+            .collect();
         if cands.is_empty() {
             return None;
         }
@@ -492,7 +596,11 @@ impl HullSet {
             t += d.max(2e-3);
             if t >= len {
                 // the last step may land exactly on the end
-                return if dist(to) - radius <= 1e-4 { Some(1.) } else { None };
+                return if dist(to) - radius <= 1e-4 {
+                    Some(1.)
+                } else {
+                    None
+                };
             }
         }
         None
@@ -533,8 +641,14 @@ mod tests {
         assert_eq!(h.tris.len(), 12, "6 quads as 12 triangles");
         assert!((h.sdf(Vec3::ZERO) + 1.).abs() < 1e-5);
         assert!((h.sdf(Vec3::new(3., 0., 0.)) - 2.).abs() < 1e-5);
-        assert!((h.sdf(Vec3::new(2., 2., 0.)) - 2f32.sqrt()).abs() < 1e-5, "edge region");
-        assert!((h.sdf(Vec3::new(2., 2., 2.)) - 3f32.sqrt()).abs() < 1e-5, "corner region");
+        assert!(
+            (h.sdf(Vec3::new(2., 2., 0.)) - 2f32.sqrt()).abs() < 1e-5,
+            "edge region"
+        );
+        assert!(
+            (h.sdf(Vec3::new(2., 2., 2.)) - 3f32.sqrt()).abs() < 1e-5,
+            "corner region"
+        );
         assert!((h.sdf(Vec3::new(0.5, 0.2, -0.9)) + 0.1).abs() < 1e-5);
     }
     #[test]
@@ -545,24 +659,44 @@ mod tests {
             let pts: Vec<Vec3> = (0..n).map(|_| r.v(2.)).collect();
             let h = Hull::from_points(&pts).unwrap();
             for p in &pts {
-                assert!(h.sdf(*p) <= 1e-4, "case {case}: a hull point is {} outside", h.sdf(*p));
+                assert!(
+                    h.sdf(*p) <= 1e-4,
+                    "case {case}: a hull point is {} outside",
+                    h.sdf(*p)
+                );
             }
             let c = h.verts.iter().copied().sum::<Vec3>() / h.verts.len() as f32;
-            assert!(h.planes.iter().all(|(n, d)| n.dot(c) - d < 0.), "centroid inside every plane");
+            assert!(
+                h.planes.iter().all(|(n, d)| n.dot(c) - d < 0.),
+                "centroid inside every plane"
+            );
             // closed surface: every directed edge has its reverse
             let mut e: Vec<(u32, u32)> = vec![];
             for t in &h.tris {
                 e.extend([(t[0], t[1]), (t[1], t[2]), (t[2], t[0])]);
             }
-            assert!(e.iter().all(|&(a, b)| e.contains(&(b, a))), "case {case}: open mesh");
+            assert!(
+                e.iter().all(|&(a, b)| e.contains(&(b, a))),
+                "case {case}: open mesh"
+            );
             // Euler: V - E + F = 2
-            assert_eq!(h.verts.len() as i32 - (e.len() / 2) as i32 + h.tris.len() as i32, 2, "case {case}");
+            assert_eq!(
+                h.verts.len() as i32 - (e.len() / 2) as i32 + h.tris.len() as i32,
+                2,
+                "case {case}"
+            );
         }
     }
     #[test]
     fn coplanar_and_degenerate_inputs_are_none_not_a_panic() {
         assert!(Hull::from_points(&[Vec3::ZERO; 8]).is_none());
-        assert!(Hull::from_points(&[Vec3::new(0., 0., 0.), Vec3::X, Vec3::Y, Vec3::new(1., 1., 0.)]).is_none());
+        assert!(Hull::from_points(&[
+            Vec3::new(0., 0., 0.),
+            Vec3::X,
+            Vec3::Y,
+            Vec3::new(1., 1., 0.)
+        ])
+        .is_none());
         assert!(Hull::from_points(&[Vec3::ZERO, Vec3::X, Vec3::Y]).is_none());
         assert!(Hull::from_points(&[Vec3::NAN; 6]).is_none());
     }
@@ -586,10 +720,21 @@ mod tests {
     fn closest_picks_the_face_that_opposes_the_sweep_at_a_rim() {
         let h = Hull::from_points(&cube(1.)).unwrap();
         let p = Vec3::new(1., 1., 3.); // above the top rim edge x=1, y=1? that is the edge (1,1,z) at z=1 corner region
-        let top = h.closest(Vec3::new(1.0, 0.0, 1.0 + 1e-5) + Vec3::new(0., 0., 0.), Vec3::new(0., 0., -1.));
-        assert!(top.normal.z > 0.9, "dropping onto the rim reports the top face: {:?}", top.normal);
+        let top = h.closest(
+            Vec3::new(1.0, 0.0, 1.0 + 1e-5) + Vec3::new(0., 0., 0.),
+            Vec3::new(0., 0., -1.),
+        );
+        assert!(
+            top.normal.z > 0.9,
+            "dropping onto the rim reports the top face: {:?}",
+            top.normal
+        );
         let side = h.closest(Vec3::new(1.0 + 1e-5, 0.0, 1.0), Vec3::new(-1., 0., 0.));
-        assert!(side.normal.x > 0.9, "walking into the rim reports the side face: {:?}", side.normal);
+        assert!(
+            side.normal.x > 0.9,
+            "walking into the rim reports the side face: {:?}",
+            side.normal
+        );
         let _ = p;
     }
     #[test]
@@ -598,9 +743,18 @@ mod tests {
         let (t, n) = h.ray(Vec3::new(0.2, 0.3, 5.), Vec3::NEG_Z, 10.).unwrap();
         assert!((t - 4.).abs() < 1e-5 && n.z > 0.99);
         assert!(h.ray(Vec3::new(3., 0., 5.), Vec3::NEG_Z, 10.).is_none());
-        assert!(h.ray(Vec3::new(0., 0., 5.), Vec3::NEG_Z, 3.).is_none(), "too short");
-        assert!(h.ray(Vec3::ZERO, Vec3::NEG_Z, 10.).is_none(), "starts inside");
-        assert!(h.ray(Vec3::new(0., 0., 5.), Vec3::Z, 10.).is_none(), "pointing away");
+        assert!(
+            h.ray(Vec3::new(0., 0., 5.), Vec3::NEG_Z, 3.).is_none(),
+            "too short"
+        );
+        assert!(
+            h.ray(Vec3::ZERO, Vec3::NEG_Z, 10.).is_none(),
+            "starts inside"
+        );
+        assert!(
+            h.ray(Vec3::new(0., 0., 5.), Vec3::Z, 10.).is_none(),
+            "pointing away"
+        );
         // parallel to a face and outside its slab
         assert!(h.ray(Vec3::new(2., 0., 0.), Vec3::Y, 10.).is_none());
     }
@@ -613,13 +767,19 @@ mod tests {
         let m = h.mapped(swap, true);
         for _ in 0..50 {
             let q = r.v(2.);
-            assert!((h.sdf(q) * 100. - m.sdf(swap(q))).abs() < 1e-2, "{} vs {}", h.sdf(q) * 100., m.sdf(swap(q)));
+            assert!(
+                (h.sdf(q) * 100. - m.sdf(swap(q))).abs() < 1e-2,
+                "{} vs {}",
+                h.sdf(q) * 100.,
+                m.sdf(swap(q))
+            );
         }
         let c = m.verts.iter().copied().sum::<Vec3>() / m.verts.len() as f32;
         assert!(m.planes.iter().all(|(n, d)| n.dot(c) - d < 0.));
     }
     #[test]
-    fn the_nearest_point_of_a_vertical_segment_matches_a_brute_force_search_and_none_means_overlap() {
+    fn the_nearest_point_of_a_vertical_segment_matches_a_brute_force_search_and_none_means_overlap()
+    {
         let mut r = Rng(0xC0FFEE);
         let (mut hits, mut overlaps) = (0, 0);
         for case in 0..300 {
@@ -628,37 +788,87 @@ mod tests {
             let (x, y) = (r.f() * 3.2 - 1.6, r.f() * 3.2 - 1.6);
             let (z0, len) = (r.f() * 4. - 2., 0.2 + r.f() * 2.);
             let (a, b) = (Vec3::new(x, y, z0), Vec3::new(x, y, z0 + len));
-            let brute = (0..=2000).map(|i| h.sdf(a + (b - a) * (i as f32 / 2000.))).fold(f32::MAX, f32::min);
+            let brute = (0..=2000)
+                .map(|i| h.sdf(a + (b - a) * (i as f32 / 2000.)))
+                .fold(f32::MAX, f32::min);
             match h.segment_nearest_param(a, b) {
-                Some(t) => { hits += 1; let d = h.sdf(a + (b - a) * t); assert!(brute > -1e-3 && (d - brute).abs() < 2e-3, "case {case}: exact {d} brute {brute}"); }
-                None => { overlaps += 1; assert!(brute <= 2e-3, "case {case}: reported overlap but the brute-force distance is {brute}"); }
+                Some(t) => {
+                    hits += 1;
+                    let d = h.sdf(a + (b - a) * t);
+                    assert!(
+                        brute > -1e-3 && (d - brute).abs() < 2e-3,
+                        "case {case}: exact {d} brute {brute}"
+                    );
+                }
+                None => {
+                    overlaps += 1;
+                    assert!(
+                        brute <= 2e-3,
+                        "case {case}: reported overlap but the brute-force distance is {brute}"
+                    );
+                }
             }
         }
-        assert!(hits > 50 && overlaps > 20, "{hits} disjoint {overlaps} overlapping");
+        assert!(
+            hits > 50 && overlaps > 20,
+            "{hits} disjoint {overlaps} overlapping"
+        );
     }
     #[test]
     fn a_sphere_sweep_stops_at_the_analytic_contact_and_clears_when_offset() {
         let set = HullSet::new(vec![Hull::from_points(&cube(1.)).unwrap()]);
-        let t = set.trace_sphere(Vec3::new(-5., 0., 0.), Vec3::new(5., 0., 0.), 0.25).unwrap();
+        let t = set
+            .trace_sphere(Vec3::new(-5., 0., 0.), Vec3::new(5., 0., 0.), 0.25)
+            .unwrap();
         assert!((t * 10. - (5. - 1. - 0.25)).abs() < 2e-3, "{}", t * 10.);
-        assert!(set.trace_sphere(Vec3::new(-5., 2., 0.), Vec3::new(5., 2., 0.), 0.25).is_none(), "1 m clear of the face");
-        assert!(set.trace_sphere(Vec3::new(-5., 1.2, 0.), Vec3::new(5., 1.2, 0.), 0.25).is_some(), "a 0.25 sphere 0.2 above the top grazes it");
-        assert_eq!(set.trace_sphere(Vec3::new(0.5, 0., 0.), Vec3::new(5., 0., 0.), 0.1), Some(0.));
-        assert!(set.trace_sphere(Vec3::new(5., 0., 0.), Vec3::new(10., 0., 0.), 0.1).is_none(), "moving away");
+        assert!(
+            set.trace_sphere(Vec3::new(-5., 2., 0.), Vec3::new(5., 2., 0.), 0.25)
+                .is_none(),
+            "1 m clear of the face"
+        );
+        assert!(
+            set.trace_sphere(Vec3::new(-5., 1.2, 0.), Vec3::new(5., 1.2, 0.), 0.25)
+                .is_some(),
+            "a 0.25 sphere 0.2 above the top grazes it"
+        );
+        assert_eq!(
+            set.trace_sphere(Vec3::new(0.5, 0., 0.), Vec3::new(5., 0., 0.), 0.1),
+            Some(0.)
+        );
+        assert!(
+            set.trace_sphere(Vec3::new(5., 0., 0.), Vec3::new(10., 0., 0.), 0.1)
+                .is_none(),
+            "moving away"
+        );
         // corner: the contact distance is measured to the corner point
-        let t = set.trace_sphere(Vec3::new(-4., -4., 0.), Vec3::new(0., 0., 0.), 0.5).unwrap();
+        let t = set
+            .trace_sphere(Vec3::new(-4., -4., 0.), Vec3::new(0., 0., 0.), 0.5)
+            .unwrap();
         let hit = Vec3::new(-4., -4., 0.) * (1. - t);
-        assert!((set.sdf(hit) - 0.5).abs() < 2e-3, "stops 0.5 from the surface, got {}", set.sdf(hit));
+        assert!(
+            (set.sdf(hit) - 0.5).abs() < 2e-3,
+            "stops 0.5 from the surface, got {}",
+            set.sdf(hit)
+        );
     }
     #[test]
     fn sets_combine_pieces_and_have_a_bounding_sphere_that_contains_them() {
         let a = Hull::from_points(&cube(1.)).unwrap();
         let b = a.mapped(|v| v + Vec3::new(10., 0., 0.), false);
         let s = HullSet::new(vec![a, b]);
-        assert!(s.sdf(Vec3::new(10., 0., 0.)) < 0. && s.sdf(Vec3::ZERO) < 0. && s.sdf(Vec3::new(5., 0., 0.)) > 3.9);
+        assert!(
+            s.sdf(Vec3::new(10., 0., 0.)) < 0.
+                && s.sdf(Vec3::ZERO) < 0.
+                && s.sdf(Vec3::new(5., 0., 0.)) > 3.9
+        );
         for h in &s.hulls {
             assert!((h.center - s.center).length() + h.radius <= s.radius + 1e-4);
         }
-        assert!(HullSet::default().trace_sphere(Vec3::ZERO, Vec3::X, 1.).is_none() && HullSet::default().sdf(Vec3::ZERO) == f32::MAX);
+        assert!(
+            HullSet::default()
+                .trace_sphere(Vec3::ZERO, Vec3::X, 1.)
+                .is_none()
+                && HullSet::default().sdf(Vec3::ZERO) == f32::MAX
+        );
     }
 }

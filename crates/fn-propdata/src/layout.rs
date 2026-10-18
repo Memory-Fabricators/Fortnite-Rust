@@ -51,11 +51,21 @@ impl Layout {
     /// `layout/sample.json`
     pub fn load_sample(path: &Path) -> Result<Layout> {
         let j = read_json(path)?;
-        let mut l = Layout { map: str_of(&j, "map").unwrap_or_default(), center_cm: arr_f32::<3>(j.get("center_abs")).unwrap_or([0.0; 3]), radius_cm: f32_of(&j, "radius_cm").unwrap_or(0.0), instances: vec![] };
-        for e in j.get("instances").and_then(|x| x.as_array()).ok_or_else(|| Error::Schema("sample: instances".into()))? {
+        let mut l = Layout {
+            map: str_of(&j, "map").unwrap_or_default(),
+            center_cm: arr_f32::<3>(j.get("center_abs")).unwrap_or([0.0; 3]),
+            radius_cm: f32_of(&j, "radius_cm").unwrap_or(0.0),
+            instances: vec![],
+        };
+        for e in j
+            .get("instances")
+            .and_then(|x| x.as_array())
+            .ok_or_else(|| Error::Schema("sample: instances".into()))?
+        {
             l.instances.push(PropInstance {
                 kind: req_str(e, "class", "sample instance")?,
-                pos_cm: arr_f32::<3>(e.get("pos")).ok_or_else(|| Error::Schema("sample instance: pos".into()))?,
+                pos_cm: arr_f32::<3>(e.get("pos"))
+                    .ok_or_else(|| Error::Schema("sample instance: pos".into()))?,
                 abs_cm: arr_f32::<3>(e.get("abs")).unwrap_or([0.0; 3]),
                 rot_deg: arr_f32::<3>(e.get("rot")).unwrap_or([0.0; 3]),
                 scale: arr_f32::<3>(e.get("scale")).unwrap_or([1.0; 3]),
@@ -67,18 +77,42 @@ impl Layout {
     /// `layout/all.json`
     pub fn load_all(path: &Path) -> Result<Layout> {
         let j = read_json(path)?;
-        let classes: Vec<String> = j.get("classes").and_then(|x| x.as_array()).ok_or_else(|| Error::Schema("all: classes".into()))?.iter().filter_map(|c| c.as_str().map(String::from)).collect();
-        let mut l = Layout { map: str_of(&j, "map").unwrap_or_default(), ..Default::default() };
-        for e in j.get("instances").and_then(|x| x.as_array()).ok_or_else(|| Error::Schema("all: instances".into()))? {
-            let a = e.as_array().ok_or_else(|| Error::Schema("all: instance row".into()))?;
+        let classes: Vec<String> = j
+            .get("classes")
+            .and_then(|x| x.as_array())
+            .ok_or_else(|| Error::Schema("all: classes".into()))?
+            .iter()
+            .filter_map(|c| c.as_str().map(String::from))
+            .collect();
+        let mut l = Layout {
+            map: str_of(&j, "map").unwrap_or_default(),
+            ..Default::default()
+        };
+        for e in j
+            .get("instances")
+            .and_then(|x| x.as_array())
+            .ok_or_else(|| Error::Schema("all: instances".into()))?
+        {
+            let a = e
+                .as_array()
+                .ok_or_else(|| Error::Schema("all: instance row".into()))?;
             if a.len() < 10 {
                 return schema("all: instance row shorter than 10");
             }
             let f = |i: usize| a[i].as_f64().unwrap_or(0.0) as f32;
             let ci = a[0].as_u64().unwrap_or(0) as usize;
-            let kind = classes.get(ci).cloned().ok_or_else(|| Error::Schema(format!("all: class index {ci}")))?;
+            let kind = classes
+                .get(ci)
+                .cloned()
+                .ok_or_else(|| Error::Schema(format!("all: class index {ci}")))?;
             let pos = [f(1), f(2), f(3)];
-            l.instances.push(PropInstance { kind, pos_cm: pos, abs_cm: pos, rot_deg: [f(4), f(5), f(6)], scale: [f(7), f(8), f(9)] });
+            l.instances.push(PropInstance {
+                kind,
+                pos_cm: pos,
+                abs_cm: pos,
+                rot_deg: [f(4), f(5), f(6)],
+                scale: [f(7), f(8), f(9)],
+            });
         }
         Ok(l)
     }

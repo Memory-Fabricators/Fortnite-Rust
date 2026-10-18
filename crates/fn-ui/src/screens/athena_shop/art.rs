@@ -20,15 +20,42 @@ pub struct DisplayArt {
 pub fn display_asset(store: &Store, name: &str) -> Option<DisplayArt> {
     let pkg = store.pkg(&format!("/Game/Catalog/DisplayAssets/{name}"))?;
     let e = pkg.exports.iter().find(|e| e.class == "FortMtxOfferData")?;
-    let res = |k: &str| e.props.get(k).and_then(|b| b.get("ResourceObject")).and_then(|r| r.as_str()).filter(|s| !s.is_empty()).map(str::to_owned);
-    Some(DisplayArt { name: name.to_owned(), tile_image: res("TileImage"), details_image: res("DetailsImage"), tile_image_size: e.props.get("TileImage").and_then(|b| jvec::<2>(b.get("ImageSize"))), background: jvec::<4>(e.props.get("Background")) })
+    let res = |k: &str| {
+        e.props
+            .get(k)
+            .and_then(|b| b.get("ResourceObject"))
+            .and_then(|r| r.as_str())
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned)
+    };
+    Some(DisplayArt {
+        name: name.to_owned(),
+        tile_image: res("TileImage"),
+        details_image: res("DetailsImage"),
+        tile_image_size: e
+            .props
+            .get("TileImage")
+            .and_then(|b| jvec::<2>(b.get("ImageSize"))),
+        background: jvec::<4>(e.props.get("Background")),
+    })
 }
 
 /// Every offer display asset package under `/Game/Catalog/DisplayAssets` (names only).
 pub fn list_display_assets(store: &Store) -> Vec<String> {
-    let mut v: Vec<String> = store.pak_set().glob("fortnitegame/content/catalog/displayassets/*.uasset").iter()
-        .filter_map(|(_, e)| fn_pak::pak_path_to_game(e.rel_path()).or_else(|| fn_pak::pak_path_to_game(&e.path)))
-        .filter_map(|g| g.trim_end_matches(".uasset").rsplit('/').next().map(str::to_owned)).collect();
+    let mut v: Vec<String> = store
+        .pak_set()
+        .glob("fortnitegame/content/catalog/displayassets/*.uasset")
+        .iter()
+        .filter_map(|(_, e)| {
+            fn_pak::pak_path_to_game(e.rel_path()).or_else(|| fn_pak::pak_path_to_game(&e.path))
+        })
+        .filter_map(|g| {
+            g.trim_end_matches(".uasset")
+                .rsplit('/')
+                .next()
+                .map(str::to_owned)
+        })
+        .collect();
     v.sort();
     v.dedup();
     v

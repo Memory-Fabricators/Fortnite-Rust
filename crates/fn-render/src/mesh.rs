@@ -47,7 +47,12 @@ impl SkinnedPrimitive {
     pub fn bounds(&self) -> ([f32; 3], [f32; 3]) {
         let mut lo = [f32::MAX; 3];
         let mut hi = [f32::MIN; 3];
-        for v in &self.vertices { for i in 0..3 { lo[i] = lo[i].min(v.pos[i]); hi[i] = hi[i].max(v.pos[i]); } }
+        for v in &self.vertices {
+            for i in 0..3 {
+                lo[i] = lo[i].min(v.pos[i]);
+                hi[i] = hi[i].max(v.pos[i]);
+            }
+        }
         (lo, hi)
     }
 }
@@ -62,7 +67,21 @@ mod tests {
     }
     #[test]
     fn bounds_cover_all_vertices() {
-        let p = SkinnedPrimitive { vertices: vec![SkinnedVertex { pos: [1., -2., 3.], ..Default::default() }, SkinnedVertex { pos: [-1., 5., 0.], ..Default::default() }], indices: vec![0, 1, 0], material: MaterialImages::default(), kind: MaterialKind::Character };
+        let p = SkinnedPrimitive {
+            vertices: vec![
+                SkinnedVertex {
+                    pos: [1., -2., 3.],
+                    ..Default::default()
+                },
+                SkinnedVertex {
+                    pos: [-1., 5., 0.],
+                    ..Default::default()
+                },
+            ],
+            indices: vec![0, 1, 0],
+            material: MaterialImages::default(),
+            kind: MaterialKind::Character,
+        };
         assert_eq!(p.bounds(), ([-1., -2., 0.], [1., 5., 3.]));
     }
 }

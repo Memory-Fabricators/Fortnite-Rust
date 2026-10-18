@@ -21,11 +21,20 @@ impl DepthTransform {
     /// Standard (non-reversed) 0..1 perspective depth with finite near/far: `linear = n*f / (f - d*(f-n))`.
     pub fn from_perspective(near: f32, far: f32) -> Self {
         // 1/linear = d * (n - f) / (n f) + 1/n  =>  z = (n-f)/(nf), w = -1/n
-        DepthTransform { x: 0.0, y: 0.0, z: (near - far) / (near * far), w: -1.0 / near }
+        DepthTransform {
+            x: 0.0,
+            y: 0.0,
+            z: (near - far) / (near * far),
+            w: -1.0 / near,
+        }
     }
-    pub fn linearize(&self, d: f32) -> f32 { d * self.x + self.y + 1.0 / (d * self.z - self.w) }
+    pub fn linearize(&self, d: f32) -> f32 {
+        d * self.x + self.y + 1.0 / (d * self.z - self.w)
+    }
     /// Inverse of `linearize` for the finite-perspective transform (x = y = 0); used by tests to build a depth buffer from view depths.
-    pub fn device_z_from_linear(&self, lin: f32) -> f32 { (1.0 / lin + self.w) / self.z }
+    pub fn device_z_from_linear(&self, lin: f32) -> f32 {
+        (1.0 / lin + self.w) / self.z
+    }
 }
 
 /// Gaussian depth of field (`DepthOfFieldMethod == DOFM_Gaussian`), far/near layers.
@@ -50,8 +59,12 @@ pub struct DofParams {
 
 impl DofParams {
     /// Gaussian DOF runs when either layer is at least 0.01 (UE `PostProcessing.cpp`, ASSUMED recalled threshold).
-    pub fn near_active(&self) -> bool { self.near_blur_size >= 0.01 }
-    pub fn far_active(&self) -> bool { self.far_blur_size >= 0.01 }
+    pub fn near_active(&self) -> bool {
+        self.near_blur_size >= 0.01
+    }
+    pub fn far_active(&self) -> bool {
+        self.far_blur_size >= 0.01
+    }
 }
 
 /// Tiled motion blur (4.16 `FPostProcessVelocityFlattenCS` / `GatherCS` / `FPostProcessMotionBlurPS<4>`).
@@ -122,23 +135,48 @@ pub fn athena_day_cm() -> (DofParams, MotionBlurParams, BloomParams) {
         far_blur_size: 0.019999999552965164,
         sky_focus_distance: 200000.0,
     };
-    let mb = MotionBlurParams { enabled: true, amount: 0.125, max_percent: 2.0, per_object_size: 0.5 };
+    let mb = MotionBlurParams {
+        enabled: true,
+        amount: 0.125,
+        max_percent: 2.0,
+        per_object_size: 0.5,
+    };
     let bloom = BloomParams {
         enabled: true,
         intensity: 0.675,
         threshold: -1.0, // exe FPostProcessSettings ctor default (override flag, no tag in the Day volume)
         size_scale: 1.0,
         sizes: [0.3, 1.0, 2.0, 10.0, 30.0, 0.0],
-        tints: [[0.3465; 3], [0.138; 3], [0.5; 3], [0.066; 3], [0.066; 3], [0.0; 3]],
+        tints: [
+            [0.3465; 3],
+            [0.138; 3],
+            [0.5; 3],
+            [0.066; 3],
+            [0.066; 3],
+            [0.0; 3],
+        ],
     };
     (dof, mb, bloom)
 }
 
 impl PostFxParams {
     /// Athena Day parameters; `cm_per_unit` = 100 for a renderer working in metres (`depth` built for metres), 1 for UE units.
-    pub fn athena_day(depth: DepthTransform, view: ViewParams, exposure: f32, cm_per_unit: f32) -> Self {
+    pub fn athena_day(
+        depth: DepthTransform,
+        view: ViewParams,
+        exposure: f32,
+        cm_per_unit: f32,
+    ) -> Self {
         let (dof, motion_blur, bloom) = athena_day_cm();
-        PostFxParams { dof, motion_blur, bloom, depth, view, exposure, cm_per_unit }
+        PostFxParams {
+            dof,
+            motion_blur,
+            bloom,
+            depth,
+            view,
+            exposure,
+            cm_per_unit,
+        }
     }
 }
 
@@ -146,8 +184,22 @@ impl ViewParams {
     /// Pinhole camera looking along `forward` with `up_world` = world up, horizontal tangent `tan_x`, vertical `tan_y`.
     /// The rows are expressed in world axes with `.z` = world up when `up_world` is +Z; for a Y-up renderer pass the world axes
     /// permuted so `.z` is up (`ViewParams::from_basis` takes the already-permuted basis).
-    pub fn from_basis(width: u32, height: u32, right: [f32; 3], up: [f32; 3], forward: [f32; 3], tan_x: f32, tan_y: f32, clip_to_prev_clip: Mat4) -> Self {
+    pub fn from_basis(
+        width: u32,
+        height: u32,
+        right: [f32; 3],
+        up: [f32; 3],
+        forward: [f32; 3],
+        tan_x: f32,
+        tan_y: f32,
+        clip_to_prev_clip: Mat4,
+    ) -> Self {
         let r = |v: [f32; 3], s: f32| [v[0] * s, v[1] * s, v[2] * s, 0.0];
-        ViewParams { width, height, screen_to_world_rows: [r(right, tan_x), r(up, tan_y), r(forward, 1.0)], clip_to_prev_clip }
+        ViewParams {
+            width,
+            height,
+            screen_to_world_rows: [r(right, tan_x), r(up, tan_y), r(forward, 1.0)],
+            clip_to_prev_clip,
+        }
     }
 }

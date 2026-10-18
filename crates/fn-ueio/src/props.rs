@@ -1,4 +1,4 @@
-﻿//! Generic UE 4.16 tagged-property reader (`FPropertyTag`, file version >= 504).
+//! Generic UE 4.16 tagged-property reader (`FPropertyTag`, file version >= 504).
 //!
 //! Tag layout: `Name:FName, Type:FName, Size:i32, ArrayIndex:i32`, then type specific
 //! (`StructProperty`: StructName FName + FGuid; `BoolProperty`: u8 value; `ByteProperty`/`EnumProperty`:
@@ -19,7 +19,10 @@ pub enum PropValue {
     Byte(u8),
     Enum(String),
     Array(Vec<PropValue>),
-    Struct { name: String, fields: PropList },
+    Struct {
+        name: String,
+        fields: PropList,
+    },
     Vec2([f32; 2]),
     Vec3([f32; 3]),
     /// Quat / Vector4 / LinearColor / Plane (xyzw order as stored)
@@ -122,8 +125,16 @@ pub struct Ctx<'a> {
 fn fname(r: &mut Reader, c: &Ctx) -> Result<String> {
     let idx = r.i32()?;
     let num = r.i32()?;
-    let base = c.names.get(idx as usize).cloned().ok_or_else(|| Error::Invalid(format!("bad FName index {idx} at {}", r.tell())))?;
-    Ok(if num > 0 { format!("{}_{}", base, num - 1) } else { base })
+    let base = c
+        .names
+        .get(idx as usize)
+        .cloned()
+        .ok_or_else(|| Error::Invalid(format!("bad FName index {idx} at {}", r.tell())))?;
+    Ok(if num > 0 {
+        format!("{}_{}", base, num - 1)
+    } else {
+        base
+    })
 }
 
 struct Tag {
@@ -146,7 +157,17 @@ fn read_tag(r: &mut Reader, c: &Ctx) -> Result<Option<Tag>> {
     let type_name = fname(r, c)?;
     let size = r.i32()?;
     let array_index = r.i32()?;
-    let mut t = Tag { name, type_name, size, array_index, struct_name: String::new(), bool_val: false, enum_name: String::new(), inner_type: String::new(), value_type: String::new() };
+    let mut t = Tag {
+        name,
+        type_name,
+        size,
+        array_index,
+        struct_name: String::new(),
+        bool_val: false,
+        enum_name: String::new(),
+        inner_type: String::new(),
+        value_type: String::new(),
+    };
     match t.type_name.as_str() {
         "StructProperty" => {
             t.struct_name = fname(r, c)?;
@@ -190,7 +211,12 @@ pub fn read_props(r: &mut Reader, c: &Ctx) -> Result<PropList> {
         };
         // Always resync on the declared size (BoolProperty has size 0).
         r.seek(end)?;
-        out.push(Prop { name: t.name, type_name: t.type_name, array_index: t.array_index, value });
+        out.push(Prop {
+            name: t.name,
+            type_name: t.type_name,
+            array_index: t.array_index,
+            value,
+        });
     }
     Ok(PropList(out))
 }
@@ -217,7 +243,9 @@ fn read_value(r: &mut Reader, c: &Ctx, ty: &str, t: &Tag, size: usize) -> Result
             }
         }
         "EnumProperty" => PropValue::Enum(fname(r, c)?),
-        "ObjectProperty" | "WeakObjectProperty" | "LazyObjectProperty" | "InterfaceProperty" => PropValue::Object(r.i32()?),
+        "ObjectProperty" | "WeakObjectProperty" | "LazyObjectProperty" | "InterfaceProperty" => {
+            PropValue::Object(r.i32()?)
+        }
         "AssetObjectProperty" | "SoftObjectProperty" => PropValue::Str(r.fstring()?),
         "ArrayProperty" => {
             let n = r.i32()?;
@@ -231,20 +259,43 @@ fn read_value(r: &mut Reader, c: &Ctx, ty: &str, t: &Tag, size: usize) -> Result
                     Some(x) => x,
                     None => return crate::invalid("array inner tag"),
                 };
-                let per = if n > 0 { itag.size as usize / n as usize } else { 0 };
-                let atomic = matches!(itag.struct_name.as_str(), "Vector" | "Rotator" | "Vector2D" | "Quat" | "Vector4" | "LinearColor" | "Plane" | "Color" | "Guid" | "IntPoint")
-                    || (itag.struct_name == "Transform" && per == 40);
+                let per = if n > 0 {
+                    itag.size as usize / n as usize
+                } else {
+                    0
+                };
+                let atomic = matches!(
+                    itag.struct_name.as_str(),
+                    "Vector"
+                        | "Rotator"
+                        | "Vector2D"
+                        | "Quat"
+                        | "Vector4"
+                        | "LinearColor"
+                        | "Plane"
+                        | "Color"
+                        | "Guid"
+                        | "IntPoint"
+                ) || (itag.struct_name == "Transform" && per == 40);
                 for _ in 0..n {
                     if atomic {
                         v.push(read_struct(r, c, &itag.struct_name, per)?);
                     } else {
                         let fields = read_props(r, c)?;
-                        v.push(PropValue::Struct { name: itag.struct_name.clone(), fields });
+                        v.push(PropValue::Struct {
+                            name: itag.struct_name.clone(),
+                            fields,
+                        });
                     }
                 }
             } else {
                 for _ in 0..n {
-                    let inner = Tag { type_name: t.inner_type.clone(), enum_name: t.enum_name.clone(), bool_val: false, ..clone_tag(t) };
+                    let inner = Tag {
+                        type_name: t.inner_type.clone(),
+                        enum_name: t.enum_name.clone(),
+                        bool_val: false,
+                        ..clone_tag(t)
+                    };
                     let sz = match t.inner_type.as_str() {
                         "ByteProperty" | "BoolProperty" => 1,
                         "NameProperty" => 8,
@@ -303,9 +354,24 @@ fn read_struct(r: &mut Reader, c: &Ctx, name: &str, size: usize) -> Result<PropV
             PropValue::Struct {
                 name: "Transform".into(),
                 fields: PropList(vec![
-                    Prop { name: "Rotation".into(), type_name: "Quat".into(), array_index: 0, value: PropValue::Vec4(q) },
-                    Prop { name: "Translation".into(), type_name: "Vector".into(), array_index: 0, value: PropValue::Vec3(t) },
-                    Prop { name: "Scale3D".into(), type_name: "Vector".into(), array_index: 0, value: PropValue::Vec3(s) },
+                    Prop {
+                        name: "Rotation".into(),
+                        type_name: "Quat".into(),
+                        array_index: 0,
+                        value: PropValue::Vec4(q),
+                    },
+                    Prop {
+                        name: "Translation".into(),
+                        type_name: "Vector".into(),
+                        array_index: 0,
+                        value: PropValue::Vec3(t),
+                    },
+                    Prop {
+                        name: "Scale3D".into(),
+                        type_name: "Vector".into(),
+                        array_index: 0,
+                        value: PropValue::Vec3(s),
+                    },
                 ]),
             }
         }
@@ -317,7 +383,10 @@ fn read_struct(r: &mut Reader, c: &Ctx, name: &str, size: usize) -> Result<PropV
             match read_props(&mut sub, c) {
                 Ok(fields) if sub.tell() == start + size || sub.tell() <= start + size => {
                     r.seek(start + size)?;
-                    PropValue::Struct { name: name.to_string(), fields }
+                    PropValue::Struct {
+                        name: name.to_string(),
+                        fields,
+                    }
                 }
                 _ => {
                     r.seek(start)?;
@@ -327,4 +396,3 @@ fn read_struct(r: &mut Reader, c: &Ctx, name: &str, size: usize) -> Result<PropV
         }
     })
 }
-

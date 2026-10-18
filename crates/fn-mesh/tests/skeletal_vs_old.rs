@@ -12,11 +12,17 @@ use std::collections::HashMap;
 
 /// (directory below `Content` / `Game`, asset name)
 const MESHES: &[(&str, &str)] = &[
-    ("Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Meshes", "SK_M_Med_Soldier_04"),
+    (
+        "Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Meshes",
+        "SK_M_Med_Soldier_04",
+    ),
     ("Athena/Heroes/Meshes/Heads", "SK_M_MED_Head_01_ATH"),
     ("Weapons/FORT_Melee/Meshes", "SK_Pick"),
     ("Weapons/FORT_Melee/Meshes", "SK_Pickaxe_Basic"),
-    ("Characters/Player/Male/Male_Avg_Base", "Fortnite_M_Avg_Player"),
+    (
+        "Characters/Player/Male/Male_Avg_Base",
+        "Fortnite_M_Avg_Player",
+    ),
 ];
 
 fn normalise_text(s: &str) -> String {
@@ -28,7 +34,9 @@ fn normalise_text(s: &str) -> String {
 }
 
 fn nums(v: &Value) -> Vec<f64> {
-    v.as_array().map(|a| a.iter().map(|x| x.as_f64().unwrap()).collect()).unwrap_or_default()
+    v.as_array()
+        .map(|a| a.iter().map(|x| x.as_f64().unwrap()).collect())
+        .unwrap_or_default()
 }
 
 struct Row {
@@ -58,7 +66,15 @@ struct Row {
 }
 
 fn compare(name: &str, mesh: &SkeletalMesh, old: &Gltf) -> Row {
-    let (json, bin) = gltf::skeletal_mesh_lod_to_gltf_with(mesh, 0, name, &Options { legacy_uev_half_uv: true }).unwrap();
+    let (json, bin) = gltf::skeletal_mesh_lod_to_gltf_with(
+        mesh,
+        0,
+        name,
+        &Options {
+            legacy_uev_half_uv: true,
+        },
+    )
+    .unwrap();
     let new = Gltf::from_parts(&json, bin.clone());
     let (json_d, bin_d) = gltf::skeletal_mesh_lod_to_gltf(mesh, 0, name).unwrap();
     let newd = Gltf::from_parts(&json_d, bin_d);
@@ -98,37 +114,78 @@ fn compare(name: &str, mesh: &SkeletalMesh, old: &Gltf) -> Row {
     for (i, n) in on.iter().enumerate() {
         if let Some(ch) = n["children"].as_array() {
             for c in ch {
-                old_parent.insert(on[c.as_u64().unwrap() as usize]["name"].as_str().unwrap().to_string(), on[i]["name"].as_str().unwrap().to_string());
+                old_parent.insert(
+                    on[c.as_u64().unwrap() as usize]["name"]
+                        .as_str()
+                        .unwrap()
+                        .to_string(),
+                    on[i]["name"].as_str().unwrap().to_string(),
+                );
             }
         }
         assert_eq!(n["name"], nn[i]["name"], "{name}: node {i} name");
-        assert_eq!(n["children"], nn[i]["children"], "{name}: node {i} children");
-        assert_eq!(nums(&n["translation"]), nums(&nn[i]["translation"]), "{name}: node {i} translation");
-        assert_eq!(nums(&n["rotation"]), nums(&nn[i]["rotation"]), "{name}: node {i} rotation");
+        assert_eq!(
+            n["children"], nn[i]["children"],
+            "{name}: node {i} children"
+        );
+        assert_eq!(
+            nums(&n["translation"]),
+            nums(&nn[i]["translation"]),
+            "{name}: node {i} translation"
+        );
+        assert_eq!(
+            nums(&n["rotation"]),
+            nums(&nn[i]["rotation"]),
+            "{name}: node {i} rotation"
+        );
     }
     // mesh bone names + parent relation straight from the decoded RefSkeleton
     assert_eq!(mesh.ref_skeleton.len(), row.bones, "{name}: bone count");
     let mesh_node = on[0]["name"].as_str().unwrap().to_string();
     for b in &mesh.ref_skeleton {
         // the old export hangs the root bone below the mesh node
-        let want = if b.parent < 0 { mesh_node.clone() } else { mesh.ref_skeleton[b.parent as usize].name.clone() };
+        let want = if b.parent < 0 {
+            mesh_node.clone()
+        } else {
+            mesh.ref_skeleton[b.parent as usize].name.clone()
+        };
         let got = old_parent.get(&b.name).cloned();
         let ok = got.as_deref() == Some(want.as_str());
         if !ok {
             row.bones_ok = false;
-            eprintln!("{name}: bone {} parent mismatch: decoded {:?} old {:?}", b.name, want, got);
+            eprintln!(
+                "{name}: bone {} parent mismatch: decoded {:?} old {:?}",
+                b.name, want, got
+            );
         }
     }
     // skin
     let os = &old.json["skins"][0];
-    assert_eq!(os["joints"], new.json["skins"][0]["joints"], "{name}: joints");
+    assert_eq!(
+        os["joints"], new.json["skins"][0]["joints"],
+        "{name}: joints"
+    );
     let (_, a) = old.values(os["inverseBindMatrices"].as_u64().unwrap() as usize);
-    let (_, b) = new.values(new.json["skins"][0]["inverseBindMatrices"].as_u64().unwrap() as usize);
+    let (_, b) = new.values(
+        new.json["skins"][0]["inverseBindMatrices"]
+            .as_u64()
+            .unwrap() as usize,
+    );
     row.ibm_err = max_abs_err(&a, &b);
 
     // materials
-    let om: Vec<&str> = old.json["materials"].as_array().unwrap().iter().map(|m| m["name"].as_str().unwrap()).collect();
-    let nm: Vec<&str> = new.json["materials"].as_array().unwrap().iter().map(|m| m["name"].as_str().unwrap()).collect();
+    let om: Vec<&str> = old.json["materials"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| m["name"].as_str().unwrap())
+        .collect();
+    let nm: Vec<&str> = new.json["materials"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| m["name"].as_str().unwrap())
+        .collect();
     assert_eq!(om, nm, "{name}: material names");
 
     // --- primitives
@@ -139,7 +196,9 @@ fn compare(name: &str, mesh: &SkeletalMesh, old: &Gltf) -> Row {
     let lod = &mesh.lods[0];
     for (pi, (po, pn)) in op.iter().zip(np).enumerate() {
         assert_eq!(po["material"], pn["material"]);
-        let count = old.accessor(po["attributes"]["POSITION"].as_u64().unwrap() as usize).1;
+        let count = old
+            .accessor(po["attributes"]["POSITION"].as_u64().unwrap() as usize)
+            .1;
         row.section_verts.push(count);
         row.tris += old.accessor(po["indices"].as_u64().unwrap() as usize).1 / 3;
         let mut cmp = |attr: &str, err: &mut f64, other: Option<(&Gltf, &Value)>| {
@@ -150,8 +209,14 @@ fn compare(name: &str, mesh: &SkeletalMesh, old: &Gltf) -> Row {
             let (_, vn) = nl.values(an);
             *err = err.max(max_abs_err(&vo, &vn));
             if attr == "POSITION" && other.is_none() {
-                let mo: Vec<f64> = nums(&old.json["accessors"][ao]["min"]).into_iter().chain(nums(&old.json["accessors"][ao]["max"])).collect();
-                let mn: Vec<f64> = nums(&new.json["accessors"][an]["min"]).into_iter().chain(nums(&new.json["accessors"][an]["max"])).collect();
+                let mo: Vec<f64> = nums(&old.json["accessors"][ao]["min"])
+                    .into_iter()
+                    .chain(nums(&old.json["accessors"][ao]["max"]))
+                    .collect();
+                let mn: Vec<f64> = nums(&new.json["accessors"][an]["min"])
+                    .into_iter()
+                    .chain(nums(&new.json["accessors"][an]["max"]))
+                    .collect();
                 row.bbox_err = row.bbox_err.max(max_abs_err(&mo, &mn));
             }
         };
@@ -210,15 +275,29 @@ fn compare(name: &str, mesh: &SkeletalMesh, old: &Gltf) -> Row {
                 order.len() - 1
             });
         }
-        assert_eq!(order.len(), count, "{name}: section {pi} unique vertex count");
+        assert_eq!(
+            order.len(),
+            count,
+            "{name}: section {pi} unique vertex count"
+        );
         let (_, opos) = old.values(po["attributes"]["POSITION"].as_u64().unwrap() as usize);
-        let exp: Vec<f64> = order.iter().flat_map(|&v| {
-            let p = lod.positions[v as usize];
-            [(p[0] * 0.01f32) as f64, (p[2] * 0.01f32) as f64, (p[1] * 0.01f32) as f64]
-        }).collect();
+        let exp: Vec<f64> = order
+            .iter()
+            .flat_map(|&v| {
+                let p = lod.positions[v as usize];
+                [
+                    (p[0] * 0.01f32) as f64,
+                    (p[2] * 0.01f32) as f64,
+                    (p[1] * 0.01f32) as f64,
+                ]
+            })
+            .collect();
         row.decode_pos_err = row.decode_pos_err.max(max_abs_err(&opos, &exp));
         let (_, ouv) = old.values(po["attributes"]["TEXCOORD_0"].as_u64().unwrap() as usize);
-        let exp: Vec<f64> = order.iter().flat_map(|&v| lod.uvs[0][v as usize].map(|x| x as f64)).collect();
+        let exp: Vec<f64> = order
+            .iter()
+            .flat_map(|&v| lod.uvs[0][v as usize].map(|x| x as f64))
+            .collect();
         // old UVs carry UEViewer's half bug (<= 2^-15 + denormal offset); compare with a correct decode
         row.decode_uv_err = row.decode_uv_err.max(max_abs_err(&ouv, &exp));
     }
@@ -231,7 +310,8 @@ fn compare(name: &str, mesh: &SkeletalMesh, old: &Gltf) -> Row {
         let mask = |g: &Gltf, bin: &[u8]| {
             let mut b = bin.to_vec();
             for p in g.json["meshes"][0]["primitives"].as_array().unwrap() {
-                let (_, count, _, off) = g.accessor(p["attributes"]["TANGENT"].as_u64().unwrap() as usize);
+                let (_, count, _, off) =
+                    g.accessor(p["attributes"]["TANGENT"].as_u64().unwrap() as usize);
                 for k in 0..count {
                     b[off + k * 16 + 12..off + k * 16 + 16].fill(0);
                 }
@@ -248,7 +328,10 @@ fn compare(name: &str, mesh: &SkeletalMesh, old: &Gltf) -> Row {
 
 fn old_gltf_path(name: &str) -> std::path::PathBuf {
     let dir = MESHES.iter().find(|m| m.1 == name).unwrap().0;
-    old_exports().unwrap().join(dir).join(format!("{name}.gltf"))
+    old_exports()
+        .unwrap()
+        .join(dir)
+        .join(format!("{name}.gltf"))
 }
 
 #[test]
@@ -301,7 +384,12 @@ fn skeletal_meshes_match_old_uevewer_exports() {
         assert_eq!(r.nrm_err, 0.0, "{}", r.name);
         assert_eq!(r.tan_err, 0.0, "{}", r.name);
         assert_eq!(r.uv_err, 0.0, "{}", r.name);
-        assert!(r.uv_err_default < 3.2e-5, "{}: uv (correct half decode) differs by {}", r.name, r.uv_err_default);
+        assert!(
+            r.uv_err_default < 3.2e-5,
+            "{}: uv (correct half decode) differs by {}",
+            r.name,
+            r.uv_err_default
+        );
         assert_eq!(r.joints_err, 0.0, "{}", r.name);
         assert_eq!(r.weights_err, 0.0, "{}", r.name);
         assert_eq!(r.ibm_err, 0.0, "{}", r.name);
@@ -309,8 +397,16 @@ fn skeletal_meshes_match_old_uevewer_exports() {
         assert_eq!(r.color_err, 0.0, "{}", r.name);
         assert!(r.decode_pos_err < 1e-9, "{}", r.name);
         assert!(r.decode_uv_err < 3.2e-5, "{}", r.name);
-        assert!(r.bin_identical_ex_tw, "{}: .bin differs from the old export (beyond tangent.w)", r.name);
-        assert!(r.text_identical, "{}: .gltf text differs from the old export", r.name);
+        assert!(
+            r.bin_identical_ex_tw,
+            "{}: .bin differs from the old export (beyond tangent.w)",
+            r.name
+        );
+        assert!(
+            r.text_identical,
+            "{}: .gltf text differs from the old export",
+            r.name
+        );
     }
     // body mesh facts from the task
     let body = &rows[0];

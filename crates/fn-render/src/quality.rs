@@ -4,24 +4,64 @@
 //! fn-app maps `fn_settings` levels onto these helpers and passes the results through [`crate::RenderOptions`] and the camera far plane.
 
 /// Shadows level -> shadow map edge in texels (`None` = shadows off).
-pub fn shadow_map_size(level: u32) -> Option<u32> { match level { 0 => None, 1 => Some(512), 2 => Some(1024), _ => Some(2048) } }
+pub fn shadow_map_size(level: u32) -> Option<u32> {
+    match level {
+        0 => None,
+        1 => Some(512),
+        2 => Some(1024),
+        _ => Some(2048),
+    }
+}
 /// View Distance level -> camera far plane in metres (set `CameraParams::far`; the sky pass keeps its own very far plane).
-pub fn far_plane_m(level: u32) -> f32 { match level { 0 => 200., 1 => 400., 2 => 800., _ => 3000. } }
+pub fn far_plane_m(level: u32) -> f32 {
+    match level {
+        0 => 200.,
+        1 => 400.,
+        2 => 800.,
+        _ => 3000.,
+    }
+}
 /// Anti-Aliasing level -> FXAA parameters; level 0 = off.
 pub fn aa_params(level: u32) -> Option<FxaaParams> {
     match level {
         0 => None,
-        1 => Some(FxaaParams { subpix: 0.5, edge_threshold: 0.25, edge_threshold_min: 0.0625, search_steps: 4 }),
-        2 => Some(FxaaParams { subpix: 0.75, edge_threshold: 0.166, edge_threshold_min: 0.0833, search_steps: 8 }),
-        _ => Some(FxaaParams { subpix: 1.0, edge_threshold: 0.125, edge_threshold_min: 0.0312, search_steps: 12 }),
+        1 => Some(FxaaParams {
+            subpix: 0.5,
+            edge_threshold: 0.25,
+            edge_threshold_min: 0.0625,
+            search_steps: 4,
+        }),
+        2 => Some(FxaaParams {
+            subpix: 0.75,
+            edge_threshold: 0.166,
+            edge_threshold_min: 0.0833,
+            search_steps: 8,
+        }),
+        _ => Some(FxaaParams {
+            subpix: 1.0,
+            edge_threshold: 0.125,
+            edge_threshold_min: 0.0312,
+            search_steps: 12,
+        }),
     }
 }
 /// Textures level -> (top mip levels skipped, anisotropy). Skipped mips are emulated with the sampler's minimum LOD clamp.
-pub fn texture_params(level: u32) -> (u32, u16) { match level { 0 => (2, 1), 1 => (1, 1), 2 => (0, 4), _ => (0, 16) } }
+pub fn texture_params(level: u32) -> (u32, u16) {
+    match level {
+        0 => (2, 1),
+        1 => (1, 1),
+        2 => (0, 4),
+        _ => (0, 16),
+    }
+}
 /// Post Processing level -> (ao, bloom, vignette).
-pub fn post_flags(level: u32) -> (bool, bool, bool) { (level >= 2, level >= 1, level >= 3) }
+pub fn post_flags(level: u32) -> (bool, bool, bool) {
+    (level >= 2, level >= 1, level >= 3)
+}
 /// Brightness slider 0..1 -> display exponent applied after the sRGB encode (gamma 1.7..2.7, 2.2 = identity).
-pub fn display_exponent_for_brightness(brightness: f32) -> f32 { 2.2 / (1.7 + (2.7 - 1.7) * brightness.clamp(0., 1.)).max(0.1) }
+pub fn display_exponent_for_brightness(brightness: f32) -> f32 {
+    2.2 / (1.7 + (2.7 - 1.7) * brightness.clamp(0., 1.)).max(0.1)
+}
 
 /// FXAA parameters (old `settings::FxaaParams`).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -47,8 +87,13 @@ pub struct Backdrop {
 impl Backdrop {
     pub const OFF: Backdrop = Backdrop { dim: 0., blur: 0. };
     /// A reasonable pause-menu look (scene clearly visible, soft and darker).
-    pub const PAUSE_MENU: Backdrop = Backdrop { dim: 0.45, blur: 0.5 };
-    pub fn active(&self) -> bool { self.dim > 0. || self.blur > 0. }
+    pub const PAUSE_MENU: Backdrop = Backdrop {
+        dim: 0.45,
+        blur: 0.5,
+    };
+    pub fn active(&self) -> bool {
+        self.dim > 0. || self.blur > 0.
+    }
 }
 
 #[cfg(test)]

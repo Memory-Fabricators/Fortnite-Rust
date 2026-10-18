@@ -25,11 +25,28 @@ pub struct Emitter {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SortMode { None, ViewProjDepth, DistanceToView, Age, Unsupported }
+pub enum SortMode {
+    None,
+    ViewProjDepth,
+    DistanceToView,
+    Age,
+    Unsupported,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Alignment { Square, Rectangle, Velocity, TypeSpecific }
+pub enum Alignment {
+    Square,
+    Rectangle,
+    Velocity,
+    TypeSpecific,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SubUvInterp { None, Linear, LinearBlend, Random, RandomBlend }
+pub enum SubUvInterp {
+    None,
+    Linear,
+    LinearBlend,
+    Random,
+    RandomBlend,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Required {
@@ -56,22 +73,57 @@ pub struct Required {
 }
 impl Default for Required {
     fn default() -> Required {
-        Required { material: String::new(), use_local_space: false, emitter_duration: 1.0, emitter_delay: 0.0, emitter_loops: 1, sort_mode: SortMode::None, screen_alignment: Alignment::Square, sub_images_h: 1, sub_images_v: 1,
-            interpolation: SubUvInterp::None, random_image_time: 0.0, opacity_source: String::new(), alpha_threshold: 0.0, cutout_texture: None, legacy_emitter_time: true, required_enabled: true }
+        Required {
+            material: String::new(),
+            use_local_space: false,
+            emitter_duration: 1.0,
+            emitter_delay: 0.0,
+            emitter_loops: 1,
+            sort_mode: SortMode::None,
+            screen_alignment: Alignment::Square,
+            sub_images_h: 1,
+            sub_images_v: 1,
+            interpolation: SubUvInterp::None,
+            random_image_time: 0.0,
+            opacity_source: String::new(),
+            alpha_threshold: 0.0,
+            cutout_texture: None,
+            legacy_emitter_time: true,
+            required_enabled: true,
+        }
     }
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct Burst { pub count: i32, pub count_low: i32, pub time: f32 }
+pub struct Burst {
+    pub count: i32,
+    pub count_low: i32,
+    pub time: f32,
+}
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct Spawn { pub rate: Dist, pub rate_scale: Dist, pub burst_scale: Dist, pub bursts: Vec<Burst> }
+pub struct Spawn {
+    pub rate: Dist,
+    pub rate_scale: Dist,
+    pub burst_scale: Dist,
+    pub bursts: Vec<Burst>,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Axis { X, Y, Z }
+pub enum Axis {
+    X,
+    Y,
+    Z,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct DynParam { pub name: String, pub value: Dist, pub use_emitter_time: bool, pub spawn_time_only: bool, pub scale_velocity: bool }
+pub struct DynParam {
+    pub name: String,
+    pub value: Dist,
+    pub use_emitter_time: bool,
+    pub spawn_time_only: bool,
+    pub scale_velocity: bool,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GpuInfo {
@@ -86,49 +138,163 @@ pub struct GpuInfo {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TypeData {
     Sprite,
-    Mesh { mesh: String, roll_pitch_yaw: Dist, override_material: bool },
+    Mesh {
+        mesh: String,
+        roll_pitch_yaw: Dist,
+        override_material: bool,
+    },
     /// `ParticleModuleTypeDataGpu`: the same modules, simulated on the GPU in the original (sprites only).
     Gpu(GpuInfo),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ModuleKind {
-    Lifetime { lifetime: Dist },
-    Location { start: Dist },
-    LocationSphere { start: Dist, radius: Dist, surface_only: bool, velocity: bool, velocity_scale: Dist, positive_z: bool, negative_z: bool },
-    LocationCylinder { start: Dist, radius: Dist, height: Dist, height_axis: Axis, surface_only: bool, velocity: bool, velocity_scale: Dist, positive_z: bool, negative_z: bool },
-    Velocity { start: Dist, radial: Dist, in_world_space: bool },
-    Size { start: Dist },
-    SizeMultiplyLife { mult: Dist, x: bool, y: bool, z: bool },
-    SizeScaleBySpeed { speed_scale: [f32; 2], max_scale: [f32; 2] },
-    Color { color: Dist, alpha: Dist },
-    ColorOverLife { color: Dist, alpha: Dist, clamp_alpha: bool },
-    ColorScaleOverLife { color: Dist, alpha: Dist },
-    Rotation { start: Dist },
-    RotationRate { start: Dist },
-    MeshRotation { start: Dist },
-    MeshRotationRate { start: Dist },
-    Acceleration { accel: Dist, world: bool },
-    AccelerationConstant { accel: [f32; 3], world: bool },
-    Drag { coefficient: Dist },
-    CameraOffset { offset: Dist, spawn_time_only: bool },
-    Orbit { offset: Dist, rotation: Dist, rotation_rate: Dist },
-    ParameterDynamic { params: Vec<DynParam> },
-    PivotOffset { offset: [f32; 2] },
-    SubUv { index: Dist },
-    SubUvMovie { index: Dist, frame_rate: Dist, starting_frame: i32 },
-    Collision { damping: Dist, damping_rotation: Dist, max_collisions: Dist, delay: Dist, particle_mass: Dist, halt_when_done: bool },
-    CollisionGpu { friction: f32, resilience: Dist, resilience_scale_over_life: Dist, radius_scale: f32, stop: bool },
-    MeshMaterial { materials: Vec<String> },
+    Lifetime {
+        lifetime: Dist,
+    },
+    Location {
+        start: Dist,
+    },
+    LocationSphere {
+        start: Dist,
+        radius: Dist,
+        surface_only: bool,
+        velocity: bool,
+        velocity_scale: Dist,
+        positive_z: bool,
+        negative_z: bool,
+    },
+    LocationCylinder {
+        start: Dist,
+        radius: Dist,
+        height: Dist,
+        height_axis: Axis,
+        surface_only: bool,
+        velocity: bool,
+        velocity_scale: Dist,
+        positive_z: bool,
+        negative_z: bool,
+    },
+    Velocity {
+        start: Dist,
+        radial: Dist,
+        in_world_space: bool,
+    },
+    Size {
+        start: Dist,
+    },
+    SizeMultiplyLife {
+        mult: Dist,
+        x: bool,
+        y: bool,
+        z: bool,
+    },
+    SizeScaleBySpeed {
+        speed_scale: [f32; 2],
+        max_scale: [f32; 2],
+    },
+    Color {
+        color: Dist,
+        alpha: Dist,
+    },
+    ColorOverLife {
+        color: Dist,
+        alpha: Dist,
+        clamp_alpha: bool,
+    },
+    ColorScaleOverLife {
+        color: Dist,
+        alpha: Dist,
+    },
+    Rotation {
+        start: Dist,
+    },
+    RotationRate {
+        start: Dist,
+    },
+    MeshRotation {
+        start: Dist,
+    },
+    MeshRotationRate {
+        start: Dist,
+    },
+    Acceleration {
+        accel: Dist,
+        world: bool,
+    },
+    AccelerationConstant {
+        accel: [f32; 3],
+        world: bool,
+    },
+    Drag {
+        coefficient: Dist,
+    },
+    CameraOffset {
+        offset: Dist,
+        spawn_time_only: bool,
+    },
+    Orbit {
+        offset: Dist,
+        rotation: Dist,
+        rotation_rate: Dist,
+    },
+    ParameterDynamic {
+        params: Vec<DynParam>,
+    },
+    PivotOffset {
+        offset: [f32; 2],
+    },
+    SubUv {
+        index: Dist,
+    },
+    SubUvMovie {
+        index: Dist,
+        frame_rate: Dist,
+        starting_frame: i32,
+    },
+    Collision {
+        damping: Dist,
+        damping_rotation: Dist,
+        max_collisions: Dist,
+        delay: Dist,
+        particle_mass: Dist,
+        halt_when_done: bool,
+    },
+    CollisionGpu {
+        friction: f32,
+        resilience: Dist,
+        resilience_scale_over_life: Dist,
+        radius_scale: f32,
+        stop: bool,
+    },
+    MeshMaterial {
+        materials: Vec<String>,
+    },
     /// `ParticleModuleLight` (the dynamic light of a particle, muzzle flashes use it): `ColorScaleOverLife * BrightnessOverLife` at spawn / every update, `RadiusScale` and `LightExponent`
     /// sampled at spawn (emitter time), `bValid = rand < SpawnFraction`. The light itself is reported by `Instance::lights`.
-    Light { color_scale: Dist, brightness: Dist, radius_scale: Dist, exponent: Dist, inverse_squared: bool, spawn_fraction: f32, affects_translucency: bool, high_quality: bool },
+    Light {
+        color_scale: Dist,
+        brightness: Dist,
+        radius_scale: Dist,
+        exponent: Dist,
+        inverse_squared: bool,
+        spawn_fraction: f32,
+        affects_translucency: bool,
+        high_quality: bool,
+    },
     /// `ParticleModuleVelocityInheritParent`: spawn velocity += component velocity * `Scale(EmitterTime)`.
-    VelocityInheritParent { scale: Dist },
+    VelocityInheritParent {
+        scale: Dist,
+    },
     /// `ParticleModuleMeshRotationRateMultiplyLife`: the mesh rotation rate is multiplied by `LifeMultiplier(RelativeTime)` at spawn and on every update (the original multiplies cumulatively).
-    MeshRotationRateMultiplyLife { mult: Dist },
+    MeshRotationRateMultiplyLife {
+        mult: Dist,
+    },
     /// A module class this crate does not simulate (listed so the gap is visible); `class` is the cooked class name.
-    Unsupported { class: String, note: String },
+    Unsupported {
+        class: String,
+        note: String,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -157,7 +323,16 @@ pub struct Lod {
 
 /// A texture of an exported material (PNG relative to the particle asset root).
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TextureRef { pub name: String, pub ue_path: String, pub png: String, pub srgb: bool, pub compression: String, pub width: u32, pub height: u32, pub has_alpha: bool }
+pub struct TextureRef {
+    pub name: String,
+    pub ue_path: String,
+    pub png: String,
+    pub srgb: bool,
+    pub compression: String,
+    pub width: u32,
+    pub height: u32,
+    pub has_alpha: bool,
+}
 
 /// A material as far as the cooked package keeps it: the root `UMaterial` settings (blend mode, shading model, two sided, clip value), the merged parameter values of the
 /// instance chain, and the input -> parameter wiring where the graph still has it (the arithmetic nodes between parameters are stripped from the cooked packages).
@@ -184,11 +359,21 @@ pub struct MaterialDef {
 }
 
 impl MaterialDef {
-    pub fn is_translucent(&self) -> bool { self.blend_mode.contains("Translucent") }
-    pub fn is_additive(&self) -> bool { self.blend_mode.contains("Additive") }
-    pub fn is_masked(&self) -> bool { self.blend_mode.contains("Masked") }
-    pub fn is_modulate(&self) -> bool { self.blend_mode.contains("Modulate") }
-    pub fn is_unlit(&self) -> bool { self.shading_model.contains("Unlit") }
+    pub fn is_translucent(&self) -> bool {
+        self.blend_mode.contains("Translucent")
+    }
+    pub fn is_additive(&self) -> bool {
+        self.blend_mode.contains("Additive")
+    }
+    pub fn is_masked(&self) -> bool {
+        self.blend_mode.contains("Masked")
+    }
+    pub fn is_modulate(&self) -> bool {
+        self.blend_mode.contains("Modulate")
+    }
+    pub fn is_unlit(&self) -> bool {
+        self.shading_model.contains("Unlit")
+    }
 }
 
 /// A static mesh of a mesh emitter in game space (metres, Y up) as written by the exporter.
@@ -209,16 +394,42 @@ impl ParticleSystem {
     /// LOD level for a camera distance (cm), `ActivateAutomatic`.
     pub fn lod_for_distance(&self, cm: f32) -> usize {
         let mut lod = 0;
-        for (i, d) in self.lod_distances.iter().enumerate() { if cm >= *d { lod = i; } }
+        for (i, d) in self.lod_distances.iter().enumerate() {
+            if cm >= *d {
+                lod = i;
+            }
+        }
         lod
     }
     /// Human readable summary of LOD 0 of every emitter (tools / logs).
     pub fn describe(&self) -> String {
-        let mut s = format!("{} ({} emitters, LOD distances {:?})\n", self.name, self.emitters.len(), self.lod_distances);
+        let mut s = format!(
+            "{} ({} emitters, LOD distances {:?})\n",
+            self.name,
+            self.emitters.len(),
+            self.lod_distances
+        );
         for e in &self.emitters {
-            let Some(l) = e.lods.first() else { s.push_str(&format!("  {}: no LOD\n", e.name)); continue };
-            let td = match &l.type_data { TypeData::Sprite => "sprite".to_string(), TypeData::Mesh { mesh, .. } => format!("mesh {}", mesh.rsplit('/').next().unwrap_or(mesh)), TypeData::Gpu(g) => format!("gpu-sprite max {} collision {}", g.max_particle_count, g.collision) };
-            let bursts: Vec<String> = l.spawn.bursts.iter().map(|b| format!("{}(low {})@{}", b.count, b.count_low, b.time)).collect();
+            let Some(l) = e.lods.first() else {
+                s.push_str(&format!("  {}: no LOD\n", e.name));
+                continue;
+            };
+            let td = match &l.type_data {
+                TypeData::Sprite => "sprite".to_string(),
+                TypeData::Mesh { mesh, .. } => {
+                    format!("mesh {}", mesh.rsplit('/').next().unwrap_or(mesh))
+                }
+                TypeData::Gpu(g) => format!(
+                    "gpu-sprite max {} collision {}",
+                    g.max_particle_count, g.collision
+                ),
+            };
+            let bursts: Vec<String> = l
+                .spawn
+                .bursts
+                .iter()
+                .map(|b| format!("{}(low {})@{}", b.count, b.count_low, b.time))
+                .collect();
             s.push_str(&format!("  {} [{}] mat {} bursts [{}] rate {:?} loops {} dur {} local {} align {:?} sort {:?} sub {}x{} lods {} enabled {} modules {} flags [{}]\n", e.name, td, l.required.material.rsplit('/').next().unwrap_or(""), bursts.join(","), l.spawn.rate.mean(0.0, 1)[0],
                 l.required.emitter_loops, l.required.emitter_duration, l.required.use_local_space, l.required.screen_alignment, l.required.sort_mode, l.required.sub_images_h, l.required.sub_images_v, e.lods.len(), l.enabled, l.modules.len(), e.lods.iter().map(|l| format!("{}{}", if l.enabled { "L" } else { "l" }, if l.required.required_enabled { "R" } else { "r" })).collect::<Vec<_>>().join(" ")));
         }
@@ -227,8 +438,18 @@ impl ParticleSystem {
     /// Unsupported module classes used by LOD 0 of any emitter (class, count).
     pub fn unsupported(&self) -> Vec<(String, usize)> {
         let mut v: Vec<(String, usize)> = vec![];
-        for e in &self.emitters { if let Some(l) = e.lods.first() { for m in &l.modules { if let ModuleKind::Unsupported { class, .. } = &m.kind {
-            match v.iter_mut().find(|x| &x.0 == class) { Some(x) => x.1 += 1, None => v.push((class.clone(), 1)) } } } } }
+        for e in &self.emitters {
+            if let Some(l) = e.lods.first() {
+                for m in &l.modules {
+                    if let ModuleKind::Unsupported { class, .. } = &m.kind {
+                        match v.iter_mut().find(|x| &x.0 == class) {
+                            Some(x) => x.1 += 1,
+                            None => v.push((class.clone(), 1)),
+                        }
+                    }
+                }
+            }
+        }
         v
     }
 }

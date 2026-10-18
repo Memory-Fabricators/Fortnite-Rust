@@ -57,11 +57,25 @@ fn vec4(v: &Value) -> Option<[f64; 4]> {
         return Some([g(0)?, g(1)?, g(2)?, g(3).unwrap_or(1.0)]);
     }
     let g = |k: &str| v.get(k).and_then(|x| x.as_f64());
-    Some([g("r").or_else(|| g("R"))?, g("g").or_else(|| g("G"))?, g("b").or_else(|| g("B"))?, g("a").or_else(|| g("A")).unwrap_or(1.0)])
+    Some([
+        g("r").or_else(|| g("R"))?,
+        g("g").or_else(|| g("G"))?,
+        g("b").or_else(|| g("B"))?,
+        g("a").or_else(|| g("A")).unwrap_or(1.0),
+    ])
 }
 
 fn pname(v: &Value) -> String {
-    v.get("ParameterName").and_then(|x| x.as_str()).map(String::from).or_else(|| v.get("ParameterInfo").and_then(|i| i.get("Name")).and_then(|x| x.as_str()).map(String::from)).unwrap_or_default()
+    v.get("ParameterName")
+        .and_then(|x| x.as_str())
+        .map(String::from)
+        .or_else(|| {
+            v.get("ParameterInfo")
+                .and_then(|i| i.get("Name"))
+                .and_then(|x| x.as_str())
+                .map(String::from)
+        })
+        .unwrap_or_default()
 }
 
 struct Layer {
@@ -71,8 +85,18 @@ struct Layer {
 
 /// Resolve one material (instance or plain material) by object path (`/Game/..../M_X.M_X`).
 pub fn resolve(set: &PakSet, path: &str) -> Result<Resolved, String> {
-    let mut r = Resolved { ue_path: path.to_string(), clip: 0.3333, blend_mode: "BLEND_Opaque".into(), shading_model: "MSM_DefaultLit".into(), ..Default::default() };
-    r.name = path.rsplit(|c| c == '.' || c == '/').next().unwrap_or(path).to_string();
+    let mut r = Resolved {
+        ue_path: path.to_string(),
+        clip: 0.3333,
+        blend_mode: "BLEND_Opaque".into(),
+        shading_model: "MSM_DefaultLit".into(),
+        ..Default::default()
+    };
+    r.name = path
+        .rsplit(|c| c == '.' || c == '/')
+        .next()
+        .unwrap_or(path)
+        .to_string();
     let mut layers: Vec<Layer> = vec![];
     let mut cur = package_of(path).to_string();
     let mut root_exprs: Vec<(String, String, Map<String, Value>)> = vec![]; // (class, name, props)
@@ -107,7 +131,10 @@ pub fn resolve(set: &PakSet, path: &str) -> Result<Resolved, String> {
             layers.push(Layer { props, class });
             break;
         }
-        let parent = props.get("Parent").and_then(|v| v.as_str()).map(String::from);
+        let parent = props
+            .get("Parent")
+            .and_then(|v| v.as_str())
+            .map(String::from);
         layers.push(Layer { props, class });
         match parent {
             Some(p) if !p.is_empty() => cur = package_of(&p).to_string(),
@@ -136,7 +163,10 @@ pub fn resolve(set: &PakSet, path: &str) -> Result<Resolved, String> {
         }
         for k in INPUTS {
             if let Some(v) = p.get(*k) {
-                let name = v.get("ExpressionName").and_then(|x| x.as_str()).unwrap_or("");
+                let name = v
+                    .get("ExpressionName")
+                    .and_then(|x| x.as_str())
+                    .unwrap_or("");
                 let used = !name.is_empty() && name != "None";
                 r.inputs_connected.insert((*k).to_string(), used);
                 if used {
@@ -144,7 +174,11 @@ pub fn resolve(set: &PakSet, path: &str) -> Result<Resolved, String> {
                 }
             }
         }
-        r.wpo = r.inputs_connected.get("WorldPositionOffset").copied().unwrap_or(false);
+        r.wpo = r
+            .inputs_connected
+            .get("WorldPositionOffset")
+            .copied()
+            .unwrap_or(false);
     }
     for (class, name, p) in &root_exprs {
         let pn = pname(&Value::Object(p.clone()));
@@ -160,8 +194,14 @@ pub fn resolve(set: &PakSet, path: &str) -> Result<Resolved, String> {
                     r.vectors.insert(pn, d);
                 }
             }
-            "MaterialExpressionTextureSampleParameter2D" | "MaterialExpressionTextureObjectParameter" | "MaterialExpressionTextureSampleParameterCube" => {
-                if let Some(t) = p.get("Texture").and_then(|v| v.as_str()).filter(|s| !s.is_empty()) {
+            "MaterialExpressionTextureSampleParameter2D"
+            | "MaterialExpressionTextureObjectParameter"
+            | "MaterialExpressionTextureSampleParameterCube" => {
+                if let Some(t) = p
+                    .get("Texture")
+                    .and_then(|v| v.as_str())
+                    .filter(|s| !s.is_empty())
+                {
                     r.textures.insert(pn, t.to_string());
                 }
             }
@@ -177,14 +217,21 @@ pub fn resolve(set: &PakSet, path: &str) -> Result<Resolved, String> {
     for l in layers.iter().rev().filter(|l| l.class != "Material") {
         let p = &l.props;
         if let Some(o) = p.get("BasePropertyOverrides") {
-            let on = |k: &str| o.get(format!("bOverride_{k}")).and_then(|v| v.as_bool()).unwrap_or(false);
+            let on = |k: &str| {
+                o.get(format!("bOverride_{k}"))
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false)
+            };
             if on("BlendMode") {
                 if let Some(b) = o.get("BlendMode").and_then(|v| v.as_str()) {
                     r.blend_mode = b.to_string();
                 }
             }
             if on("TwoSided") {
-                r.two_sided = o.get("TwoSided").and_then(|v| v.as_bool()).unwrap_or(r.two_sided);
+                r.two_sided = o
+                    .get("TwoSided")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(r.two_sided);
             }
             if on("ShadingModel") {
                 if let Some(b) = o.get("ShadingModel").and_then(|v| v.as_str()) {
@@ -197,18 +244,37 @@ pub fn resolve(set: &PakSet, path: &str) -> Result<Resolved, String> {
                 }
             }
         }
-        for v in p.get("ScalarParameterValues").and_then(|v| v.as_array()).into_iter().flatten() {
+        for v in p
+            .get("ScalarParameterValues")
+            .and_then(|v| v.as_array())
+            .into_iter()
+            .flatten()
+        {
             if let Some(x) = v.get("ParameterValue").and_then(|x| x.as_f64()) {
                 r.scalars.insert(pname(v), x);
             }
         }
-        for v in p.get("VectorParameterValues").and_then(|v| v.as_array()).into_iter().flatten() {
+        for v in p
+            .get("VectorParameterValues")
+            .and_then(|v| v.as_array())
+            .into_iter()
+            .flatten()
+        {
             if let Some(x) = v.get("ParameterValue").and_then(vec4) {
                 r.vectors.insert(pname(v), x);
             }
         }
-        for v in p.get("TextureParameterValues").and_then(|v| v.as_array()).into_iter().flatten() {
-            if let Some(x) = v.get("ParameterValue").and_then(|x| x.as_str()).filter(|s| !s.is_empty()) {
+        for v in p
+            .get("TextureParameterValues")
+            .and_then(|v| v.as_array())
+            .into_iter()
+            .flatten()
+        {
+            if let Some(x) = v
+                .get("ParameterValue")
+                .and_then(|x| x.as_str())
+                .filter(|s| !s.is_empty())
+            {
                 r.textures.insert(pname(v), x.to_string());
             }
         }
@@ -229,7 +295,20 @@ pub fn resolve(set: &PakSet, path: &str) -> Result<Resolved, String> {
 
 fn wind_like(name: &str) -> bool {
     let n = name.to_lowercase();
-    ["wind", "leafanim", "leaf anim", "sway", "flutter", "bend", "trunk", "branchanim", "animation", "foliage"].iter().any(|k| n.contains(k))
+    [
+        "wind",
+        "leafanim",
+        "leaf anim",
+        "sway",
+        "flutter",
+        "bend",
+        "trunk",
+        "branchanim",
+        "animation",
+        "foliage",
+    ]
+    .iter()
+    .any(|k| n.contains(k))
 }
 
 /// Texture facts needed to finish the `.mat.json`.
@@ -260,16 +339,43 @@ pub struct SlotChoice {
     pub source: &'static str,
 }
 
-const NOT_A_SURFACE: &[&str] = &["damage", "thicken", "trunk", "noise", "smoothstep", "smooth step", "panning", "position", "axis", "color change", "chart", "storm", "gradient", "reveal", "index", "refraction", "bounce"];
+const NOT_A_SURFACE: &[&str] = &[
+    "damage",
+    "thicken",
+    "trunk",
+    "noise",
+    "smoothstep",
+    "smooth step",
+    "panning",
+    "position",
+    "axis",
+    "color change",
+    "chart",
+    "storm",
+    "gradient",
+    "reveal",
+    "index",
+    "refraction",
+    "bounce",
+];
 
 fn common_prefix(a: &str, b: &str) -> usize {
-    a.chars().zip(b.chars()).take_while(|(x, y)| x.eq_ignore_ascii_case(y)).count()
+    a.chars()
+        .zip(b.chars())
+        .take_while(|(x, y)| x.eq_ignore_ascii_case(y))
+        .count()
 }
 
 pub fn choose_slots(r: &Resolved, tex: &BTreeMap<String, TexMeta>) -> SlotChoice {
     let meta = |param: &str| r.textures.get(param).and_then(|p| tex.get(p));
     let masked = r.blend_mode.contains("Masked");
-    let mut s = SlotChoice { base_color: None, normal: None, mask: None, opacity_from: None, source: "name-heuristic" };
+    let mut s = SlotChoice {
+        base_color: None,
+        normal: None,
+        mask: None,
+        opacity_from: None,
+        source: "name-heuristic",
+    };
     let mut exact = false;
     for (input, field) in [("BaseColor", 0), ("Normal", 1)] {
         if let Some(p) = r.direct.get(input) {
@@ -289,44 +395,96 @@ pub fn choose_slots(r: &Resolved, tex: &BTreeMap<String, TexMeta>) -> SlotChoice
         !NOT_A_SURFACE.iter().any(|w| l.contains(w))
     };
     if s.base_color.is_none() {
-        const EXACT: &[&str] = &["diffuse", "basecolor", "base color", "albedo", "diffuse map", "diffusemap", "color", "diffuse texture", "main texture", "texture"];
+        const EXACT: &[&str] = &[
+            "diffuse",
+            "basecolor",
+            "base color",
+            "albedo",
+            "diffuse map",
+            "diffusemap",
+            "color",
+            "diffuse texture",
+            "main texture",
+            "texture",
+        ];
         let score = |p: &&String| -> i32 {
             let l = p.to_lowercase();
             let m = meta(p).unwrap();
             let mut sc = if let Some(i) = EXACT.iter().position(|e| *e == l) {
                 100 - i as i32
-            } else if l.contains("diffuse") || l.contains("albedo") || l.contains("basecolor") || l.contains("base color") {
+            } else if l.contains("diffuse")
+                || l.contains("albedo")
+                || l.contains("basecolor")
+                || l.contains("base color")
+            {
                 50
             } else if l.contains("color") {
                 20
             } else {
                 0
             };
-            if l.contains("normal") || l.contains("spec") || (l.contains("mask") && !l.contains("diffuse")) {
+            if l.contains("normal")
+                || l.contains("spec")
+                || (l.contains("mask") && !l.contains("diffuse"))
+            {
                 sc -= 60;
             }
-            sc += if m.compression == "TC_Default" && m.srgb { 10 } else { -40 };
+            sc += if m.compression == "TC_Default" && m.srgb {
+                10
+            } else {
+                -40
+            };
             sc - (l.len() as i32) / 8
         };
-        s.base_color = params.iter().filter(|p| surface(p)).max_by_key(|p| score(p)).filter(|p| score(p) > 0).map(|p| (*p).clone());
+        s.base_color = params
+            .iter()
+            .filter(|p| surface(p))
+            .max_by_key(|p| score(p))
+            .filter(|p| score(p) > 0)
+            .map(|p| (*p).clone());
     }
     if s.normal.is_none() {
         let score = |p: &&String| -> i32 {
             let l = p.to_lowercase();
             let m = meta(p).unwrap();
-            let mut sc = if l == "normalmap" || l == "normal" || l == "normals" || l == "normal map" { 100 } else if l.contains("normal") { 40 } else { 0 };
+            let mut sc = if l == "normalmap" || l == "normal" || l == "normals" || l == "normal map"
+            {
+                100
+            } else if l.contains("normal") {
+                40
+            } else {
+                0
+            };
             if m.compression == "TC_Normalmap" {
                 sc += 50;
             }
             sc - (l.len() as i32) / 8
         };
-        s.normal = params.iter().filter(|p| surface(p)).max_by_key(|p| score(p)).filter(|p| score(p) >= 40).map(|p| (*p).clone());
+        s.normal = params
+            .iter()
+            .filter(|p| surface(p))
+            .max_by_key(|p| score(p))
+            .filter(|p| score(p) >= 40)
+            .map(|p| (*p).clone());
     }
-    let base_tex = s.base_color.as_ref().and_then(|p| meta(p)).map(|m| m.name.clone()).unwrap_or_default();
+    let base_tex = s
+        .base_color
+        .as_ref()
+        .and_then(|p| meta(p))
+        .map(|m| m.name.clone())
+        .unwrap_or_default();
     let mask_score = |p: &&String| -> i32 {
         let l = p.to_lowercase();
         let m = meta(p).unwrap();
-        let mut sc = if l.starts_with("mask") { 60 } else if l.contains("mask") { 30 } else if l.contains("spec") || l.contains("orm") || l.contains("rough") { 20 } else { 0 };
+        let mut sc = if l.starts_with("mask") {
+            60
+        } else if l.contains("mask") {
+            30
+        } else if l.contains("spec") || l.contains("orm") || l.contains("rough") {
+            20
+        } else {
+            0
+        };
         if l.contains("opacity") {
             sc -= 15;
         }
@@ -339,13 +497,25 @@ pub fn choose_slots(r: &Resolved, tex: &BTreeMap<String, TexMeta>) -> SlotChoice
     };
     s.mask = params
         .iter()
-        .filter(|p| surface(p) && Some((**p).clone()) != s.base_color && Some((**p).clone()) != s.normal)
+        .filter(|p| {
+            surface(p) && Some((**p).clone()) != s.base_color && Some((**p).clone()) != s.normal
+        })
         .max_by_key(|p| mask_score(p))
         .filter(|p| mask_score(p) >= 20)
         .map(|p| (*p).clone());
     if masked {
-        let bc_alpha = s.base_color.as_ref().and_then(|p| meta(p)).map_or(false, |m| m.has_alpha);
-        s.opacity_from = if bc_alpha { Some("base_color".into()) } else if s.mask.is_some() { Some("mask".into()) } else { None };
+        let bc_alpha = s
+            .base_color
+            .as_ref()
+            .and_then(|p| meta(p))
+            .map_or(false, |m| m.has_alpha);
+        s.opacity_from = if bc_alpha {
+            Some("base_color".into())
+        } else if s.mask.is_some() {
+            Some("mask".into())
+        } else {
+            None
+        };
     }
     if exact {
         s.source = "graph-direct (colour / normal) + name-heuristic (rest)";
@@ -370,14 +540,29 @@ pub fn mat_json(r: &Resolved, tex: &BTreeMap<String, TexMeta>, tex_rel: &str) ->
     }
     let alpha_mode = if r.blend_mode.contains("Masked") {
         "MASK"
-    } else if r.blend_mode.contains("Translucent") || r.blend_mode.contains("Additive") || r.blend_mode.contains("Modulate") {
+    } else if r.blend_mode.contains("Translucent")
+        || r.blend_mode.contains("Additive")
+        || r.blend_mode.contains("Modulate")
+    {
         "BLEND"
     } else {
         "OPAQUE"
     };
-    let scalars: Map<String, Value> = r.scalars.iter().map(|(k, v)| (k.clone(), json!(v))).collect();
-    let vectors: Map<String, Value> = r.vectors.iter().map(|(k, v)| (k.clone(), json!(v))).collect();
-    let switches: Map<String, Value> = r.switches.iter().map(|(k, v)| (k.clone(), json!(v))).collect();
+    let scalars: Map<String, Value> = r
+        .scalars
+        .iter()
+        .map(|(k, v)| (k.clone(), json!(v)))
+        .collect();
+    let vectors: Map<String, Value> = r
+        .vectors
+        .iter()
+        .map(|(k, v)| (k.clone(), json!(v)))
+        .collect();
+    let switches: Map<String, Value> = r
+        .switches
+        .iter()
+        .map(|(k, v)| (k.clone(), json!(v)))
+        .collect();
     let mut wind = Map::new();
     for (k, v) in &r.scalars {
         if wind_like(k) {
@@ -385,13 +570,23 @@ pub fn mat_json(r: &Resolved, tex: &BTreeMap<String, TexMeta>, tex_rel: &str) ->
         }
     }
     // greyscale canopy textures are tinted by the material's gradient / subsurface colour vectors (approximation for renderers)
-    let base_grey = slots.base_color.as_ref().and_then(|p| r.textures.get(p)).and_then(|t| tex.get(t)).map_or(false, |m| m.grey);
+    let base_grey = slots
+        .base_color
+        .as_ref()
+        .and_then(|p| r.textures.get(p))
+        .and_then(|t| tex.get(t))
+        .map_or(false, |m| m.grey);
     let (tint_guess, tint_source) = if base_grey {
-        let pick = ["Gradient_TopColor", "SimpleSSColor", "Leaf Color", "Tint"].iter().find_map(|k| r.vectors.get(*k).map(|v| (*k, *v)));
+        let pick = ["Gradient_TopColor", "SimpleSSColor", "Leaf Color", "Tint"]
+            .iter()
+            .find_map(|k| r.vectors.get(*k).map(|v| (*k, *v)));
         match pick {
             Some((k, v)) => {
                 let m = v[0].max(v[1]).max(v[2]).max(1e-6);
-                (json!([v[0] / m, v[1] / m, v[2] / m]), json!(format!("{k} normalised to max 1 (guess)")))
+                (
+                    json!([v[0] / m, v[1] / m, v[2] / m]),
+                    json!(format!("{k} normalised to max 1 (guess)")),
+                )
             }
             None => (Value::Null, Value::Null),
         }
@@ -417,16 +612,34 @@ mod tests {
     use super::*;
 
     fn meta(name: &str, comp: &str, srgb: bool, alpha: bool) -> TexMeta {
-        TexMeta { name: name.into(), png: format!("{name}.png"), srgb, compression: comp.into(), format: "DXT1".into(), width: 4, height: 4, source_width: 4, source_height: 4, address_x: "TA_Wrap".into(), address_y: "TA_Wrap".into(), has_alpha: alpha, grey: false }
+        TexMeta {
+            name: name.into(),
+            png: format!("{name}.png"),
+            srgb,
+            compression: comp.into(),
+            format: "DXT1".into(),
+            width: 4,
+            height: 4,
+            source_width: 4,
+            source_height: 4,
+            address_x: "TA_Wrap".into(),
+            address_y: "TA_Wrap".into(),
+            has_alpha: alpha,
+            grey: false,
+        }
     }
 
     #[test]
     fn slots_by_name_and_compression() {
-        let mut r = Resolved { blend_mode: "BLEND_Masked".into(), ..Default::default() };
+        let mut r = Resolved {
+            blend_mode: "BLEND_Masked".into(),
+            ..Default::default()
+        };
         r.textures.insert("Diffuse".into(), "/g/T_D".into());
         r.textures.insert("NormalMap".into(), "/g/T_N".into());
         r.textures.insert("MaskTexture".into(), "/g/T_M".into());
-        r.textures.insert("Damage reveal texture".into(), "/g/T_X".into());
+        r.textures
+            .insert("Damage reveal texture".into(), "/g/T_X".into());
         let mut t = BTreeMap::new();
         t.insert("/g/T_D".into(), meta("T_D", "TC_Default", true, true));
         t.insert("/g/T_N".into(), meta("T_N", "TC_Normalmap", false, false));
@@ -462,7 +675,13 @@ mod tests {
 
     #[test]
     fn vec4_both_shapes() {
-        assert_eq!(vec4(&json!([1.0, 0.5, 0.25, 1.0])), Some([1.0, 0.5, 0.25, 1.0]));
-        assert_eq!(vec4(&json!({"r": 0.1, "g": 0.2, "b": 0.3, "a": 0.4})), Some([0.1, 0.2, 0.3, 0.4]));
+        assert_eq!(
+            vec4(&json!([1.0, 0.5, 0.25, 1.0])),
+            Some([1.0, 0.5, 0.25, 1.0])
+        );
+        assert_eq!(
+            vec4(&json!({"r": 0.1, "g": 0.2, "b": 0.3, "a": 0.4})),
+            Some([0.1, 0.2, 0.3, 0.4])
+        );
     }
 }

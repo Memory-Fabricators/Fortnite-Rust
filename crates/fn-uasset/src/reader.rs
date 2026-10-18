@@ -99,19 +99,36 @@ impl<'a> Reader<'a> {
         if n < 0 {
             let cnt = (-(n as i64)) as usize;
             if cnt > self.remaining() / 2 {
-                return Err(Error::malformed(format!("FString length {n} exceeds buffer at {}", self.p)));
+                return Err(Error::malformed(format!(
+                    "FString length {n} exceeds buffer at {}",
+                    self.p
+                )));
             }
             let raw = self.bytes(cnt * 2)?;
-            let u: Vec<u16> = raw.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect();
-            let end = if u.last() == Some(&0) { u.len() - 1 } else { u.len() };
+            let u: Vec<u16> = raw
+                .chunks_exact(2)
+                .map(|c| u16::from_le_bytes([c[0], c[1]]))
+                .collect();
+            let end = if u.last() == Some(&0) {
+                u.len() - 1
+            } else {
+                u.len()
+            };
             Ok(String::from_utf16_lossy(&u[..end]))
         } else {
             let cnt = n as usize;
             if cnt > self.remaining() {
-                return Err(Error::malformed(format!("FString length {n} exceeds buffer at {}", self.p)));
+                return Err(Error::malformed(format!(
+                    "FString length {n} exceeds buffer at {}",
+                    self.p
+                )));
             }
             let raw = self.bytes(cnt)?;
-            let end = if raw.last() == Some(&0) { raw.len() - 1 } else { raw.len() };
+            let end = if raw.last() == Some(&0) {
+                raw.len() - 1
+            } else {
+                raw.len()
+            };
             Ok(match std::str::from_utf8(&raw[..end]) {
                 Ok(s) => s.to_string(),
                 Err(_) => raw[..end].iter().map(|&c| c as char).collect(),
@@ -122,7 +139,10 @@ impl<'a> Reader<'a> {
     pub fn count(&mut self, min_elem: usize) -> Result<usize> {
         let n = self.i32()?;
         if n < 0 || (n as usize).saturating_mul(min_elem.max(1)) > self.remaining() + 1 {
-            return Err(Error::malformed(format!("bad array count {n} at {}", self.p - 4)));
+            return Err(Error::malformed(format!(
+                "bad array count {n} at {}",
+                self.p - 4
+            )));
         }
         Ok(n as usize)
     }

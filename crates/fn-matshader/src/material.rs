@@ -11,24 +11,45 @@ use fn_pak::PakSet;
 use serde_json::Value;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Flags { pub blend: String, pub shading: String, pub two_sided: bool, pub opacity_mask_clip: f32 }
+pub struct Flags {
+    pub blend: String,
+    pub shading: String,
+    pub two_sided: bool,
+    pub opacity_mask_clip: f32,
+}
 
-fn s(v: &Value, k: &str) -> Option<String> { v.get(k).and_then(|x| x.as_str()).map(|x| x.rsplit("::").next().unwrap_or(x).to_owned()) }
-fn b(v: &Value, k: &str) -> Option<bool> { v.get(k).and_then(|x| x.as_bool()) }
+fn s(v: &Value, k: &str) -> Option<String> {
+    v.get(k)
+        .and_then(|x| x.as_str())
+        .map(|x| x.rsplit("::").next().unwrap_or(x).to_owned())
+}
+fn b(v: &Value, k: &str) -> Option<bool> {
+    v.get(k).and_then(|x| x.as_bool())
+}
 
 /// Render flags of `object_path` (a `Material` or a `MaterialInstanceConstant` chain).
 pub fn resolve_flags(set: &PakSet, object_path: &str) -> Result<Flags, String> {
     let mut chain = vec![];
     let mut cur = object_path.to_owned();
     let root = loop {
-        if chain.len() > 16 { return Err(format!("{object_path}: parent chain too deep")); }
+        if chain.len() > 16 {
+            return Err(format!("{object_path}: parent chain too deep"));
+        }
         let pkg = PackageJson::load(set, long_package(&cur))?;
         let name = cur.rsplit('.').next().unwrap().to_owned();
-        let ex = pkg.by_name(&name).ok_or_else(|| format!("{cur}: export {name} missing"))?;
+        let ex = pkg
+            .by_name(&name)
+            .ok_or_else(|| format!("{cur}: export {name} missing"))?;
         match ex.class.as_str() {
             "Material" => break ex.props.clone(),
             "MaterialInstanceConstant" => {
-                let parent = ex.props.get("Parent").and_then(|v| v.as_str()).filter(|p| !p.is_empty()).ok_or_else(|| format!("{cur}: instance without parent"))?.to_owned();
+                let parent = ex
+                    .props
+                    .get("Parent")
+                    .and_then(|v| v.as_str())
+                    .filter(|p| !p.is_empty())
+                    .ok_or_else(|| format!("{cur}: instance without parent"))?
+                    .to_owned();
                 chain.push(ex.props.clone());
                 cur = parent;
             }
@@ -39,14 +60,35 @@ pub fn resolve_flags(set: &PakSet, object_path: &str) -> Result<Flags, String> {
         blend: s(&root, "BlendMode").unwrap_or_else(|| "BLEND_Opaque".into()),
         shading: s(&root, "ShadingModel").unwrap_or_else(|| "MSM_DefaultLit".into()),
         two_sided: b(&root, "TwoSided").unwrap_or(false),
-        opacity_mask_clip: root.get("OpacityMaskClipValue").and_then(|x| x.as_f64()).unwrap_or(0.3333) as f32,
+        opacity_mask_clip: root
+            .get("OpacityMaskClipValue")
+            .and_then(|x| x.as_f64())
+            .unwrap_or(0.3333) as f32,
     };
     for props in chain.iter().rev() {
-        let Some(o) = props.get("BasePropertyOverrides") else { continue };
-        if b(o, "bOverride_BlendMode") == Some(true) { if let Some(v) = s(o, "BlendMode") { f.blend = v; } }
-        if b(o, "bOverride_ShadingModel") == Some(true) { if let Some(v) = s(o, "ShadingModel") { f.shading = v; } }
-        if b(o, "bOverride_TwoSided") == Some(true) { if let Some(v) = b(o, "TwoSided") { f.two_sided = v; } }
-        if b(o, "bOverride_OpacityMaskClipValue") == Some(true) { if let Some(v) = o.get("OpacityMaskClipValue").and_then(|x| x.as_f64()) { f.opacity_mask_clip = v as f32; } }
+        let Some(o) = props.get("BasePropertyOverrides") else {
+            continue;
+        };
+        if b(o, "bOverride_BlendMode") == Some(true) {
+            if let Some(v) = s(o, "BlendMode") {
+                f.blend = v;
+            }
+        }
+        if b(o, "bOverride_ShadingModel") == Some(true) {
+            if let Some(v) = s(o, "ShadingModel") {
+                f.shading = v;
+            }
+        }
+        if b(o, "bOverride_TwoSided") == Some(true) {
+            if let Some(v) = b(o, "TwoSided") {
+                f.two_sided = v;
+            }
+        }
+        if b(o, "bOverride_OpacityMaskClipValue") == Some(true) {
+            if let Some(v) = o.get("OpacityMaskClipValue").and_then(|x| x.as_f64()) {
+                f.opacity_mask_clip = v as f32;
+            }
+        }
     }
     Ok(f)
 }
@@ -67,18 +109,38 @@ impl ResolvedMaterial {
         let fx = fn_fx::material::Material::load(set, object_path)?;
         let root_long = long_package(&fx.base_path).to_owned();
         let (asset, uexp, ubulk) = package_files(set, &root_long)?;
-        let pkg = fn_ueio::Package::parse(&asset, &uexp, &ubulk).map_err(|e| format!("{root_long}: {e}"))?;
+        let pkg = fn_ueio::Package::parse(&asset, &uexp, &ubulk)
+            .map_err(|e| format!("{root_long}: {e}"))?;
         let label = fx.base_path.rsplit('.').next().unwrap_or("").to_owned();
-        let maps = MaterialMaps::parse(&uexp, &pkg.names, pkg.summary.total_header_size as usize, &label)?;
+        let maps = MaterialMaps::parse(
+            &uexp,
+            &pkg.names,
+            pkg.summary.total_header_size as usize,
+            &label,
+        )?;
         let map_index = maps.sm5_map()?.index;
-        Ok(ResolvedMaterial { path: object_path.to_owned(), root_path: fx.base_path.clone(), flags, fx, maps, map_index })
+        Ok(ResolvedMaterial {
+            path: object_path.to_owned(),
+            root_path: fx.base_path.clone(),
+            flags,
+            fx,
+            maps,
+            map_index,
+        })
     }
-    pub fn map(&self) -> &ShaderMap { &self.maps.maps[self.map_index] }
+    pub fn map(&self) -> &ShaderMap {
+        &self.maps.maps[self.map_index]
+    }
     /// The packed Material uniform buffer at `time` (the chosen shader map's uniform expression set with this instance's effective parameters).
     pub fn packed(&self, time: f32) -> Packed {
-        let ov = fn_dxbc_cli::uniform::Overrides { vectors: self.fx.overrides.vectors.clone(), scalars: self.fx.overrides.scalars.clone() };
+        let ov = fn_dxbc_cli::uniform::Overrides {
+            vectors: self.fx.overrides.vectors.clone(),
+            scalars: self.fx.overrides.scalars.clone(),
+        };
         evaluate(&self.map().uniform, &ov, time)
     }
     /// Object path + sampler source of 2D texture expression `k` (see `fn_fx::material::Material::texture_slot`).
-    pub fn texture_slot(&self, k: usize) -> Option<(String, i32)> { self.fx.texture_slot(k) }
+    pub fn texture_slot(&self, k: usize) -> Option<(String, i32)> {
+        self.fx.texture_slot(k)
+    }
 }

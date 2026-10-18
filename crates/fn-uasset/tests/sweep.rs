@@ -52,7 +52,13 @@ fn sweep(root: &str, assumed_version: i32) -> Option<Tally> {
             let stem = e.rel_path().rsplit_once('.').unwrap().0.to_string();
             let uexp = set.read(&format!("{stem}.uexp")).ok();
             let uexp: &[u8] = uexp.as_deref().unwrap_or(&[]);
-            let pkg = match Package::parse_with(&asset, uexp, ParseOptions { assumed_ue4_version: assumed_version }) {
+            let pkg = match Package::parse_with(
+                &asset,
+                uexp,
+                ParseOptions {
+                    assumed_ue4_version: assumed_version,
+                },
+            ) {
                 Ok(p) => p,
                 Err(err) => {
                     t.failed += 1;
@@ -71,12 +77,14 @@ fn sweep(root: &str, assumed_version: i32) -> Option<Tally> {
                     Ok(o) => {
                         if let Some(err) = &o.error {
                             failed = true;
-                            t.failures.push(format!("{} #{i} {}: {err}", e.rel_path(), o.class));
+                            t.failures
+                                .push(format!("{} #{i} {}: {err}", e.rel_path(), o.class));
                             continue;
                         }
                         if let Err(err) = fn_uasset::classes::check_export(&pkg, i, &o) {
                             failed = true;
-                            t.failures.push(format!("{} #{i} {}: {err}", e.rel_path(), o.class));
+                            t.failures
+                                .push(format!("{} #{i} {}: {err}", e.rel_path(), o.class));
                         }
                         for p in o.props.iter() {
                             t.values += count(&p.value, &mut raw_here);
@@ -126,12 +134,20 @@ fn sweep(root: &str, assumed_version: i32) -> Option<Tally> {
 
 #[test]
 fn sweep_1_8() {
-    let root = std::env::var("FN_ROOT").unwrap_or_else(|_| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
+    let root = std::env::var("FN_ROOT")
+        .unwrap_or_else(|_| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
     if let Some(t) = sweep(&root, fn_uasset::package::DEFAULT_ASSUMED_UE4_VERSION) {
-        assert!(t.packages > 100_000, "expected the full install, got {} packages", t.packages);
+        assert!(
+            t.packages > 100_000,
+            "expected the full install, got {} packages",
+            t.packages
+        );
         assert_eq!(t.failed, 0, "hard failures");
         assert!(t.clean as f64 / t.packages as f64 > 0.995, "clean ratio");
-        assert!((t.values - t.raw_values) as f64 / t.values as f64 > 0.9995, "decoded value ratio");
+        assert!(
+            (t.values - t.raw_values) as f64 / t.values as f64 > 0.9995,
+            "decoded value ratio"
+        );
     }
 }
 
@@ -152,7 +168,8 @@ fn sweep_1_10() {
 /// random byte damage must never panic, over-allocate or hang. Header and body are damaged independently.
 #[test]
 fn fuzz_real_packages() {
-    let root = std::env::var("FN_ROOT").unwrap_or_else(|_| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
+    let root = std::env::var("FN_ROOT")
+        .unwrap_or_else(|_| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
     let root = PathBuf::from(root);
     if !root.exists() {
         eprintln!("SKIP: install missing");
@@ -177,7 +194,9 @@ fn fuzz_real_packages() {
     };
     let mut ran = 0;
     for name in names {
-        let Ok(d) = fn_uasset::PackageData::load(&set, name) else { continue };
+        let Ok(d) = fn_uasset::PackageData::load(&set, name) else {
+            continue;
+        };
         for _ in 0..150 {
             let mut asset = d.asset.to_vec();
             let mut uexp = d.uexp.to_vec();
@@ -197,7 +216,9 @@ fn fuzz_real_packages() {
                     }
                 }
             }
-            let Ok(pkg) = Package::parse(&asset, &uexp) else { continue };
+            let Ok(pkg) = Package::parse(&asset, &uexp) else {
+                continue;
+            };
             ran += 1;
             for i in 0..pkg.exports.len().min(400) {
                 if let Ok(o) = pkg.read_export(i) {

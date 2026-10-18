@@ -42,7 +42,10 @@ pub const DEFAULT_PREROLL: usize = 6;
 const MAX_UNIT: u64 = 8192;
 
 fn bad(codec: &'static str, d: impl Into<String>) -> AudioError {
-    AudioError::Decode { codec, detail: d.into() }
+    AudioError::Decode {
+        codec,
+        detail: d.into(),
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------- source
@@ -74,7 +77,15 @@ pub struct StreamSource {
 
 impl std::fmt::Debug for StreamSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "StreamSource({:?} {} Hz {} ch {} frames, {} bytes)", self.format, self.sample_rate, self.channels, self.frames, self.data.len())
+        write!(
+            f,
+            "StreamSource({:?} {} Hz {} ch {} frames, {} bytes)",
+            self.format,
+            self.sample_rate,
+            self.channels,
+            self.frames,
+            self.data.len()
+        )
     }
 }
 
@@ -113,26 +124,59 @@ impl StreamSource {
         for _ in 0..h.frame_count {
             let Some(sz) = bytes.get(p..p + 2) else { break };
             let len = u16::from_le_bytes([sz[0], sz[1]]) as usize;
-            let Some(packet) = bytes.get(p + 2..p + 2 + len) else { break };
-            let n = opus_packet_samples(packet, h.sample_rate).ok_or_else(|| bad("ue-opus", format!("packet {} has an invalid TOC", packets.len())))?;
-            packets.push(PacketRef { off: (p + 2) as u32, len: len as u16, frame0 });
+            let Some(packet) = bytes.get(p + 2..p + 2 + len) else {
+                break;
+            };
+            let n = opus_packet_samples(packet, h.sample_rate).ok_or_else(|| {
+                bad(
+                    "ue-opus",
+                    format!("packet {} has an invalid TOC", packets.len()),
+                )
+            })?;
+            packets.push(PacketRef {
+                off: (p + 2) as u32,
+                len: len as u16,
+                frame0,
+            });
             frame0 += n;
             p += 2 + len;
         }
         let frames = frame0.min(h.true_sample_count as u64);
-        Ok(StreamSource { data: bytes.into(), format: StreamFormat::Opus, sample_rate: h.sample_rate, channels: h.channels as u16, frames, opus: packets })
+        Ok(StreamSource {
+            data: bytes.into(),
+            format: StreamFormat::Opus,
+            sample_rate: h.sample_rate,
+            channels: h.channels as u16,
+            frames,
+            opus: packets,
+        })
     }
 
     /// Ogg/Vorbis stream. Needs the final granule position (UE's encoder always writes it); otherwise `Err` and the caller
     /// decodes the whole wave instead.
     pub fn from_ogg(bytes: Vec<u8>) -> Result<StreamSource> {
-        let total = ogg_total_frames(&bytes).ok_or_else(|| bad("ogg/vorbis", "no granule position"))?;
-        let r = OggStreamReader::new(Cursor::new(&bytes[..])).map_err(|e| bad("ogg/vorbis", format!("{e:?}")))?;
-        let (channels, rate) = (r.ident_hdr.audio_channels as u16, r.ident_hdr.audio_sample_rate);
+        let total =
+            ogg_total_frames(&bytes).ok_or_else(|| bad("ogg/vorbis", "no granule position"))?;
+        let r = OggStreamReader::new(Cursor::new(&bytes[..]))
+            .map_err(|e| bad("ogg/vorbis", format!("{e:?}")))?;
+        let (channels, rate) = (
+            r.ident_hdr.audio_channels as u16,
+            r.ident_hdr.audio_sample_rate,
+        );
         if !(1..=2).contains(&channels) || rate == 0 {
-            return Err(bad("ogg/vorbis", format!("unsupported stream ({channels} ch, {rate} Hz)")));
+            return Err(bad(
+                "ogg/vorbis",
+                format!("unsupported stream ({channels} ch, {rate} Hz)"),
+            ));
         }
-        Ok(StreamSource { data: bytes.into(), format: StreamFormat::Ogg, sample_rate: rate, channels, frames: total, opus: Vec::new() })
+        Ok(StreamSource {
+            data: bytes.into(),
+            format: StreamFormat::Ogg,
+            sample_rate: rate,
+            channels,
+            frames: total,
+            opus: Vec::new(),
+        })
     }
 
     /// A streamable source for `a`: streamed `OPUS` chunks, an inline `OPUS` or an inline `OGG` payload; `Ok(None)` for
@@ -144,7 +188,9 @@ impl StreamSource {
                 _ => Ok(None),
             };
         }
-        let Some(f) = a.primary() else { return Ok(None) };
+        let Some(f) = a.primary() else {
+            return Ok(None);
+        };
         match f.name.as_str() {
             "OPUS" => StreamSource::from_opus(f.payload.clone()).map(Some),
             "OGG" => StreamSource::from_ogg(f.payload.clone()).map(Some),
@@ -160,8 +206,14 @@ impl StreamSource {
 // -------------------------------------------------------------------------------------------------------- decoder
 
 enum Inner {
-    Opus { dec: OpusDecoder, next: usize, pcm: Vec<f32> },
-    Ogg { r: Box<OggStreamReader<Cursor<Arc<[u8]>>>> },
+    Opus {
+        dec: OpusDecoder,
+        next: usize,
+        pcm: Vec<f32>,
+    },
+    Ogg {
+        r: Box<OggStreamReader<Cursor<Arc<[u8]>>>>,
+    },
 }
 
 /// Sequential decoder of one [`StreamSource`]: `next` yields the wave packet by packet, exactly the frames of the
@@ -178,18 +230,29 @@ pub struct StreamDecoder {
 impl StreamDecoder {
     pub fn new(src: Arc<StreamSource>) -> Result<StreamDecoder> {
         let inner = Self::fresh(&src, 0)?;
-        Ok(StreamDecoder { src, inner, pos: 0, pending: Vec::new() })
+        Ok(StreamDecoder {
+            src,
+            inner,
+            pos: 0,
+            pending: Vec::new(),
+        })
     }
 
     fn fresh(src: &Arc<StreamSource>, first_packet: usize) -> Result<Inner> {
         match src.format {
             StreamFormat::Opus => {
-                let dec = OpusDecoder::new(src.sample_rate, src.channels as usize).map_err(|e| bad("ue-opus", format!("decoder init: {e:?}")))?;
+                let dec = OpusDecoder::new(src.sample_rate, src.channels as usize)
+                    .map_err(|e| bad("ue-opus", format!("decoder init: {e:?}")))?;
                 let max_frames = (src.sample_rate as usize / 1000) * 120;
-                Ok(Inner::Opus { dec, next: first_packet, pcm: vec![0f32; max_frames * src.channels as usize] })
+                Ok(Inner::Opus {
+                    dec,
+                    next: first_packet,
+                    pcm: vec![0f32; max_frames * src.channels as usize],
+                })
             }
             StreamFormat::Ogg => {
-                let r = OggStreamReader::new(Cursor::new(src.data.clone())).map_err(|e| bad("ogg/vorbis", format!("{e:?}")))?;
+                let r = OggStreamReader::new(Cursor::new(src.data.clone()))
+                    .map_err(|e| bad("ogg/vorbis", format!("{e:?}")))?;
                 Ok(Inner::Ogg { r: Box::new(r) })
             }
         }
@@ -219,17 +282,24 @@ impl StreamDecoder {
             Inner::Opus { dec, next, pcm } => {
                 let ch = src.channels as usize;
                 let max_frames = (src.sample_rate as usize / 1000) * 120;
-                let Some(pk) = src.opus.get(*next).copied() else { return Ok(false) };
+                let Some(pk) = src.opus.get(*next).copied() else {
+                    return Ok(false);
+                };
                 let packet = &src.data[pk.off as usize..pk.off as usize + pk.len as usize];
                 *next += 1;
                 if packet.len() > 1500 {
-                    let parts = split_code3(packet).ok_or_else(|| bad("ue-opus", "oversize packet that is not splittable"))?;
+                    let parts = split_code3(packet)
+                        .ok_or_else(|| bad("ue-opus", "oversize packet that is not splittable"))?;
                     for part in &parts {
-                        let n = dec.decode_float(part, pcm, false).map_err(|e| bad("ue-opus", format!("{e:?}")))?;
+                        let n = dec
+                            .decode_float(part, pcm, false)
+                            .map_err(|e| bad("ue-opus", format!("{e:?}")))?;
                         out.extend_from_slice(&pcm[..n.min(max_frames) * ch]);
                     }
                 } else {
-                    let n = dec.decode_float(packet, pcm, false).map_err(|e| bad("ue-opus", format!("{e:?}")))?;
+                    let n = dec
+                        .decode_float(packet, pcm, false)
+                        .map_err(|e| bad("ue-opus", format!("{e:?}")))?;
                     out.extend_from_slice(&pcm[..n.min(max_frames) * ch]);
                 }
                 Ok(true)
@@ -278,7 +348,11 @@ impl StreamDecoder {
         let ch = self.src.channels as usize;
         let first = match self.src.format {
             StreamFormat::Opus => {
-                let p = self.src.opus.partition_point(|k| k.frame0 <= target).saturating_sub(1);
+                let p = self
+                    .src
+                    .opus
+                    .partition_point(|k| k.frame0 <= target)
+                    .saturating_sub(1);
                 p.saturating_sub(preroll)
             }
             StreamFormat::Ogg => 0,
@@ -456,9 +530,18 @@ impl StreamedWave {
                 })
             })
             .collect();
-        let shared = Arc::new(Shared { src, slots, stop: AtomicBool::new(false), stats: Arc::new(StreamStats::default()), preroll });
+        let shared = Arc::new(Shared {
+            src,
+            slots,
+            stop: AtomicBool::new(false),
+            stats: Arc::new(StreamStats::default()),
+            preroll,
+        });
         let w = shared.clone();
-        std::thread::Builder::new().name("fn-audio-stream".into()).spawn(move || worker(w)).map_err(|e| AudioError::Device(format!("stream worker: {e}")))?;
+        std::thread::Builder::new()
+            .name("fn-audio-stream".into())
+            .spawn(move || worker(w))
+            .map_err(|e| AudioError::Device(format!("stream worker: {e}")))?;
         Ok(Arc::new(StreamedWave { shared }))
     }
 
@@ -482,7 +565,12 @@ impl StreamedWave {
     pub fn wait_primed(&self, n: usize, timeout: Duration) -> bool {
         let t = Instant::now();
         loop {
-            let ready = self.shared.slots.iter().filter(|s| s.owner.load(Acquire) == READY).count();
+            let ready = self
+                .shared
+                .slots
+                .iter()
+                .filter(|s| s.owner.load(Acquire) == READY)
+                .count();
             if ready >= n.min(SLOTS) {
                 return true;
             }
@@ -501,7 +589,10 @@ impl StreamedWave {
         // prefer a fully primed slot, then one that is still filling
         for want in [READY, PRIMING] {
             for s in &sh.slots {
-                if s.owner.compare_exchange(want, CLAIMED, AcqRel, Acquire).is_ok() {
+                if s.owner
+                    .compare_exchange(want, CLAIMED, AcqRel, Acquire)
+                    .is_ok()
+                {
                     s.read.store(0, Release);
                     s.looping.store(looping, Release);
                     let mut gen = s.written.load(Acquire) >> 48;
@@ -510,7 +601,21 @@ impl StreamedWave {
                         s.seek_req.store(start + 1, Release);
                     }
                     sh.stats.opens.fetch_add(1, Relaxed);
-                    return Some(StreamCursor { slot: s.clone(), stats: sh.stats.clone(), ch: sh.src.channels as usize, gen, limit: if looping { u64::MAX } else { sh.src.frames - start }, avail: 0, had_data: false, stalled_this_block: false, base: 0 });
+                    return Some(StreamCursor {
+                        slot: s.clone(),
+                        stats: sh.stats.clone(),
+                        ch: sh.src.channels as usize,
+                        gen,
+                        limit: if looping {
+                            u64::MAX
+                        } else {
+                            sh.src.frames - start
+                        },
+                        avail: 0,
+                        had_data: false,
+                        stalled_this_block: false,
+                        base: 0,
+                    });
                 }
             }
         }
@@ -546,7 +651,11 @@ impl StreamCursor {
     #[inline]
     pub fn refresh(&mut self) -> u64 {
         let w = self.slot.written.load(Acquire);
-        self.avail = if w >> 48 == self.gen { w & 0x0000_ffff_ffff_ffff } else { 0 };
+        self.avail = if w >> 48 == self.gen {
+            w & 0x0000_ffff_ffff_ffff
+        } else {
+            0
+        };
         if self.avail > 0 {
             self.had_data = true;
         }
@@ -611,7 +720,15 @@ impl StreamCursor {
 
 fn worker(sh: Arc<Shared>) {
     let ch = sh.src.channels as usize;
-    let mut work: Vec<Work> = (0..SLOTS).map(|_| Work { dec: None, gen: 0, seq: 0, ended: false, pass_frames: 0 }).collect();
+    let mut work: Vec<Work> = (0..SLOTS)
+        .map(|_| Work {
+            dec: None,
+            gen: 0,
+            seq: 0,
+            ended: false,
+            pass_frames: 0,
+        })
+        .collect();
     let mut tmp: Vec<f32> = Vec::with_capacity(MAX_UNIT as usize * ch);
     while !sh.stop.load(Acquire) {
         let mut busy = false;
@@ -700,7 +817,8 @@ fn worker(sh: Arc<Shared>) {
                         busy = true;
                     } else {
                         // end of the pass (or an error that ends it like a truncated whole-wave decode)
-                        let looping = slot.looping.load(Acquire) || slot.owner.load(Acquire) != CLAIMED;
+                        let looping =
+                            slot.looping.load(Acquire) || slot.owner.load(Acquire) != CLAIMED;
                         if looping && w.pass_frames > 0 {
                             if d.rewind().is_err() {
                                 sh.stats.decode_errors.fetch_add(1, Relaxed);

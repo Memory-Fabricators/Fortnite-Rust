@@ -1,4 +1,4 @@
-﻿//! `*.fnaudiopack`: the sounds a game build needs, without the 1.8 paks.
+//! `*.fnaudiopack`: the sounds a game build needs, without the 1.8 paks.
 //!
 //! **Format.** A pack is a normal Unreal `.pak` (version 3, mount point `../../../`, every entry stored uncompressed and
 //! unencrypted, SHA-1 fields zero) that holds only the files of the packages the exported SoundCues reach:
@@ -13,8 +13,8 @@
 //! (-> CurveFloat), SoundConcurrency, SoundClass, DialogueWave (-> SoundWave), SoundMix; plus every package in
 //! `/FortSoundClassesAndModes/` (the whole SoundClass tree and all SoundMixes: `SoundClassTree::load` scans that folder).
 
-use fn_audio::events;
 use fn_audio::cue::NodeKind;
+use fn_audio::events;
 use fn_audio::install::to_pak_asset_path;
 use fn_audio::library::Library;
 use fn_audio::{AudioError, Install, Result};
@@ -36,12 +36,30 @@ pub const EXTRA_CUES: &[&str] = &[
 ];
 
 /// Class names whose imports are followed while building the closure.
-const FOLLOW: &[&str] = &["SoundWave", "SoundCue", "SoundAttenuation", "SoundConcurrency", "SoundClass", "SoundMix", "DialogueWave", "DialogueVoice", "CurveFloat"];
+const FOLLOW: &[&str] = &[
+    "SoundWave",
+    "SoundCue",
+    "SoundAttenuation",
+    "SoundConcurrency",
+    "SoundClass",
+    "SoundMix",
+    "DialogueWave",
+    "DialogueVoice",
+    "CurveFloat",
+];
 
 /// `events::TABLE` cues plus [`EXTRA_CUES`] plus `weapon_events::TABLE` (AR / pump shotgun / bolt sniper / healing consumables), de-duplicated, in table order.
 pub fn default_cues() -> Vec<&'static str> {
     let mut v: Vec<&'static str> = Vec::new();
-    for c in events::TABLE.iter().map(|e| e.cue).chain(EXTRA_CUES.iter().copied()).chain(fn_audio::weapon_events::TABLE.iter().map(|e| e.cue)).chain(fn_audio::music::PACK_CUES.iter().copied()) /* MUSIC HOOK */.chain(fn_audio::ambient::cue_paths().iter().copied()) /* AMBIENCE HOOK */ {
+    for c in events::TABLE
+        .iter()
+        .map(|e| e.cue)
+        .chain(EXTRA_CUES.iter().copied())
+        .chain(fn_audio::weapon_events::TABLE.iter().map(|e| e.cue))
+        .chain(fn_audio::music::PACK_CUES.iter().copied()) /* MUSIC HOOK */
+        .chain(fn_audio::ambient::cue_paths().iter().copied())
+    /* AMBIENCE HOOK */
+    {
         if !v.contains(&c) {
             v.push(c);
         }
@@ -60,8 +78,14 @@ pub struct Closure {
 
 fn add_package_files(install: &Install, long: &str, out: &mut Closure) -> bool {
     let ap = to_pak_asset_path(long);
-    let Some((_, e)) = install.paks.find(&ap) else { return false };
-    let stem = e.rel_path().rsplit_once('.').map(|x| x.0.to_string()).unwrap_or_else(|| e.rel_path().to_string());
+    let Some((_, e)) = install.paks.find(&ap) else {
+        return false;
+    };
+    let stem = e
+        .rel_path()
+        .rsplit_once('.')
+        .map(|x| x.0.to_string())
+        .unwrap_or_else(|| e.rel_path().to_string());
     for ext in ["uasset", "uexp", "ubulk"] {
         if let Some((_, e)) = install.paks.find(&format!("{stem}.{ext}")) {
             out.files.insert(e.rel_path().to_string(), e.size);
@@ -75,7 +99,10 @@ fn add_package_files(install: &Install, long: &str, out: &mut Closure) -> bool {
 /// (`SoundCue::wave_paths` and the dialogue nodes); attenuation, concurrency, SoundClass and curve assets come from imports.
 pub fn collect(lib: &mut Library, cues: &[&str]) -> Closure {
     let mut out = Closure::default();
-    let mut queue: VecDeque<String> = cues.iter().map(|c| c.split('.').next().unwrap_or(c).to_string()).collect();
+    let mut queue: VecDeque<String> = cues
+        .iter()
+        .map(|c| c.split('.').next().unwrap_or(c).to_string())
+        .collect();
     let mut leaves: BTreeSet<String> = BTreeSet::new();
     for c in cues {
         match lib.load_cue(c) {
@@ -83,7 +110,10 @@ pub fn collect(lib: &mut Library, cues: &[&str]) -> Closure {
                 let mut dialogue = Vec::new();
                 if let Some(r) = &cue.root {
                     r.walk(&mut |n| {
-                        if let NodeKind::Dialogue { dialogue_wave: Some(d) } = &n.kind {
+                        if let NodeKind::Dialogue {
+                            dialogue_wave: Some(d),
+                        } = &n.kind
+                        {
                             dialogue.push(d.clone());
                         }
                     });
@@ -105,7 +135,11 @@ pub fn collect(lib: &mut Library, cues: &[&str]) -> Closure {
         }
     }
     let install = &lib.install;
-    for p in install.all_asset_paths().into_iter().filter(|p| p.contains("/FortSoundClassesAndModes/")) {
+    for p in install
+        .all_asset_paths()
+        .into_iter()
+        .filter(|p| p.contains("/FortSoundClassesAndModes/"))
+    {
         if let Some(long) = fn_pak::pak_path_to_game(&p) {
             queue.push_back(long);
         }
@@ -138,7 +172,12 @@ pub fn collect(lib: &mut Library, cues: &[&str]) -> Closure {
             }
         };
         for i in 0..pkg.imports.len() {
-            if let ObjectRef::Import { class_name, package, .. } = pkg.resolve(PackageIndex(-(i as i32) - 1)) {
+            if let ObjectRef::Import {
+                class_name,
+                package,
+                ..
+            } = pkg.resolve(PackageIndex(-(i as i32) - 1))
+            {
                 if package.starts_with("/Game/") && FOLLOW.contains(&class_name.as_str()) {
                     queue.push_back(package);
                 }
@@ -164,7 +203,11 @@ pub struct PackStats {
 }
 
 /// Write `files` (engine-relative pak paths found in `install`) as a stored pak v3 at `out`.
-pub fn write_pack(install: &Install, files: &BTreeMap<String, u64>, out: &Path) -> Result<PackStats> {
+pub fn write_pack(
+    install: &Install,
+    files: &BTreeMap<String, u64>,
+    out: &Path,
+) -> Result<PackStats> {
     if let Some(d) = out.parent().filter(|d| !d.as_os_str().is_empty()) {
         std::fs::create_dir_all(d)?;
     }
@@ -201,16 +244,25 @@ pub fn write_pack(install: &Install, files: &BTreeMap<String, u64>, out: &Path) 
     footer.extend([0u8; 20]);
     f.write_all(&footer)?;
     f.flush()?;
-    Ok(PackStats { entries: files.len(), bytes: index_offset + index.len() as u64 + footer.len() as u64, payload_bytes })
+    Ok(PackStats {
+        entries: files.len(),
+        bytes: index_offset + index.len() as u64 + footer.len() as u64,
+        payload_bytes,
+    })
 }
 
 /// Open a pack as an [`Install`] (use `Library::new(open_pack(p)?)`).
 pub fn open_pack(path: impl AsRef<Path>) -> Result<Install> {
     let p = path.as_ref().to_path_buf();
     if !p.is_file() {
-        return Err(AudioError::Malformed { what: "audio pack", detail: format!("{} is not a file", p.display()) });
+        return Err(AudioError::Malformed {
+            what: "audio pack",
+            detail: format!("{} is not a file", p.display()),
+        });
     }
-    Ok(Install { paks: PakSet::open_files(&[p])? })
+    Ok(Install {
+        paks: PakSet::open_files(&[p])?,
+    })
 }
 
 #[cfg(test)]
@@ -235,4 +287,3 @@ mod tests {
         assert_eq!(fstring("ab"), vec![3, 0, 0, 0, b'a', b'b', 0]);
     }
 }
-

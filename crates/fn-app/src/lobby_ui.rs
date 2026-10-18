@@ -7,17 +7,27 @@
 use fn_ui::draw::RenderList;
 use fn_ui::layout::Rect;
 use fn_ui::scene::UiContext;
+use fn_ui::screens::athena_lobby::AthenaLobbyUi;
 pub use fn_ui::screens::athena_lobby::{paint::BlurRegion, Frame, LobbyState, Pad, PadKind};
 pub use fn_ui::screens::athena_locker::controller::{Controller, Role, UiEvent};
 pub use fn_ui::screens::athena_locker::{LockerItem, LockerView, Slot as LockerSlot};
-use fn_ui::screens::athena_lobby::AthenaLobbyUi;
 use std::path::Path;
 
-pub struct LobbyUi { ui: AthenaLobbyUi, ctx: UiContext }
+pub struct LobbyUi {
+    ui: AthenaLobbyUi,
+    ctx: UiContext,
+}
 
 /// What a pointer position is over (for hover / click handling by the caller).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Hit { Tab(usize), Play, PlaylistRotator, TeamFillRotator, MainMenuButton, None }
+pub enum Hit {
+    Tab(usize),
+    Play,
+    PlaylistRotator,
+    TeamFillRotator,
+    MainMenuButton,
+    None,
+}
 
 impl LobbyUi {
     pub fn load(install: &Path) -> Result<LobbyUi, String> {
@@ -25,20 +35,46 @@ impl LobbyUi {
         let ui = AthenaLobbyUi::load(install)?;
         Ok(LobbyUi { ui, ctx })
     }
-    pub fn ctx_mut(&mut self) -> &mut UiContext { &mut self.ctx }
-    pub fn tab_labels(&self) -> &[String] { self.ui.tab_labels() }
+    pub fn ctx_mut(&mut self) -> &mut UiContext {
+        &mut self.ctx
+    }
+    pub fn tab_labels(&self) -> &[String] {
+        self.ui.tab_labels()
+    }
     /// The interpreter-level UI (tree, roles, Locker widgets) for the `Controller`.
-    pub fn inner(&self) -> &AthenaLobbyUi { &self.ui }
-    pub fn inner_mut(&mut self) -> &mut AthenaLobbyUi { &mut self.ui }
+    pub fn inner(&self) -> &AthenaLobbyUi {
+        &self.ui
+    }
+    pub fn inner_mut(&mut self) -> &mut AthenaLobbyUi {
+        &mut self.ui
+    }
     /// Index of the visible tab whose content is `class` (e.g. `athena_locker::TAB_CLASS`).
-    pub fn tab_index_of(&self, class: &str) -> Option<usize> { (0..self.ui.tab_labels().len()).find(|&i| self.ui.tab_content(i) == Some(class)) }
+    pub fn tab_index_of(&self, class: &str) -> Option<usize> {
+        (0..self.ui.tab_labels().len()).find(|&i| self.ui.tab_content(i) == Some(class))
+    }
     /// Lay out and paint for a `w` x `h` pixel viewport. Nothing is drawn behind the widgets.
-    pub fn draw(&mut self, w: f32, h: f32, state: &LobbyState) -> Frame { self.ui.draw(&mut self.ctx, w, h, state) }
+    pub fn draw(&mut self, w: f32, h: f32, state: &LobbyState) -> Frame {
+        self.ui.draw(&mut self.ctx, w, h, state)
+    }
     /// Draw list only.
-    pub fn draw_list(&mut self, w: f32, h: f32, state: &LobbyState) -> RenderList { self.draw(w, h, state).list }
+    pub fn draw_list(&mut self, w: f32, h: f32, state: &LobbyState) -> RenderList {
+        self.draw(w, h, state).list
+    }
     pub fn hit(frame: &Frame, x: f32, y: f32) -> Hit {
-        if let Some(i) = frame.tabs.iter().position(|(_, r)| r.contains(x, y)) { return Hit::Tab(i); }
+        if let Some(i) = frame.tabs.iter().position(|(_, r)| r.contains(x, y)) {
+            return Hit::Tab(i);
+        }
         let over = |n: &str| frame.rect(n).map_or(false, |r: Rect| r.contains(x, y));
-        if over("PlayButton") { Hit::Play } else if over("PlaylistRotator") { Hit::PlaylistRotator } else if over("TeamFillRotator") { Hit::TeamFillRotator } else if over("MainMenuButton") { Hit::MainMenuButton } else { Hit::None }
+        if over("PlayButton") {
+            Hit::Play
+        } else if over("PlaylistRotator") {
+            Hit::PlaylistRotator
+        } else if over("TeamFillRotator") {
+            Hit::TeamFillRotator
+        } else if over("MainMenuButton") {
+            Hit::MainMenuButton
+        } else {
+            Hit::None
+        }
     }
 }

@@ -21,7 +21,10 @@ mod material;
 mod mesh;
 mod util;
 
-pub use catalog::{Destruction, LodInfo, MaterialSlot, PropCatalog, PropKind, RenderInfo, ResourceInfo, ResourceKind};
+pub use catalog::{
+    Destruction, LodInfo, MaterialSlot, PropCatalog, PropKind, RenderInfo, ResourceInfo,
+    ResourceKind,
+};
 pub use collision::{Collision, Shape};
 pub use layout::{ue_to_game_position, Layout, PropInstance};
 pub use material::{AlphaMode, Image, Material, Slots, TextureRef};

@@ -19,7 +19,10 @@ mod package;
 pub mod props;
 mod reader;
 
-pub use package::{UE4_16_FILE_VERSION, BulkData, Export, Import, Package, Summary, BULK_FORCE_INLINE, BULK_AT_END, BULK_SEPARATE, BULK_UNUSED, BULK_ZLIB};
+pub use package::{
+    BulkData, Export, Import, Package, Summary, BULK_AT_END, BULK_FORCE_INLINE, BULK_SEPARATE,
+    BULK_UNUSED, BULK_ZLIB, UE4_16_FILE_VERSION,
+};
 pub use props::{Prop, PropList, PropValue};
 pub use reader::Reader;
 
@@ -33,7 +36,9 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Eof { pos, wanted } => write!(f, "unexpected end of data at {pos} (wanted {wanted} bytes)"),
+            Error::Eof { pos, wanted } => {
+                write!(f, "unexpected end of data at {pos} (wanted {wanted} bytes)")
+            }
             Error::Invalid(s) => write!(f, "{s}"),
         }
     }

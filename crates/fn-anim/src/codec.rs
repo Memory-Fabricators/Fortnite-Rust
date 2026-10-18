@@ -121,14 +121,22 @@ pub fn restore_w(x: f32, y: f32, z: f32) -> f32 {
 
 /// `FQuatFixed48NoW`: three u16, `(v - 32767) / 32767`.
 pub fn quat_fixed48(x: u16, y: u16, z: u16) -> [f32; 4] {
-    let (x, y, z) = ((x as f32 - 32767.0) / 32767.0, (y as f32 - 32767.0) / 32767.0, (z as f32 - 32767.0) / 32767.0);
+    let (x, y, z) = (
+        (x as f32 - 32767.0) / 32767.0,
+        (y as f32 - 32767.0) / 32767.0,
+        (z as f32 - 32767.0) / 32767.0,
+    );
     [x, y, z, restore_w(x, y, z)]
 }
 
 /// `FQuatFixed32NoW`: `z:10 | y:11 | x:11` (LSB first).
 pub fn quat_fixed32(v: u32) -> [f32; 4] {
     let (x, y, z) = unpack_rot32(v);
-    let (x, y, z) = (x as f32 / 1023.0 - 1.0, y as f32 / 1023.0 - 1.0, z as f32 / 511.0 - 1.0);
+    let (x, y, z) = (
+        x as f32 / 1023.0 - 1.0,
+        y as f32 / 1023.0 - 1.0,
+        z as f32 / 511.0 - 1.0,
+    );
     [x, y, z, restore_w(x, y, z)]
 }
 
@@ -150,9 +158,15 @@ pub fn quat_float32(data: u32) -> [f32; 4] {
     let x = data >> 21;
     let y = (data >> 10) & 0x7ff;
     let z = data & 0x3ff;
-    let fx = f32::from_bits((((x >> 7) & 7) + 123) << 23 | (((x & 0x7f) | 32 * (x & 0xffff_fc00)) << 16));
-    let fy = f32::from_bits((((y >> 7) & 7) + 123) << 23 | (((y & 0x7f) | 32 * (y & 0xffff_fc00)) << 16));
-    let fz = f32::from_bits((((z >> 6) & 7) + 123) << 23 | (((z & 0x3f) | 32 * (z & 0xffff_fe00)) << 17));
+    let fx = f32::from_bits(
+        (((x >> 7) & 7) + 123) << 23 | (((x & 0x7f) | 32 * (x & 0xffff_fc00)) << 16),
+    );
+    let fy = f32::from_bits(
+        (((y >> 7) & 7) + 123) << 23 | (((y & 0x7f) | 32 * (y & 0xffff_fc00)) << 16),
+    );
+    let fz = f32::from_bits(
+        (((z >> 6) & 7) + 123) << 23 | (((z & 0x3f) | 32 * (z & 0xffff_fe00)) << 17),
+    );
     [fx, fy, fz, restore_w(fx, fy, fz)]
 }
 
@@ -171,7 +185,11 @@ pub fn vec_interval32(v: u32, mins: [f32; 3], ranges: [f32; 3]) -> [f32; 3] {
 /// `FVectorFixed48` (constant / variable key formats): `(v - 32767) * 128 / 32767`.
 pub fn vec_fixed48(x: u16, y: u16, z: u16) -> [f32; 3] {
     let scale = 128.0f32 / 32767.0;
-    [(x as f32 - 32767.0) * scale, (y as f32 - 32767.0) * scale, (z as f32 - 32767.0) * scale]
+    [
+        (x as f32 - 32767.0) * scale,
+        (y as f32 - 32767.0) * scale,
+        (z as f32 - 32767.0) * scale,
+    ]
 }
 
 /// `DecodeFixed48_PerTrackComponent<7>` (per-track translation / scale): `(v - 255) * 1.0`.
@@ -217,10 +235,18 @@ pub fn read_interval(r: &mut Reader, mask: Option<u8>) -> Result<([f32; 3], [f32
 
 /// Decode one rotation key. `mask`: per-track component mask (`None` for constant/variable formats, where all
 /// components are stored).
-pub fn read_quat_key(r: &mut Reader, fmt: CompressionFormat, mask: Option<u8>, mins: [f32; 3], ranges: [f32; 3]) -> Result<[f32; 4]> {
+pub fn read_quat_key(
+    r: &mut Reader,
+    fmt: CompressionFormat,
+    mask: Option<u8>,
+    mins: [f32; 3],
+    ranges: [f32; 3],
+) -> Result<[f32; 4]> {
     Ok(match fmt {
         CompressionFormat::None | CompressionFormat::Float96NoW => {
-            let m = mask.map(|m| if m & 7 == 0 { 7 } else { m & 7 }).unwrap_or(7);
+            let m = mask
+                .map(|m| if m & 7 == 0 { 7 } else { m & 7 })
+                .unwrap_or(7);
             let mut v = [0.0f32; 3];
             for (k, c) in v.iter_mut().enumerate() {
                 if m & (1 << k) != 0 {
@@ -247,10 +273,18 @@ pub fn read_quat_key(r: &mut Reader, fmt: CompressionFormat, mask: Option<u8>, m
 }
 
 /// Decode one translation / scale key.
-pub fn read_vec_key(r: &mut Reader, fmt: CompressionFormat, mask: Option<u8>, mins: [f32; 3], ranges: [f32; 3]) -> Result<[f32; 3]> {
+pub fn read_vec_key(
+    r: &mut Reader,
+    fmt: CompressionFormat,
+    mask: Option<u8>,
+    mins: [f32; 3],
+    ranges: [f32; 3],
+) -> Result<[f32; 3]> {
     Ok(match fmt {
         CompressionFormat::None | CompressionFormat::Float96NoW => {
-            let m = mask.map(|m| if m & 7 == 0 { 7 } else { m & 7 }).unwrap_or(7);
+            let m = mask
+                .map(|m| if m & 7 == 0 { 7 } else { m & 7 })
+                .unwrap_or(7);
             let mut v = [0.0f32; 3];
             for (k, c) in v.iter_mut().enumerate() {
                 if m & (1 << k) != 0 {
@@ -278,7 +312,10 @@ pub fn read_vec_key(r: &mut Reader, fmt: CompressionFormat, mask: Option<u8>, mi
         },
         CompressionFormat::Identity => [0.0; 3],
         CompressionFormat::Fixed32NoW | CompressionFormat::Float32NoW => {
-            return Err(Error::Format(format!("{} is not a valid translation/scale format", fmt.name())));
+            return Err(Error::Format(format!(
+                "{} is not a valid translation/scale format",
+                fmt.name()
+            )));
         }
     })
 }
@@ -290,7 +327,9 @@ pub fn per_track_key_bytes(fmt: CompressionFormat, mask: u8) -> usize {
     match fmt {
         CompressionFormat::None | CompressionFormat::Float96NoW => 4 * nc,
         CompressionFormat::Fixed48NoW => 2 * nc,
-        CompressionFormat::IntervalFixed32NoW | CompressionFormat::Fixed32NoW | CompressionFormat::Float32NoW => 4,
+        CompressionFormat::IntervalFixed32NoW
+        | CompressionFormat::Fixed32NoW
+        | CompressionFormat::Float32NoW => 4,
         CompressionFormat::Identity => 0,
     }
 }
@@ -426,19 +465,40 @@ mod tests {
             data.extend_from_slice(&f.to_le_bytes());
         }
         let mut r = Reader::new(&data);
-        let q = read_quat_key(&mut r, CompressionFormat::Float96NoW, Some(0), [0.0; 3], [0.0; 3]).unwrap();
+        let q = read_quat_key(
+            &mut r,
+            CompressionFormat::Float96NoW,
+            Some(0),
+            [0.0; 3],
+            [0.0; 3],
+        )
+        .unwrap();
         assert!(close(q[0], 0.1) && close(q[1], 0.2) && close(q[2], 0.3));
         assert!(close(q[3], (1.0f32 - 0.01 - 0.04 - 0.09).sqrt()));
         // translation with mask X|Z reads two floats
         let mut r = Reader::new(&data);
-        let t = read_vec_key(&mut r, CompressionFormat::Float96NoW, Some(5), [0.0; 3], [0.0; 3]).unwrap();
+        let t = read_vec_key(
+            &mut r,
+            CompressionFormat::Float96NoW,
+            Some(5),
+            [0.0; 3],
+            [0.0; 3],
+        )
+        .unwrap();
         assert!(close(t[0], 0.1) && t[1] == 0.0 && close(t[2], 0.2));
         assert_eq!(r.tell(), 8);
         // fixed48 rotation with only Y stored
         let mut d = Vec::new();
         d.extend_from_slice(&49150u16.to_le_bytes());
         let mut r = Reader::new(&d);
-        let q = read_quat_key(&mut r, CompressionFormat::Fixed48NoW, Some(2), [0.0; 3], [0.0; 3]).unwrap();
+        let q = read_quat_key(
+            &mut r,
+            CompressionFormat::Fixed48NoW,
+            Some(2),
+            [0.0; 3],
+            [0.0; 3],
+        )
+        .unwrap();
         assert_eq!(q[0], 0.0);
         assert!(close(q[1], 16383.0 / 32767.0));
         assert_eq!(q[2], 0.0);

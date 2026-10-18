@@ -1,4 +1,4 @@
-﻿//! Whole-install sweep: parse and decode every SoundWave, tabulate formats / placement / rates and compare the
+//! Whole-install sweep: parse and decode every SoundWave, tabulate formats / placement / rates and compare the
 //! decoded length against the asset's own `Duration`, `SampleRate`, `NumChannels` properties.
 
 use crate::codec::decode_asset;
@@ -54,7 +54,9 @@ pub fn sweep_paths(install: &Install, paths: &[String]) -> Vec<WaveRow> {
         .par_iter()
         .flat_map(|p| {
             let mut rows = Vec::new();
-            let Ok(data) = PackageData::load(&install.paks, p) else { return rows };
+            let Ok(data) = PackageData::load(&install.paks, p) else {
+                return rows;
+            };
             let Ok(pkg) = data.package() else { return rows };
             let idxs: Vec<usize> = pkg.exports_of_class("SoundWave").collect();
             if idxs.is_empty() {
@@ -62,7 +64,10 @@ pub fn sweep_paths(install: &Install, paths: &[String]) -> Vec<WaveRow> {
             }
             let ub = read_ubulk(&install.paks, p);
             for i in idxs {
-                let mut row = WaveRow { path: p.clone(), ..Default::default() };
+                let mut row = WaveRow {
+                    path: p.clone(),
+                    ..Default::default()
+                };
                 match parse_soundwave(&pkg, i, &ub) {
                     Err(e) => row.error = Some(format!("parse: {e}")),
                     Ok(a) => {
@@ -78,14 +83,19 @@ pub fn sweep_paths(install: &Install, paths: &[String]) -> Vec<WaveRow> {
                         if let Some(s) = &a.streamed {
                             row.chunks = s.chunks.len();
                             row.placements = s.chunks.iter().map(|c| c.placement).collect();
-                            row.payload_bytes = s.chunks.iter().map(|c| c.audio_data_size.max(0) as usize).sum();
+                            row.payload_bytes = s
+                                .chunks
+                                .iter()
+                                .map(|c| c.audio_data_size.max(0) as usize)
+                                .sum();
                         } else {
                             row.chunks = a.formats.len();
                             row.placements = a.formats.iter().map(|f| f.placement).collect();
                             row.payload_bytes = a.formats.iter().map(|f| f.payload.len()).sum();
                         }
                         if a.tail_error.is_some() || a.leftover != 0 {
-                            row.error = Some(format!("tail: {:?} leftover {}", a.tail_error, a.leftover));
+                            row.error =
+                                Some(format!("tail: {:?} leftover {}", a.tail_error, a.leftover));
                         } else {
                             match decode_asset(&a) {
                                 Err(e) => row.error = Some(format!("decode: {e}")),
@@ -103,11 +113,14 @@ pub fn sweep_paths(install: &Install, paths: &[String]) -> Vec<WaveRow> {
                                     row.rms = st.rms;
                                     // UE4OPUS streams are re-sampled to an Opus rate (32/44.1 kHz sources become 48 kHz); the duration check
                                     // below is time-based, so only non-Opus waves must keep the property rate.
-                                    row.rate_ok = row.format == "OPUS" || row.prop_rate.map_or(true, |r| r == w.sample_rate);
-                                    row.channels_ok = row.prop_channels.map_or(true, |c| c == w.channels);
+                                    row.rate_ok = row.format == "OPUS"
+                                        || row.prop_rate.map_or(true, |r| r == w.sample_rate);
+                                    row.channels_ok =
+                                        row.prop_channels.map_or(true, |c| c == w.channels);
                                     match row.prop_duration {
                                         Some(d) => {
-                                            let (delta, ok) = duration_matches(w.frames(), w.sample_rate, d);
+                                            let (delta, ok) =
+                                                duration_matches(w.frames(), w.sample_rate, d);
                                             row.frame_delta = Some(delta);
                                             row.duration_ok = ok;
                                         }
@@ -136,17 +149,31 @@ fn bump(m: &mut BTreeMap<String, usize>, k: impl Into<String>) {
 
 /// JSON summary: counts by format / placement / rate / channels, decode success, duration agreement, failures.
 pub fn summarize(rows: &[WaveRow]) -> Value {
-    let (mut fmt, mut place, mut rate, mut ch, mut errs) = (BTreeMap::new(), BTreeMap::new(), BTreeMap::new(), BTreeMap::new(), BTreeMap::new());
+    let (mut fmt, mut place, mut rate, mut ch, mut errs) = (
+        BTreeMap::new(),
+        BTreeMap::new(),
+        BTreeMap::new(),
+        BTreeMap::new(),
+        BTreeMap::new(),
+    );
     let mut dec_rates: BTreeMap<String, usize> = BTreeMap::new();
     let mut shortest = f64::MAX;
-    let (mut ok, mut dur_ok, mut rate_ok, mut ch_ok, mut bad_num) = (0usize, 0usize, 0usize, 0usize, 0usize);
+    let (mut ok, mut dur_ok, mut rate_ok, mut ch_ok, mut bad_num) =
+        (0usize, 0usize, 0usize, 0usize, 0usize);
     let (mut total_secs, mut max_dur, mut streaming) = (0f64, 0f64, 0usize);
     let mut worst: Vec<(i64, &WaveRow)> = Vec::new();
     let mut seams: Vec<f32> = Vec::new();
     let (mut exact, mut within1, mut looping) = (0usize, 0usize, 0usize);
     let mut peak_over_1 = 0usize;
     for r in rows {
-        bump(&mut fmt, format!("{}{}", r.format, if r.streaming { " (streaming)" } else { "" }));
+        bump(
+            &mut fmt,
+            format!(
+                "{}{}",
+                r.format,
+                if r.streaming { " (streaming)" } else { "" }
+            ),
+        );
         for p in &r.placements {
             bump(&mut place, format!("{:?}", p));
         }
@@ -217,7 +244,3 @@ pub fn summarize(rows: &[WaveRow]) -> Value {
         "worst_duration_mismatches": worst.iter().take(10).map(|(d, r)| json!({"path": r.path, "frame_delta": d, "dec_frames": r.dec_frames, "prop_duration": r.prop_duration, "rate": r.dec_rate})).collect::<Vec<_>>(),
     })
 }
-
-
-
-

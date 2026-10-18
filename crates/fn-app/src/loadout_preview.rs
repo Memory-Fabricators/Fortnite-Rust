@@ -11,5 +11,10 @@ pub fn inputs() -> HudInputs {
     items[2] = Some(HudItem::new(0, "T-Icon-Weapons-SK-Crusader.png", None));
     items[3] = Some(HudItem::new(2, "T-Icon-Weapons-Sniper-01.png", None));
     items[4] = Some(HudItem::new(0, "T-Icon-MedBandage.png", Some(5)));
-    HudInputs { items: Some(items), selected: 1, backpack: Some((4,5)), ..HudInputs::default() }
+    HudInputs {
+        items: Some(items),
+        selected: 1,
+        backpack: Some((4, 5)),
+        ..HudInputs::default()
+    }
 }

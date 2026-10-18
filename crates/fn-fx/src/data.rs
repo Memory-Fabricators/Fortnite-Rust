@@ -5,7 +5,13 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 /// One export as JSON (`fn-inspect props` shape).
-pub struct ExportJson { pub index: usize, pub name: String, pub class: String, pub path: String, pub props: Value }
+pub struct ExportJson {
+    pub index: usize,
+    pub name: String,
+    pub class: String,
+    pub path: String,
+    pub props: Value,
+}
 
 /// All exports of a package as JSON plus the lookup by object path.
 pub struct PackageJson {
@@ -20,25 +26,54 @@ impl PackageJson {
         let mut exports = vec![];
         let mut by_path = HashMap::new();
         for i in 0..pkg.exports.len() {
-            let e = pkg.read_export(i).map_err(|e| format!("{long}: export {i}: {e}"))?;
+            let e = pkg
+                .read_export(i)
+                .map_err(|e| format!("{long}: export {i}: {e}"))?;
             let path = pkg.object_path(PackageIndex(i as i32 + 1));
             by_path.insert(path.clone(), i);
-            exports.push(ExportJson { index: i, name: e.name.clone(), class: e.class.clone(), path, props: e.props.to_json(&pkg) });
+            exports.push(ExportJson {
+                index: i,
+                name: e.name.clone(),
+                class: e.class.clone(),
+                path,
+                props: e.props.to_json(&pkg),
+            });
         }
-        Ok(PackageJson { long: long.to_owned(), exports, by_path })
+        Ok(PackageJson {
+            long: long.to_owned(),
+            exports,
+            by_path,
+        })
     }
-    pub fn get(&self, path: &str) -> Option<&ExportJson> { self.by_path.get(path).map(|&i| &self.exports[i]) }
-    pub fn by_name(&self, name: &str) -> Option<&ExportJson> { self.exports.iter().find(|e| e.name == name) }
-    pub fn of_class<'a>(&'a self, class: &'a str) -> impl Iterator<Item = &'a ExportJson> + 'a { self.exports.iter().filter(move |e| e.class == class) }
+    pub fn get(&self, path: &str) -> Option<&ExportJson> {
+        self.by_path.get(path).map(|&i| &self.exports[i])
+    }
+    pub fn by_name(&self, name: &str) -> Option<&ExportJson> {
+        self.exports.iter().find(|e| e.name == name)
+    }
+    pub fn of_class<'a>(&'a self, class: &'a str) -> impl Iterator<Item = &'a ExportJson> + 'a {
+        self.exports.iter().filter(move |e| e.class == class)
+    }
 }
 
 /// `.uasset`, `.uexp` bytes of a long package path.
 pub fn package_files(set: &PakSet, long: &str) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), String> {
-    let a = set.read_game(long, "uasset").map_err(|e| format!("{long}: {e}"))?.into_owned();
-    let x = set.read_game(long, "uexp").map(|c| c.into_owned()).unwrap_or_default();
-    let b = set.read_game(long, "ubulk").map(|c| c.into_owned()).unwrap_or_default();
+    let a = set
+        .read_game(long, "uasset")
+        .map_err(|e| format!("{long}: {e}"))?
+        .into_owned();
+    let x = set
+        .read_game(long, "uexp")
+        .map(|c| c.into_owned())
+        .unwrap_or_default();
+    let b = set
+        .read_game(long, "ubulk")
+        .map(|c| c.into_owned())
+        .unwrap_or_default();
     Ok((a, x, b))
 }
 
 /// `/Game/Foo/Bar.Bar` -> `/Game/Foo/Bar`.
-pub fn long_package(object_path: &str) -> &str { object_path.split('.').next().unwrap_or(object_path) }
+pub fn long_package(object_path: &str) -> &str {
+    object_path.split('.').next().unwrap_or(object_path)
+}

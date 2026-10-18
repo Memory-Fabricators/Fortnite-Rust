@@ -32,10 +32,18 @@ pub struct BoneTransform {
 }
 
 impl BoneTransform {
-    pub const IDENTITY: BoneTransform = BoneTransform { rotation: [0.0, 0.0, 0.0, 1.0], translation: [0.0; 3], scale: [1.0; 3] };
+    pub const IDENTITY: BoneTransform = BoneTransform {
+        rotation: [0.0, 0.0, 0.0, 1.0],
+        translation: [0.0; 3],
+        scale: [1.0; 3],
+    };
     /// Identity of an additive pose: no rotation, no translation and a scale *delta* of zero (additive scale keys of
     /// 4.16 clips hold `scale - 1`: all additive scale keys in Fortnite 1.8 lie within +-0.16 of zero).
-    pub const ADDITIVE_IDENTITY: BoneTransform = BoneTransform { rotation: [0.0, 0.0, 0.0, 1.0], translation: [0.0; 3], scale: [0.0; 3] };
+    pub const ADDITIVE_IDENTITY: BoneTransform = BoneTransform {
+        rotation: [0.0, 0.0, 0.0, 1.0],
+        translation: [0.0; 3],
+        scale: [0.0; 3],
+    };
 }
 
 impl Default for BoneTransform {
@@ -103,15 +111,26 @@ pub struct SkeletonInfo {
 fn read_fname(r: &mut Reader, names: &[String]) -> Result<String> {
     let idx = r.i32()?;
     let num = r.i32()?;
-    let base = names.get(idx as usize).cloned().ok_or_else(|| Error::Format(format!("bad FName index {idx}")))?;
-    Ok(if num > 0 { format!("{}_{}", base, num - 1) } else { base })
+    let base = names
+        .get(idx as usize)
+        .cloned()
+        .ok_or_else(|| Error::Format(format!("bad FName index {idx}")))?;
+    Ok(if num > 0 {
+        format!("{}_{}", base, num - 1)
+    } else {
+        base
+    })
 }
 
 fn read_transform(r: &mut Reader) -> Result<BoneTransform> {
     let rotation = r.quat()?;
     let translation = r.vec3()?;
     let scale = r.vec3()?;
-    Ok(BoneTransform { rotation, translation, scale })
+    Ok(BoneTransform {
+        rotation,
+        translation,
+        scale,
+    })
 }
 
 fn read_transforms(r: &mut Reader) -> Result<Vec<BoneTransform>> {
@@ -125,10 +144,15 @@ fn read_transforms(r: &mut Reader) -> Result<Vec<BoneTransform>> {
 impl SkeletonInfo {
     /// Parse the `Skeleton` export of a skeleton package.
     pub fn from_package(pkg: &Package) -> Result<SkeletonInfo> {
-        let idx = pkg.find_export("Skeleton").ok_or_else(|| Error::Format("package has no Skeleton export".into()))?;
+        let idx = pkg
+            .find_export("Skeleton")
+            .ok_or_else(|| Error::Format("package has no Skeleton export".into()))?;
         let (start, end) = pkg.export_range(idx);
         let mut r = Reader::at(&pkg.data[..end], start);
-        let ctx = Ctx { names: &pkg.names, file_version: pkg.summary.file_version };
+        let ctx = Ctx {
+            names: &pkg.names,
+            file_version: pkg.summary.file_version,
+        };
         let props = read_props(&mut r, &ctx)?;
         let _serialize_guid = r.i32()?;
 
@@ -147,7 +171,11 @@ impl SkeletonInfo {
         }
         let ref_pose = read_transforms(&mut r)?;
         if ref_pose.len() != bone_names.len() {
-            return err(format!("RefBonePose count {} != bone count {}", ref_pose.len(), bone_names.len()));
+            return err(format!(
+                "RefBonePose count {} != bone count {}",
+                ref_pose.len(),
+                bone_names.len()
+            ));
         }
         let m = r.i32()?;
         if m < 0 || m as usize * 12 > r.remaining() {
@@ -178,7 +206,13 @@ impl SkeletonInfo {
                 }
             }
         }
-        Ok(SkeletonInfo { bone_names, parents, ref_pose, retarget, retarget_sources })
+        Ok(SkeletonInfo {
+            bone_names,
+            parents,
+            ref_pose,
+            retarget,
+            retarget_sources,
+        })
     }
 
     pub fn num_bones(&self) -> usize {
@@ -237,11 +271,23 @@ impl SkeletonInfo {
     /// Convert a skeleton parsed by `fn-mesh` (same data, different container).
     pub fn from_mesh_skeleton(s: &fn_mesh::Skeleton) -> SkeletonInfo {
         use fn_mesh::TranslationRetarget as M;
-        let tf = |t: &fn_mesh::Transform| BoneTransform { rotation: t.rotation, translation: t.translation, scale: t.scale };
+        let tf = |t: &fn_mesh::Transform| BoneTransform {
+            rotation: t.rotation,
+            translation: t.translation,
+            scale: t.scale,
+        };
         SkeletonInfo {
             bone_names: s.bones.iter().map(|b| b.name.clone()).collect(),
             parents: s.bones.iter().map(|b| b.parent).collect(),
-            ref_pose: s.bones.iter().map(|b| BoneTransform { rotation: b.ref_rot, translation: b.ref_pos, scale: b.ref_scale }).collect(),
+            ref_pose: s
+                .bones
+                .iter()
+                .map(|b| BoneTransform {
+                    rotation: b.ref_rot,
+                    translation: b.ref_pos,
+                    scale: b.ref_scale,
+                })
+                .collect(),
             retarget: s
                 .bones
                 .iter()
@@ -253,7 +299,14 @@ impl SkeletonInfo {
                     M::OrientAndScale => TranslationRetarget::OrientAndScale,
                 })
                 .collect(),
-            retarget_sources: s.retarget_sources.iter().map(|r| RetargetSource { name: r.name.clone(), pose: r.pose.iter().map(tf).collect() }).collect(),
+            retarget_sources: s
+                .retarget_sources
+                .iter()
+                .map(|r| RetargetSource {
+                    name: r.name.clone(),
+                    pose: r.pose.iter().map(tf).collect(),
+                })
+                .collect(),
         }
     }
 }

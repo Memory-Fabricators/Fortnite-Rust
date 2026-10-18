@@ -15,10 +15,21 @@ struct Job {
 fn jobs_from(manifest: &Value, only: &Option<String>) -> Vec<Job> {
     let mut v = Vec::new();
     for t in manifest["textures"].as_array().into_iter().flatten() {
-        v.push(Job { pkg: t["pkg"].as_str().unwrap_or("").into(), outs: vec![t["out"].as_str().unwrap_or("").into()], optional: false });
+        v.push(Job {
+            pkg: t["pkg"].as_str().unwrap_or("").into(),
+            outs: vec![t["out"].as_str().unwrap_or("").into()],
+            optional: false,
+        });
     }
     for a in manifest["aliases"].as_array().into_iter().flatten() {
-        v.push(Job { pkg: a["pkg"].as_str().unwrap_or("").into(), outs: vec![a["out"].as_str().unwrap_or("").into(), a["alias"].as_str().unwrap_or("").into()], optional: false });
+        v.push(Job {
+            pkg: a["pkg"].as_str().unwrap_or("").into(),
+            outs: vec![
+                a["out"].as_str().unwrap_or("").into(),
+                a["alias"].as_str().unwrap_or("").into(),
+            ],
+            optional: false,
+        });
     }
     // packages the manifest lists as missing in 1.8 are not exported (they do not exist in the install)
     if let Some(f) = only {
@@ -53,16 +64,25 @@ pub mod image_like {
         pub px: Vec<u8>,
     }
     pub fn load_png(path: &std::path::Path) -> Result<Rgba, String> {
-        let im = image::open(path).map_err(|e| format!("{}: {e}", path.display()))?.to_rgba8();
-        Ok(Rgba { w: im.width(), h: im.height(), px: im.into_raw() })
+        let im = image::open(path)
+            .map_err(|e| format!("{}: {e}", path.display()))?
+            .to_rgba8();
+        Ok(Rgba {
+            w: im.width(),
+            h: im.height(),
+            px: im.into_raw(),
+        })
     }
 }
 
 fn export_one(src: &Source, job: &Job, args: &Args) -> Result<Value, String> {
     let raw = src.load_raw(&job.pkg)?;
-    let tex = Texture2D::from_files(&raw.uasset, &raw.uexp, &raw.ubulk).map_err(|e| e.to_string())?;
+    let tex =
+        Texture2D::from_files(&raw.uasset, &raw.uexp, &raw.ubulk).map_err(|e| e.to_string())?;
     let mip = tex.best_mip().ok_or("no mip with data")?;
-    let img = tex.decode(mip, DecodeOptions::default()).map_err(|e| e.to_string())?;
+    let img = tex
+        .decode(mip, DecodeOptions::default())
+        .map_err(|e| e.to_string())?;
     let mut d = json!({"format": format!("{:?}", tex.format), "width": img.width, "height": img.height, "mip": mip});
     for o in &job.outs {
         let dest = args.out.join(o);
@@ -79,7 +99,9 @@ fn export_one(src: &Source, job: &Job, args: &Args) -> Result<Value, String> {
                 Some((max, mean, diff)) => {
                     d["verify"] = json!({"max_abs": max, "mean_abs": mean, "diff_pixels": diff, "old_size": [old.w, old.h]});
                 }
-                None => d["verify"] = json!({"error": "size mismatch", "new": [new.w, new.h], "old": [old.w, old.h]}),
+                None => {
+                    d["verify"] = json!({"error": "size mismatch", "new": [new.w, new.h], "old": [old.w, old.h]})
+                }
             },
             Err(e) => d["verify"] = json!({"error": e}),
         }

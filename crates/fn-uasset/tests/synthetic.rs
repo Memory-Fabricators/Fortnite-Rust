@@ -67,7 +67,12 @@ fn build() -> Built {
     // ---- export 0 payload (tagged props)
     let mut p0: Vec<u8> = Vec::new();
     p0.extend(b.tag("Count", "IntProperty", vec![], 7i32.to_le_bytes().to_vec()));
-    p0.extend(b.tag("Speed", "FloatProperty", vec![], 1.5f32.to_le_bytes().to_vec()));
+    p0.extend(b.tag(
+        "Speed",
+        "FloatProperty",
+        vec![],
+        1.5f32.to_le_bytes().to_vec(),
+    ));
     {
         // BoolProperty stores the value in the tag, size 0
         let mut v = b.fname("bFlag");
@@ -94,7 +99,12 @@ fn build() -> Built {
     let en = b.fname("EMode");
     let val = b.fname("EMode::B");
     p0.extend(b.tag("Mode", "ByteProperty", en, val));
-    p0.extend(b.tag("Ref", "ObjectProperty", vec![], (-1i32).to_le_bytes().to_vec()));
+    p0.extend(b.tag(
+        "Ref",
+        "ObjectProperty",
+        vec![],
+        (-1i32).to_le_bytes().to_vec(),
+    ));
     // text: flags, history 0 (base), namespace, key, source
     let mut txt = 0u32.to_le_bytes().to_vec();
     txt.push(0);
@@ -194,7 +204,10 @@ fn build() -> Built {
     let _ = (class_pkg, obj_name);
     // imports: [0] package /Script/Engine, [1] class Class (outer pkg)
     let mut imports = Vec::new();
-    for (cp, cn, outer, nm) in [(class_pkg, class_name, 0i32, pkg_name), (class_pkg, class_name, -1, class_name)] {
+    for (cp, cn, outer, nm) in [
+        (class_pkg, class_name, 0i32, pkg_name),
+        (class_pkg, class_name, -1, class_name),
+    ] {
         for x in [cp, 0, cn, 0] {
             imports.extend(x.to_le_bytes());
         }
@@ -220,7 +233,13 @@ fn build() -> Built {
 
     let mut exports = Vec::new();
     let mut off = total as i64;
-    for (idx, (class_index, nm, flags, payload)) in [(-2i32, mypkg, 0x0000_0008u32, &p0), (-2, myfn, 0x0000_0009, &p1)].iter().enumerate() {
+    for (idx, (class_index, nm, flags, payload)) in [
+        (-2i32, mypkg, 0x0000_0008u32, &p0),
+        (-2, myfn, 0x0000_0009, &p1),
+    ]
+    .iter()
+    .enumerate()
+    {
         let _ = idx;
         exports.extend(class_index.to_le_bytes());
         exports.extend(0i32.to_le_bytes()); // super
@@ -302,11 +321,17 @@ fn header_and_names() {
     let pkg = Package::parse(&built.asset, &built.uexp).unwrap();
     assert_eq!(pkg.summary.legacy_file_version, -7);
     assert_eq!(pkg.summary.file_version_ue4, 0);
-    assert_eq!(pkg.effective_version, fn_uasset::package::DEFAULT_ASSUMED_UE4_VERSION);
+    assert_eq!(
+        pkg.effective_version,
+        fn_uasset::package::DEFAULT_ASSUMED_UE4_VERSION
+    );
     assert_eq!(pkg.exports.len(), 2);
     assert_eq!(pkg.imports.len(), 2);
     assert_eq!(pkg.exports[0].name, "MyObject");
-    assert_eq!(pkg.object_path(fn_uasset::PackageIndex(-2)), "/Script/Engine.Class");
+    assert_eq!(
+        pkg.object_path(fn_uasset::PackageIndex(-2)),
+        "/Script/Engine.Class"
+    );
     assert_eq!(pkg.export_class_name(0), "Class");
     assert!(pkg.warnings.is_empty(), "{:?}", pkg.warnings);
     match pkg.resolve(fn_uasset::PackageIndex(-2)) {
@@ -333,22 +358,53 @@ fn property_values() {
     assert_eq!(o.get("Tag").and_then(|v| v.as_str()), Some("Hello"));
     assert_eq!(o.get("Label").and_then(|v| v.as_str()), Some("Hi there"));
     assert_eq!(o.get("Offset"), Some(&Value::Vector([1.0, 2.0, 3.0])));
-    assert_eq!(o.get("Nums"), Some(&Value::Array(vec![Value::Int(1), Value::Int(2), Value::Int(3)])));
+    assert_eq!(
+        o.get("Nums"),
+        Some(&Value::Array(vec![
+            Value::Int(1),
+            Value::Int(2),
+            Value::Int(3)
+        ]))
+    );
     assert_eq!(o.get("Mode").and_then(|v| v.as_str()), Some("EMode::B"));
-    assert_eq!(o.get("Ref").and_then(|v| v.as_object()), Some(fn_uasset::PackageIndex(-1)));
-    let Some(Value::Text(t)) = o.get("Title") else { panic!() };
-    assert_eq!((t.namespace.as_deref(), t.key.as_deref(), t.source.as_deref()), (Some("NS"), Some("KEY"), Some("Source text")));
-    assert_eq!(o.get("Inner").and_then(|v| v.field("Level")), Some(&Value::Int(3)));
-    assert_eq!(o.get("Inner").and_then(|v| v.path("Level")).and_then(|v| v.as_i64()), Some(3));
+    assert_eq!(
+        o.get("Ref").and_then(|v| v.as_object()),
+        Some(fn_uasset::PackageIndex(-1))
+    );
+    let Some(Value::Text(t)) = o.get("Title") else {
+        panic!()
+    };
+    assert_eq!(
+        (
+            t.namespace.as_deref(),
+            t.key.as_deref(),
+            t.source.as_deref()
+        ),
+        (Some("NS"), Some("KEY"), Some("Source text"))
+    );
+    assert_eq!(
+        o.get("Inner").and_then(|v| v.field("Level")),
+        Some(&Value::Int(3))
+    );
+    assert_eq!(
+        o.get("Inner")
+            .and_then(|v| v.path("Level"))
+            .and_then(|v| v.as_i64()),
+        Some(3)
+    );
     let items = o.get("Items").and_then(|v| v.as_array()).unwrap();
     assert_eq!(items.len(), 2);
     assert_eq!(items[1].field("Level"), Some(&Value::Int(20)));
-    let Some(Value::Map(m)) = o.get("Lookup") else { panic!() };
+    let Some(Value::Map(m)) = o.get("Lookup") else {
+        panic!()
+    };
     assert_eq!(m.len(), 2);
     assert_eq!(m[1].0, Value::Name("B".into()));
     assert_eq!(m[1].1, Value::Int(2));
     // unknown type: safe fallback, reading continues past it
-    assert!(matches!(o.get("Weird"), Some(Value::Unparsed { ty, bytes, .. }) if ty == "FuturePropertyType" && bytes == &vec![1, 2, 3, 4, 5]));
+    assert!(
+        matches!(o.get("Weird"), Some(Value::Unparsed { ty, bytes, .. }) if ty == "FuturePropertyType" && bytes == &vec![1, 2, 3, 4, 5])
+    );
     assert_eq!(o.unparsed_count(), 1);
 
     // JSON export
@@ -358,9 +414,15 @@ fn property_values() {
     assert_eq!(j["properties"]["Inner"]["Level"], json!(3));
     assert_eq!(j["properties"]["Inner"]["_struct"], json!("InnerStruct"));
     assert_eq!(j["properties"]["Ref"], json!("/Script/Engine"));
-    assert_eq!(j["properties"]["Lookup"][0], json!({"key": "A", "value": 1}));
+    assert_eq!(
+        j["properties"]["Lookup"][0],
+        json!({"key": "A", "value": 1})
+    );
     // byte offsets of tags are exposed (uasset ++ uexp)
-    assert_eq!(o.props.iter().next().unwrap().offset as usize, built.asset.len());
+    assert_eq!(
+        o.props.iter().next().unwrap().offset as usize,
+        built.asset.len()
+    );
 }
 
 #[test]
@@ -411,7 +473,6 @@ fn bad_exports_do_not_panic() {
     assert!(pkg.read_export(99).is_err());
 }
 
-
 /// Deterministic mutation fuzzing: no byte pattern may make the parser panic, over-allocate or hang.
 #[test]
 fn fuzz_mutations_never_panic() {
@@ -451,7 +512,9 @@ fn fuzz_mutations_never_panic() {
             let cut = (rnd() as usize) % uexp.len();
             uexp.truncate(cut.max(1));
         }
-        let Ok(pkg) = Package::parse(&asset, &uexp) else { continue };
+        let Ok(pkg) = Package::parse(&asset, &uexp) else {
+            continue;
+        };
         parsed += 1;
         for i in 0..pkg.exports.len() {
             if let Ok(o) = pkg.read_export(i) {
@@ -467,7 +530,10 @@ fn fuzz_mutations_never_panic() {
         let _ = pkg.resolve(fn_uasset::PackageIndex(rnd() as i32));
         let _ = pkg.object_path(fn_uasset::PackageIndex(rnd() as i32));
     }
-    assert!(parsed > 1000, "too few mutated packages still parsed ({parsed}); fuzz is not exercising the readers");
+    assert!(
+        parsed > 1000,
+        "too few mutated packages still parsed ({parsed}); fuzz is not exercising the readers"
+    );
 }
 
 #[test]

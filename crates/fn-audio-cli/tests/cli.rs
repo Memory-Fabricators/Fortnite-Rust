@@ -8,12 +8,23 @@ const DEFAULT_ROOT: &str = r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\Fort
 
 fn root() -> Option<String> {
     let r = std::env::var("FN_ROOT").unwrap_or_else(|_| DEFAULT_ROOT.to_string());
-    Path::new(&r).join("Content").join("Paks").exists().then_some(r)
+    Path::new(&r)
+        .join("Content")
+        .join("Paks")
+        .exists()
+        .then_some(r)
 }
 
 fn run(args: &[&str]) -> (bool, String, String) {
-    let o = Command::new(BIN).args(args).output().expect("spawn fn-audio-cli");
-    (o.status.success(), String::from_utf8_lossy(&o.stdout).into_owned(), String::from_utf8_lossy(&o.stderr).into_owned())
+    let o = Command::new(BIN)
+        .args(args)
+        .output()
+        .expect("spawn fn-audio-cli");
+    (
+        o.status.success(),
+        String::from_utf8_lossy(&o.stdout).into_owned(),
+        String::from_utf8_lossy(&o.stderr).into_owned(),
+    )
 }
 
 fn tmp(name: &str) -> String {
@@ -56,7 +67,14 @@ fn analyze_reads_a_wav_and_reports_the_dominant_frequency() {
     let (ok, out, err) = run(&["analyze", &p]);
     assert!(ok, "{err}");
     assert!(out.contains("24000 Hz, 1 ch, 24000 frames"), "{out}");
-    assert!(out.contains("dominant 1000 Hz") || out.contains("dominant 999 Hz") || out.contains("dominant 1001 Hz") || out.contains("dominant 1003 Hz") || out.contains("dominant 998 Hz"), "{out}");
+    assert!(
+        out.contains("dominant 1000 Hz")
+            || out.contains("dominant 999 Hz")
+            || out.contains("dominant 1001 Hz")
+            || out.contains("dominant 1003 Hz")
+            || out.contains("dominant 998 Hz"),
+        "{out}"
+    );
     assert!(run(&["analyze", "/definitely/not/there.wav"]).0 == false);
 }
 
@@ -67,22 +85,67 @@ fn install_commands_decode_dump_and_render() {
         return;
     };
     let wav = tmp("pe.wav");
-    let (ok, out, err) = run(&["--root", &r, "decode", "FortniteGame/Content/Sounds/Fort_Weapons/PickAxe/PickAxe_Enemy_001", &wav]);
+    let (ok, out, err) = run(&[
+        "--root",
+        &r,
+        "decode",
+        "FortniteGame/Content/Sounds/Fort_Weapons/PickAxe/PickAxe_Enemy_001",
+        &wav,
+    ]);
     assert!(ok, "{err}");
     assert!(out.contains("OGG 24000 Hz, 2 ch, 11599 frames"), "{out}");
     let (ok, out, _) = run(&["analyze", &wav]);
     assert!(ok && out.contains("11599 frames"), "{out}");
 
-    let (ok, out, err) = run(&["--root", &r, "cue", "/Game/Athena/Sounds/Weapons/PickAxe_Swing_Athena_Cue"]);
+    let (ok, out, err) = run(&[
+        "--root",
+        &r,
+        "cue",
+        "/Game/Athena/Sounds/Weapons/PickAxe_Swing_Athena_Cue",
+    ]);
     assert!(ok, "{err}");
-    assert!(out.contains("QualityLevel") && out.contains("Random") && out.contains("Attenuation") && out.contains("waves: 12") && !out.contains("<MISSING>"), "{out}");
+    assert!(
+        out.contains("QualityLevel")
+            && out.contains("Random")
+            && out.contains("Attenuation")
+            && out.contains("waves: 12")
+            && !out.contains("<MISSING>"),
+        "{out}"
+    );
 
     let swing = tmp("swing.wav");
-    let (ok, out, err) = run(&["--root", &r, "render", "/Game/Athena/Sounds/Weapons/PickAxe_Swing_Athena_Cue", &swing, "--seed", "7", "--secs", "1.5"]);
+    let (ok, out, err) = run(&[
+        "--root",
+        &r,
+        "render",
+        "/Game/Athena/Sounds/Weapons/PickAxe_Swing_Athena_Cue",
+        &swing,
+        "--seed",
+        "7",
+        "--secs",
+        "1.5",
+    ]);
     assert!(ok, "{err}");
-    assert!(out.contains("rendered 72000 frames at 48000 Hz (seed 7)"), "{out}");
+    assert!(
+        out.contains("rendered 72000 frames at 48000 Hz (seed 7)"),
+        "{out}"
+    );
     let a = std::fs::read(&swing).unwrap();
-    let (ok, _, _) = run(&["--root", &r, "render", "/Game/Athena/Sounds/Weapons/PickAxe_Swing_Athena_Cue", &swing, "--seed", "7", "--secs", "1.5"]);
+    let (ok, _, _) = run(&[
+        "--root",
+        &r,
+        "render",
+        "/Game/Athena/Sounds/Weapons/PickAxe_Swing_Athena_Cue",
+        &swing,
+        "--seed",
+        "7",
+        "--secs",
+        "1.5",
+    ]);
     assert!(ok);
-    assert_eq!(a, std::fs::read(&swing).unwrap(), "same seed -> identical WAV bytes");
+    assert_eq!(
+        a,
+        std::fs::read(&swing).unwrap(),
+        "same seed -> identical WAV bytes"
+    );
 }

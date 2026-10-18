@@ -15,18 +15,31 @@ pub struct UiContext {
 }
 impl UiContext {
     pub fn new(source: Box<dyn AssetSource>) -> Result<Self, String> {
-        let fonts = Fonts::load(source.as_ref()).ok_or_else(|| "no usable UI font (NotoSans / system font)".to_owned())?;
-        Ok(UiContext { assets: UiAssets::new(source), atlases: TextAtlases::new(), fonts })
+        let fonts = Fonts::load(source.as_ref())
+            .ok_or_else(|| "no usable UI font (NotoSans / system font)".to_owned())?;
+        Ok(UiContext {
+            assets: UiAssets::new(source),
+            atlases: TextAtlases::new(),
+            fonts,
+        })
     }
     /// Index the old runtime's `assets` tree (or `FN_UI_ASSETS`).
-    pub fn from_default_assets() -> Result<Self, String> { Self::new(Box::new(DirAssets::new(DirAssets::default_root()))) }
+    pub fn from_default_assets() -> Result<Self, String> {
+        Self::new(Box::new(DirAssets::new(DirAssets::default_root())))
+    }
     /// UI assets straight from the Fortnite install (textures decoded on demand from the paks, fonts read from them), `fallback` = an exported
     /// folder consulted for whatever the install does not provide (loading tips, ...). Fails when the install cannot be opened.
     #[cfg(feature = "pak")]
-    pub fn from_install(install: &std::path::Path, fallback: Option<&std::path::Path>) -> Result<Self, String> {
+    pub fn from_install(
+        install: &std::path::Path,
+        fallback: Option<&std::path::Path>,
+    ) -> Result<Self, String> {
         let pak: Box<dyn AssetSource> = Box::new(crate::pak_assets::PakAssets::open(install)?);
         match fallback {
-            Some(dir) => Self::new(Box::new(crate::assets::LayeredAssets::new(vec![pak, Box::new(DirAssets::new(dir))]))),
+            Some(dir) => Self::new(Box::new(crate::assets::LayeredAssets::new(vec![
+                pak,
+                Box::new(DirAssets::new(dir)),
+            ]))),
             None => Self::new(pak),
         }
     }
@@ -37,7 +50,11 @@ impl UiContext {
         let install = crate::pak_assets::default_install();
         let folder = DirAssets::default_root();
         let fallback = folder.is_dir().then_some(folder.as_path());
-        if install.exists() { if let Ok(c) = Self::from_install(&install, fallback) { return Ok(c); } }
+        if install.exists() {
+            if let Ok(c) = Self::from_install(&install, fallback) {
+                return Ok(c);
+            }
+        }
         Self::from_default_assets()
     }
 }
@@ -59,4 +76,6 @@ pub fn all_scenes() -> Vec<SceneDef> {
     v.extend(crate::screens::scenes());
     v
 }
-pub fn find_scene(name: &str) -> Option<SceneDef> { all_scenes().into_iter().find(|s| s.name == name) }
+pub fn find_scene(name: &str) -> Option<SceneDef> {
+    all_scenes().into_iter().find(|s| s.name == name)
+}

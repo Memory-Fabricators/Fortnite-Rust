@@ -1,4 +1,4 @@
-﻿//! Ogg/Vorbis (`OGG` format): a plain Ogg logical stream (serial 0, libVorbis "ENCODER=UnrealEngine4").
+//! Ogg/Vorbis (`OGG` format): a plain Ogg logical stream (serial 0, libVorbis "ENCODER=UnrealEngine4").
 
 use super::guarded;
 use crate::error::{AudioError, Result};
@@ -26,12 +26,18 @@ pub fn ogg_total_frames(bytes: &[u8]) -> Option<u64> {
 /// Decode a complete Ogg/Vorbis stream to interleaved f32, trimmed to the final granule position.
 pub fn decode_ogg(bytes: &[u8]) -> Result<DecodedWave> {
     guarded("ogg", || {
-        let err = |e: lewton::VorbisError| AudioError::Decode { codec: "ogg/vorbis", detail: format!("{e:?}") };
+        let err = |e: lewton::VorbisError| AudioError::Decode {
+            codec: "ogg/vorbis",
+            detail: format!("{e:?}"),
+        };
         let mut r = OggStreamReader::new(Cursor::new(bytes)).map_err(err)?;
         let channels = r.ident_hdr.audio_channels as u16;
         let rate = r.ident_hdr.audio_sample_rate;
         if channels == 0 || rate == 0 {
-            return Err(AudioError::Decode { codec: "ogg/vorbis", detail: "zero channels or rate".into() });
+            return Err(AudioError::Decode {
+                codec: "ogg/vorbis",
+                detail: "zero channels or rate".into(),
+            });
         }
         let mut samples: Vec<f32> = Vec::new();
         loop {

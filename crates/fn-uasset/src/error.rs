@@ -27,10 +27,16 @@ pub struct Error {
 
 impl Error {
     pub fn new(kind: ErrorKind, msg: impl Into<String>) -> Self {
-        Error { kind, msg: msg.into() }
+        Error {
+            kind,
+            msg: msg.into(),
+        }
     }
     pub fn truncated(what: &str, wanted: usize, have: usize) -> Self {
-        Error::new(ErrorKind::Truncated, format!("{what}: wanted offset {wanted}, buffer is {have}"))
+        Error::new(
+            ErrorKind::Truncated,
+            format!("{what}: wanted offset {wanted}, buffer is {have}"),
+        )
     }
     pub fn malformed(msg: impl Into<String>) -> Self {
         Error::new(ErrorKind::Malformed, msg)

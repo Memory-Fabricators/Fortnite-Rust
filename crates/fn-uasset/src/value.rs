@@ -46,11 +46,17 @@ impl PropertyList {
     }
     /// First property with this exact name and static index 0.
     pub fn get(&self, name: &str) -> Option<&Value> {
-        self.0.iter().find(|p| p.name == name && p.index == 0).map(|p| &p.value)
+        self.0
+            .iter()
+            .find(|p| p.name == name && p.index == 0)
+            .map(|p| &p.value)
     }
     /// Case-insensitive variant.
     pub fn get_ci(&self, name: &str) -> Option<&Value> {
-        self.0.iter().find(|p| p.index == 0 && p.name.eq_ignore_ascii_case(name)).map(|p| &p.value)
+        self.0
+            .iter()
+            .find(|p| p.index == 0 && p.name.eq_ignore_ascii_case(name))
+            .map(|p| &p.value)
     }
     /// All entries named `name` (static arrays).
     pub fn get_all<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a Property> + 'a {
@@ -59,7 +65,11 @@ impl PropertyList {
     pub fn to_json(&self, pkg: &Package) -> Json {
         let mut m = Map::new();
         for p in &self.0 {
-            let key = if p.index > 0 { format!("{}[{}]", p.name, p.index) } else { p.name.clone() };
+            let key = if p.index > 0 {
+                format!("{}[{}]", p.name, p.index)
+            } else {
+                p.name.clone()
+            };
             m.insert(key, p.value.to_json(pkg));
         }
         Json::Object(m)
@@ -77,7 +87,10 @@ pub enum Value {
     /// ByteProperty without enum.
     Byte(u8),
     /// ByteProperty/EnumProperty with enum: the enumerator name (e.g. `EFoo::Bar`).
-    Enum { enum_name: String, value: String },
+    Enum {
+        enum_name: String,
+        value: String,
+    },
     Name(String),
     Str(String),
     Text(Text),
@@ -87,13 +100,19 @@ pub enum Value {
     SoftObject(String),
     /// LazyObjectProperty guid.
     LazyObject([u8; 16]),
-    Delegate { object: PackageIndex, function: String },
+    Delegate {
+        object: PackageIndex,
+        function: String,
+    },
     MulticastDelegate(Vec<(PackageIndex, String)>),
     Array(Vec<Value>),
     Set(Vec<Value>),
     Map(Vec<(Value, Value)>),
     /// Tagged struct (properties follow the property-tag format).
-    Struct { name: String, props: PropertyList },
+    Struct {
+        name: String,
+        props: PropertyList,
+    },
     Vector([f32; 3]),
     Vector2D([f32; 2]),
     Vector4([f32; 4]),
@@ -106,12 +125,20 @@ pub enum Value {
     IntVector([i32; 3]),
     Guid([u8; 16]),
     /// Binary `FTransform`: rotation quat, translation, scale.
-    Transform { rotation: [f32; 4], translation: [f32; 3], scale: [f32; 3] },
+    Transform {
+        rotation: [f32; 4],
+        translation: [f32; 3],
+        scale: [f32; 3],
+    },
     /// `FDateTime` / `FTimespan` ticks (100ns).
     DateTime(i64),
     Timespan(i64),
     /// Not decoded (unknown type, native-serialized struct without a layout, or a decode error).
-    Unparsed { ty: String, bytes: Vec<u8>, reason: String },
+    Unparsed {
+        ty: String,
+        bytes: Vec<u8>,
+        reason: String,
+    },
 }
 
 impl Value {
@@ -225,10 +252,22 @@ impl Value {
                 }
             }
             Value::LazyObject(g) | Value::Guid(g) => json!(hex(g)),
-            Value::Delegate { object, function } => json!({"object": pkg.object_path(*object), "function": function}),
-            Value::MulticastDelegate(v) => Json::Array(v.iter().map(|(o, f)| json!({"object": pkg.object_path(*o), "function": f})).collect()),
-            Value::Array(a) | Value::Set(a) => Json::Array(a.iter().map(|v| v.to_json(pkg)).collect()),
-            Value::Map(m) => Json::Array(m.iter().map(|(k, v)| json!({"key": k.to_json(pkg), "value": v.to_json(pkg)})).collect()),
+            Value::Delegate { object, function } => {
+                json!({"object": pkg.object_path(*object), "function": function})
+            }
+            Value::MulticastDelegate(v) => Json::Array(
+                v.iter()
+                    .map(|(o, f)| json!({"object": pkg.object_path(*o), "function": f}))
+                    .collect(),
+            ),
+            Value::Array(a) | Value::Set(a) => {
+                Json::Array(a.iter().map(|v| v.to_json(pkg)).collect())
+            }
+            Value::Map(m) => Json::Array(
+                m.iter()
+                    .map(|(k, v)| json!({"key": k.to_json(pkg), "value": v.to_json(pkg)}))
+                    .collect(),
+            ),
             Value::Struct { name, props } => {
                 let mut m = Map::new();
                 m.insert("_struct".into(), json!(name));
@@ -239,13 +278,21 @@ impl Value {
                 }
                 Json::Object(m)
             }
-            Value::Vector(v) | Value::Rotator(v) => Json::Array(v.iter().map(|x| f64_json(*x as f64)).collect()),
+            Value::Vector(v) | Value::Rotator(v) => {
+                Json::Array(v.iter().map(|x| f64_json(*x as f64)).collect())
+            }
             Value::Vector2D(v) => Json::Array(v.iter().map(|x| f64_json(*x as f64)).collect()),
-            Value::Vector4(v) | Value::Quat(v) | Value::LinearColor(v) => Json::Array(v.iter().map(|x| f64_json(*x as f64)).collect()),
+            Value::Vector4(v) | Value::Quat(v) | Value::LinearColor(v) => {
+                Json::Array(v.iter().map(|x| f64_json(*x as f64)).collect())
+            }
             Value::Color(c) => json!({"r": c[0], "g": c[1], "b": c[2], "a": c[3]}),
             Value::IntPoint(v) => json!(v),
             Value::IntVector(v) => json!(v),
-            Value::Transform { rotation, translation, scale } => json!({
+            Value::Transform {
+                rotation,
+                translation,
+                scale,
+            } => json!({
                 "_struct": "Transform",
                 "Rotation": rotation.iter().map(|x| f64_json(*x as f64)).collect::<Vec<_>>(),
                 "Translation": translation.iter().map(|x| f64_json(*x as f64)).collect::<Vec<_>>(),
@@ -273,4 +320,3 @@ pub fn hex(b: &[u8]) -> String {
     }
     s
 }
-

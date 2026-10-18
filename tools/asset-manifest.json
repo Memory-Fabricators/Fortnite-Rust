@@ -1,0 +1,1633 @@
+{
+  "aliases": [],
+  "animations": [
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_CC_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_CC_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_CD45_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_CD45_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_CD_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_CD_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_CU_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_CU_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_LC45_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_LC45_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_LCD45_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_LCD45_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_LC_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_LC_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_LD_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_LD_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_LU_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_LU_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_RCD45_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_RCD45_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_RCU45_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_RCU45_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_RC_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_RC_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_RD_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_RD_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_RUC45_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_RUC45_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_RU_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/AR_NonTargeted_RU_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/Sprint/CrouchSprint_THMelee.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/Sprint/CrouchSprint_THMelee"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_E.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_E"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_E_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_E_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_N.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_N"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_NE.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_NE"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_NE_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_NE_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_NW.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_NW"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_NW_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_NW_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_N_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_N_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_S.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_S"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_SE.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_SE"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_SE_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_SE_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_SW.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_SW"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_SW_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_SW_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_S_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_S_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_W.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_W"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_W_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_NonTargeted/Crouch_ARNonTargeted_W_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_E.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_E"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_N.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_N"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_NE.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_NE"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_NW.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_NW"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_S.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_S"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_SE.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_SE"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_SW.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_SW"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_W.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/AssaultRifle_Relaxed/Crouch_ARRelaxed_W"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_E.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_E"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_N.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_N"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_NE.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_NE"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_NW.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_NW"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_S.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_S"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_SE.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_SE"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_SW.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_SW"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_W.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Crouch/TwoHandedMelee/Crouch_THMelee_W"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/Crouch_TwoHanded_Melee_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/Crouch_TwoHanded_Melee_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Idle/Idle_Noise.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Idle/Idle_Noise"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Idle/Idle_Noise_AR_Downsights.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Idle/Idle_Noise_AR_Downsights"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Female/Turns/Idle_Turn_Left.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Female/Turns/Idle_Turn_Left"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Small/idle/Idle_Turn_Left_180.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Small/idle/Idle_Turn_Left_180"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Female/Turns/Idle_Turn_Right.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Female/Turns/Idle_Turn_Right"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Small/idle/Idle_Turn_Right_180.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Small/idle/Idle_Turn_Right_180"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Leans/JogAR_LeanC_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Leans/JogAR_LeanC_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Leans/JogAR_LeanE_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Leans/JogAR_LeanE_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Leans/JogAR_LeanW_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Leans/JogAR_LeanW_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/NoWep/JumpApex_NoWep__Loop_CMM_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/NoWep/JumpApex_NoWep__Loop_CMM_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/NoWep/JumpFall_NoWep_CMM_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/NoWep/JumpFall_NoWep_CMM_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/NoWep/JumpLand_NoWep_CMM_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/NoWep/JumpLand_NoWep_CMM_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/NoWep/JumpLand_NoWep_CMM_Additive_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/NoWep/JumpLand_NoWep_CMM_Additive_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/NoWep/JumpUp_NoWep_CMM_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/NoWep/JumpUp_NoWep_CMM_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_CC_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_CC_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_CD_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_CD_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_CU_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_CU_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_LC_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_LC_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_LD_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_LD_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_LU_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_LU_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_RC_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_RC_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_RD_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_RD_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_RU_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Launcher_AO_RU_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_CC.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_CC"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_CD.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_CD"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_CU.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_CU"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_LC.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_LC"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_LD.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_LD"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_LU.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_LU"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_RC.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_RC"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_RD.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_RD"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_RU.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_GoingCommando_AO_RU"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_E.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_E"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_N.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_N"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_NE.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_NE"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_NW.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_NW"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_S.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_S"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_SE.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_SE"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_SW.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_SW"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_W.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_NonTargeted/M_Jog_ARDS_W"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_E.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_E"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_N.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_N"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_NE.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_NE"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_NW.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_NW"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_S.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_S"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_SE.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_SE"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_SW.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_SW"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_W.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifleRelaxed/M_Jog_ARRelaxed_W"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_E_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_E_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_NE_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_NE_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_NW_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_NW_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_N_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_N_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_SE_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_SE_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_SW_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_SW_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_S_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_S_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_W_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/AssaultRifle_HipNonTargeted/M_Jog_AssaultRifle_W_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_E_Pivot_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_E_Pivot_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_E_Pivot_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_E_Pivot_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_E_Start_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_E_Start_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_E_Start_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_E_Start_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_E_Stop_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_E_Stop_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_E_Stop_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_E_Stop_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_E.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_E"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_E_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_E_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_N.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_N"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_NE.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_NE"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_NW.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_NW"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_S.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_S"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_SE.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_SE"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_SW.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_SW"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_W.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jog/Melee_TH/M_Jog_Melee_Twohanded_W"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_N_Pivot_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_N_Pivot_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_N_Pivot_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_N_Pivot_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_N_Start_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_N_Start_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_N_Start_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_N_Start_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_N_Stop_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_N_Stop_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_N_Stop_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_N_Stop_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_S_Pivot_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_S_Pivot_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_S_Pivot_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_S_Pivot_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_S_Start_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_S_Start_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_S_Start_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_S_Start_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_S_Stop_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_S_Stop_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_S_Stop_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_S_Stop_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_W_Pivot_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_W_Pivot_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_W_Pivot_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_W_Pivot_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_W_Start_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_W_Start_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_W_Start_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_W_Start_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_W_Stop_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_W_Stop_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_W_Stop_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/AdditiveTransitions/M_Jog_W_Stop_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpApex_ARDS_AL_E.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpApex_ARDS_AL_E"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpApex_ARDS_AL_N.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpApex_ARDS_AL_N"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpApex_ARDS_AL_S.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpApex_ARDS_AL_S"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpApex_ARDS_AL_W.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpApex_ARDS_AL_W"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpApex_ARDS_Loop_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpApex_ARDS_Loop_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpFall_ARDS_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpFall_ARDS_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpLand_ARDS_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpLand_ARDS_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpUp_ARDS_Additive.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Jump/AssaultRifle/M_JumpUp_ARDS_Additive"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/M_Melee_TwoHanded.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/M_Melee_TwoHanded"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_CC.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_CC"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_CD.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_CD"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_CU.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_CU"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_LC.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_LC"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_LD.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_LD"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_LU.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_LU"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_RC.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_RC"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_RD.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_RD"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_RU.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_Melee_TwoHanded_AO_RU"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/M_NoWep_Relaxed.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/M_NoWep_Relaxed"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_CC.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_CC"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_CD.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_CD"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_CU.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_CU"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_LC.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_LC"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_LD.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_LD"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_LU.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_LU"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_RC.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_RC"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_RD.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_RD"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_RU.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/M_NoWep_Relaxed_AO_RU"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_E_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_E_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_E_Full.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_E_Full"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_E_RtFootForward_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_E_RtFootForward_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_N_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_N_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_N_Full.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_N_Full"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_S_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_S_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_S_Full.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_S_Full"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_W_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_W_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_W_Full.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_W_Full"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_W_RtFootForward_Core.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Walk/AssaultRifle_Targeted/M_Walk_AR_W_RtFootForward_Core"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/Melee_WideGrip_Equip_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/Melee_WideGrip_Equip_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_CC_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_CC_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_CD_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_CD_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_CU_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_CU_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_LC_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_LC_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_LD_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_LD_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_LU_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_LU_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_RC_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_RC_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_RD_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_RD_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_RU_CMM.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Poses/Medium/Male/AO/Pistol_NonTargeted_RU_CMM"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Sprint/Sprint_TwoHanded.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Locomotion/Medium/Male/Sprint/Sprint_TwoHanded"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing1.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing1"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing1_2Idle.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing1_2Idle"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing1_2Idle_InMotion.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing1_2Idle_InMotion"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing1_Bounce.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing1_Bounce"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing1_InMotion.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing1_InMotion"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing2.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing2"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing2_2Idle.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing2_2Idle"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing2_2Idle_InMotion.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing2_2Idle_InMotion"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing2_Bounce.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing2_Bounce"
+    },
+    {
+      "out": "exported/Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing2_InMotion.md5anim",
+      "pkg": "Game/Animation/Game/MainPlayer/Combat/Melee/TwoHanded/WideGrip/UpperBody/TwoHanded_Loop_Swing2_InMotion"
+    }
+  ],
+  "meshes": [
+    "Game/Characters/Player/Male/Male_Avg_Base/Fortnite_M_Avg_Player",
+    "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Meshes/SK_M_Med_Soldier_04",
+    "Game/Athena/Heroes/Meshes/Heads/SK_M_MED_Head_01_ATH",
+    "Game/Weapons/FORT_Melee/Meshes/SK_Pick"
+  ],
+  "textures": [
+    {
+      "out": "exported/Game/Athena/HUD/Art/aliveico.png",
+      "pkg": "Game/Athena/HUD/Art/AliveIco"
+    },
+    {
+      "out": "exported/Game/Characters/Fortress_Character/Textures/allblack.png",
+      "pkg": "Game/Characters/Fortress_Character/Textures/AllBlack"
+    },
+    {
+      "out": "exported/Game/UI/Styles/BlackButton/blackbutton.png",
+      "pkg": "Game/UI/Styles/BlackButton/BlackButton"
+    },
+    {
+      "out": "exported/Game/UI/Styles/BlackButton/blackbuttonhover.png",
+      "pkg": "Game/UI/Styles/BlackButton/BlackButtonHover"
+    },
+    {
+      "out": "exported/Game/UI/Styles/BlackButton/blackbuttonpressed.png",
+      "pkg": "Game/UI/Styles/BlackButton/BlackButtonPressed"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-critical-l-_click_.png",
+      "pkg": "Game/UI/Style/Button-Critical-L-_click_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-critical-l-_hover_.png",
+      "pkg": "Game/UI/Style/Button-Critical-L-_hover_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-critical-l-_normal_.png",
+      "pkg": "Game/UI/Style/Button-Critical-L-_normal_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-critical-m-_click_.png",
+      "pkg": "Game/UI/Style/Button-Critical-M-_click_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-critical-m-_hover_.png",
+      "pkg": "Game/UI/Style/Button-Critical-M-_hover_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-critical-m-_normal_.png",
+      "pkg": "Game/UI/Style/Button-Critical-M-_normal_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-l-_click_.png",
+      "pkg": "Game/UI/Style/Button-Default-L-_click_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-l-_disabled_.png",
+      "pkg": "Game/UI/Style/Button-Default-L-_disabled_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-l-_hover_.png",
+      "pkg": "Game/UI/Style/Button-Default-L-_hover_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-l-_normal_.png",
+      "pkg": "Game/UI/Style/Button-Default-L-_normal_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-m-_click_.png",
+      "pkg": "Game/UI/Style/Button-Default-M-_click_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-m-_disabled_.png",
+      "pkg": "Game/UI/Style/Button-Default-M-_disabled_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-m-_hover_.png",
+      "pkg": "Game/UI/Style/Button-Default-M-_hover_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-m-_normal_.png",
+      "pkg": "Game/UI/Style/Button-Default-M-_normal_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-s-_click_.png",
+      "pkg": "Game/UI/Style/Button-Default-S-_click_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-s-_disabled_.png",
+      "pkg": "Game/UI/Style/Button-Default-S-_disabled_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-s-_hover_.png",
+      "pkg": "Game/UI/Style/Button-Default-S-_hover_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-s-_normal_.png",
+      "pkg": "Game/UI/Style/Button-Default-S-_normal_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-xl-_click_.png",
+      "pkg": "Game/UI/Style/Button-Default-XL-_click_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-xl-_disabled_.png",
+      "pkg": "Game/UI/Style/Button-Default-XL-_disabled_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-xl-_hover_.png",
+      "pkg": "Game/UI/Style/Button-Default-XL-_hover_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-default-xl-_normal_.png",
+      "pkg": "Game/UI/Style/Button-Default-XL-_normal_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-emphasis-l-_click_.png",
+      "pkg": "Game/UI/Style/Button-Emphasis-L-_click_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-emphasis-l-_hover_.png",
+      "pkg": "Game/UI/Style/Button-Emphasis-L-_hover_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-emphasis-l-_normal_.png",
+      "pkg": "Game/UI/Style/Button-Emphasis-L-_normal_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-emphasis-m-_click_.png",
+      "pkg": "Game/UI/Style/Button-Emphasis-M-_click_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-emphasis-m-_hover_.png",
+      "pkg": "Game/UI/Style/Button-Emphasis-M-_hover_"
+    },
+    {
+      "out": "exported/Game/UI/Style/button-emphasis-m-_normal_.png",
+      "pkg": "Game/UI/Style/Button-Emphasis-M-_normal_"
+    },
+    {
+      "out": "exported/Game/UI/Styles/CheckBox/checkboxchecked.png",
+      "pkg": "Game/UI/Styles/CheckBox/CheckBoxChecked"
+    },
+    {
+      "out": "exported/Game/UI/Styles/CheckBox/checkboxcheckedhovered.png",
+      "pkg": "Game/UI/Styles/CheckBox/CheckBoxCheckedHovered"
+    },
+    {
+      "out": "exported/Game/UI/Styles/CheckBox/checkboxcheckedpressed.png",
+      "pkg": "Game/UI/Styles/CheckBox/CheckBoxCheckedPressed"
+    },
+    {
+      "out": "exported/Game/UI/Styles/CheckBox/checkboxunchecked.png",
+      "pkg": "Game/UI/Styles/CheckBox/CheckBoxUnchecked"
+    },
+    {
+      "out": "exported/Game/UI/Styles/CheckBox/checkboxuncheckedhovered.png",
+      "pkg": "Game/UI/Styles/CheckBox/CheckBoxUncheckedHovered"
+    },
+    {
+      "out": "exported/Game/UI/Styles/CheckBox/checkboxuncheckedpressed.png",
+      "pkg": "Game/UI/Styles/CheckBox/CheckBoxUncheckedPressed"
+    },
+    {
+      "out": "exported/Game/UI/Style/closebutton-m-_click_.png",
+      "pkg": "Game/UI/Style/CloseButton-M-_click_"
+    },
+    {
+      "out": "exported/Game/UI/Style/closebutton-m-_hover_.png",
+      "pkg": "Game/UI/Style/CloseButton-M-_hover_"
+    },
+    {
+      "out": "exported/Game/UI/Style/closebutton-m-_normal_.png",
+      "pkg": "Game/UI/Style/CloseButton-M-_normal_"
+    },
+    {
+      "out": "exported/Game/Athena/HUD/compass_centermark.png",
+      "pkg": "Game/Athena/HUD/Compass_CenterMark"
+    },
+    {
+      "out": "exported/Engine/EngineMaterials/defaultdiffuse.png",
+      "pkg": "Engine/EngineMaterials/DefaultDiffuse"
+    },
+    {
+      "out": "exported/Engine/EngineMaterials/defaultdiffuse_tc_masks.png",
+      "pkg": "Engine/EngineMaterials/DefaultDiffuse_TC_Masks"
+    },
+    {
+      "out": "exported/Engine/EngineMaterials/defaultnormal.png",
+      "pkg": "Engine/EngineMaterials/DefaultNormal"
+    },
+    {
+      "out": "exported/Game/UI/Friends_UI/Social/epic_64x64.png",
+      "pkg": "Game/UI/Friends_UI/Social/Epic_64x64"
+    },
+    {
+      "out": "exported/Game/UI/Login/AccountLinking/epiclogo.png",
+      "pkg": "Game/UI/Login/AccountLinking/EpicLogo"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/LoadingScreens/fort_load_battleroyale.png",
+      "pkg": "Game/UI/Foundation/Textures/LoadingScreens/FORT_Load_BattleRoyale"
+    },
+    {
+      "out": "exported/Game/UI/CodeReferenced/fortnite_popupbox.png",
+      "pkg": "Game/UI/CodeReferenced/Fortnite_PopupBox"
+    },
+    {
+      "out": "exported/Game/Packages/Fortress_Sky/Textures/galaxy_background.png",
+      "pkg": "Game/Packages/Fortress_Sky/Textures/Galaxy_Background"
+    },
+    {
+      "out": "exported/Game/Packages/Fortress_Sky/Textures/galaxy_background_tiling.png",
+      "pkg": "Game/Packages/Fortress_Sky/Textures/Galaxy_Background_Tiling"
+    },
+    {
+      "out": "exported/Game/UI/HUD/Textures/hud-shieldmeter-baseplate.png",
+      "pkg": "Game/UI/HUD/Textures/HUD-ShieldMeter-Baseplate"
+    },
+    {
+      "out": "exported/Game/UI/Fort_HUD/hud_xhair_dot.png",
+      "pkg": "Game/UI/Fort_HUD/HUD_Xhair_Dot"
+    },
+    {
+      "out": "exported/Game/UI/HUD/Reticles/hud_xhair_shotgun_cntdot.png",
+      "pkg": "Game/UI/HUD/Reticles/HUD_Xhair_Shotgun_CntDot"
+    },
+    {
+      "out": "exported/Game/UI/Icons/Icon-Bang/icon-bang-s.png",
+      "pkg": "Game/UI/Icons/Icon-Bang/Icon-Bang-S"
+    },
+    {
+      "out": "exported/Game/UI/Icons/icon-basicframe-m.png",
+      "pkg": "Game/UI/Icons/Icon-BasicFrame-M"
+    },
+    {
+      "out": "exported/Game/UI/Icons/icon-basicframe-s.png",
+      "pkg": "Game/UI/Icons/Icon-BasicFrame-S"
+    },
+    {
+      "out": "exported/Game/UI/Icons/icon-basicframe-xs.png",
+      "pkg": "Game/UI/Icons/Icon-BasicFrame-XS"
+    },
+    {
+      "out": "exported/Game/UI/Icons/icon-healthbar-s.png",
+      "pkg": "Game/UI/Icons/Icon-Healthbar-S"
+    },
+    {
+      "out": "exported/Game/UI/Quickbar/icon-quickbarslot-highlight.png",
+      "pkg": "Game/UI/Quickbar/Icon-QuickbarSlot-Highlight"
+    },
+    {
+      "out": "exported/Game/UI/Quickbar/icon-quickbarslot-invaliddrop.png",
+      "pkg": "Game/UI/Quickbar/Icon-QuickbarSlot-InvalidDrop"
+    },
+    {
+      "out": "exported/Game/UI/Icons/Icon-Score/icon-score-building-l.png",
+      "pkg": "Game/UI/Icons/Icon-Score/Icon-Score-Building-L"
+    },
+    {
+      "out": "exported/Game/UI/Icons/Icon-Score/icon-score-combat-l.png",
+      "pkg": "Game/UI/Icons/Icon-Score/Icon-Score-Combat-L"
+    },
+    {
+      "out": "exported/Game/UI/Icons/icon-shieldbar-m.png",
+      "pkg": "Game/UI/Icons/Icon-Shieldbar-M"
+    },
+    {
+      "out": "exported/Game/UI/Icons/Icon-Weapon/icon-weapon-assault-s.png",
+      "pkg": "Game/UI/Icons/Icon-Weapon/Icon-Weapon-Assault-S"
+    },
+    {
+      "out": "exported/Game/UI/Icons/Consumables/inventory_food_fishtaco.png",
+      "pkg": "Game/UI/Icons/Consumables/Inventory_Food_FishTaco"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Items/Textures/item-mainbg.png",
+      "pkg": "Game/UI/Foundation/Items/Textures/Item-MainBG"
+    },
+    {
+      "out": "exported/Game/UI/HUD/Textures/keybase-center-l.png",
+      "pkg": "Game/UI/HUD/Textures/Keybase-Center-L"
+    },
+    {
+      "out": "exported/Game/UI/InGame/KeybindWidget/Textures/keybind-frame-l.png",
+      "pkg": "Game/UI/InGame/KeybindWidget/Textures/Keybind-Frame-L"
+    },
+    {
+      "out": "exported/Game/UI/InGame/KeybindWidget/Textures/keybind-frame-m.png",
+      "pkg": "Game/UI/InGame/KeybindWidget/Textures/Keybind-Frame-M"
+    },
+    {
+      "out": "exported/Game/UI/InGame/KeybindWidget/Textures/keybind-frame-s.png",
+      "pkg": "Game/UI/InGame/KeybindWidget/Textures/Keybind-Frame-S"
+    },
+    {
+      "out": "exported/Game/UI/InGame/KeybindWidget/Textures/keybind-mouse1-s.png",
+      "pkg": "Game/UI/InGame/KeybindWidget/Textures/Keybind-Mouse1-S"
+    },
+    {
+      "out": "exported/Game/Athena/HUD/Art/killsico.png",
+      "pkg": "Game/Athena/HUD/Art/KillsIco"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/m_med_soldier_body_01_c.png",
+      "pkg": "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/M_Med_Soldier_Body_01_C"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/m_med_soldier_body_01_m.png",
+      "pkg": "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/M_Med_Soldier_Body_01_M"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/m_med_soldier_body_01_n.png",
+      "pkg": "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/M_Med_Soldier_Body_01_N"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/m_med_soldier_body_01_s.png",
+      "pkg": "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/M_Med_Soldier_Body_01_S"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/m_med_soldier_grenade_01_c.png",
+      "pkg": "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/M_Med_Soldier_Grenade_01_C"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/m_med_soldier_grenade_01_e.png",
+      "pkg": "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/M_Med_Soldier_Grenade_01_E"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/m_med_soldier_grenade_01_n.png",
+      "pkg": "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/M_Med_Soldier_Grenade_01_N"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/m_med_soldier_grenade_01_s.png",
+      "pkg": "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/M_Med_Soldier_Grenade_01_S"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/m_med_soldier_head_01_c.png",
+      "pkg": "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/M_Med_Soldier_Head_01_C"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/m_med_soldier_head_01_m.png",
+      "pkg": "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/M_Med_Soldier_Head_01_M"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/m_med_soldier_head_01_n.png",
+      "pkg": "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/M_Med_Soldier_Head_01_N"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/m_med_soldier_head_01_s.png",
+      "pkg": "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/M_Med_Soldier_Head_01_S"
+    },
+    {
+      "out": "exported/Game/Characters/Survivors/Male/Small/M_SML_Survivor_01/Textures/m_sml_survivor_hair_01_m.png",
+      "pkg": "Game/Characters/Survivors/Male/Small/M_SML_Survivor_01/Textures/M_SML_Survivor_Hair_01_m"
+    },
+    {
+      "out": "exported/Game/Characters/Survivors/Male/Small/M_SML_Survivor_01/Textures/m_sml_survivor_hair_01_n.png",
+      "pkg": "Game/Characters/Survivors/Male/Small/M_SML_Survivor_01/Textures/M_SML_Survivor_Hair_01_n"
+    },
+    {
+      "out": "exported/Game/Characters/Survivors/Male/Small/M_SML_Survivor_01/Textures/m_sml_survivor_hair_02_d.png",
+      "pkg": "Game/Characters/Survivors/Male/Small/M_SML_Survivor_01/Textures/M_SML_Survivor_Hair_02_d"
+    },
+    {
+      "out": "exported/Game/Characters/Survivors/Male/Small/M_SML_Survivor_01/Textures/m_sml_survivor_hair_02_s.png",
+      "pkg": "Game/Characters/Survivors/Male/Small/M_SML_Survivor_01/Textures/M_SML_Survivor_Hair_02_s"
+    },
+    {
+      "out": "exported/Game/Accessories/Hats/Textures/Male_Outlander_03/male_outlander_03_d2.png",
+      "pkg": "Game/Accessories/Hats/Textures/Male_Outlander_03/Male_Outlander_03_d2"
+    },
+    {
+      "out": "exported/Game/Athena/HUD/Art/minimap_art_square.png",
+      "pkg": "Game/Athena/HUD/Art/minimap_Art_square"
+    },
+    {
+      "out": "exported/Game/Athena/HUD/MiniMap/minimapathena.png",
+      "pkg": "Game/Athena/HUD/MiniMap/MiniMapAthena"
+    },
+    {
+      "out": "exported/Game/Packages/Fortress_Sky/Materials/noise32x32.png",
+      "pkg": "Game/Packages/Fortress_Sky/Materials/Noise32x32"
+    },
+    {
+      "out": "exported/Game/Weapons/FORT_Melee/Textures/pickaxe_basic_d.png",
+      "pkg": "Game/Weapons/FORT_Melee/Textures/PickAxe_Basic_D"
+    },
+    {
+      "out": "exported/Game/Weapons/FORT_Melee/Textures/pickaxe_basic_mc.png",
+      "pkg": "Game/Weapons/FORT_Melee/Textures/PickAxe_Basic_MC"
+    },
+    {
+      "out": "exported/Game/Weapons/FORT_Melee/Textures/pickaxe_basic_n.png",
+      "pkg": "Game/Weapons/FORT_Melee/Textures/PickAxe_Basic_N"
+    },
+    {
+      "out": "exported/Game/Weapons/FORT_Melee/Textures/pickaxe_basic_s.png",
+      "pkg": "Game/Weapons/FORT_Melee/Textures/PickAxe_Basic_S"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/PS4Buttons/ps4_controllerconfig.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/PS4Buttons/PS4_ControllerConfig"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/PS4Buttons/ps4_controllerconfig_lineoverlay.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/PS4Buttons/PS4_ControllerConfig_LineOverlay"
+    },
+    {
+      "out": "exported/Game/UI/Quickbar/quickbar-frame-ability.png",
+      "pkg": "Game/UI/Quickbar/Quickbar-Frame-Ability"
+    },
+    {
+      "out": "exported/Game/UI/Quickbar/quickbar-frame-default.png",
+      "pkg": "Game/UI/Quickbar/Quickbar-Frame-Default"
+    },
+    {
+      "out": "exported/Game/UI/ZoneCompletion/NewVersion/TeleportPad/Textures/results_timerbacking.png",
+      "pkg": "Game/UI/ZoneCompletion/NewVersion/TeleportPad/Textures/Results_TimerBacking"
+    },
+    {
+      "out": "exported/Game/UI/ZoneCompletion/NewVersion/TeleportPad/Textures/results_timerfill.png",
+      "pkg": "Game/UI/ZoneCompletion/NewVersion/TeleportPad/Textures/Results_TimerFill"
+    },
+    {
+      "out": "exported/Game/Athena/HUD/reticles/reticle_dot.png",
+      "pkg": "Game/Athena/HUD/reticles/reticle_dot"
+    },
+    {
+      "out": "exported/Game/Weapons/FORT_Melee/Textures/sk_pick_d.png",
+      "pkg": "Game/Weapons/FORT_Melee/Textures/SK_Pick_D"
+    },
+    {
+      "out": "exported/Game/Weapons/FORT_Melee/Textures/sk_pick_mc.png",
+      "pkg": "Game/Weapons/FORT_Melee/Textures/SK_Pick_MC"
+    },
+    {
+      "out": "exported/Game/Weapons/FORT_Melee/Textures/sk_pick_n.png",
+      "pkg": "Game/Weapons/FORT_Melee/Textures/SK_Pick_N"
+    },
+    {
+      "out": "exported/Game/Weapons/FORT_Melee/Textures/sk_pick_s.png",
+      "pkg": "Game/Weapons/FORT_Melee/Textures/SK_Pick_S"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Female/Medium/Bodies/F_MED_Commando_01/Textures/solidwhite_maskcompression.png",
+      "pkg": "Game/Characters/Player/Female/Medium/Bodies/F_MED_Commando_01/Textures/SolidWhite_MaskCompression"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Buttons/t-arrow-l-active-32.png",
+      "pkg": "Game/UI/Foundation/Textures/Buttons/T-Arrow-L-Active-32"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Buttons/t-arrow-l-inactive-32.png",
+      "pkg": "Game/UI/Foundation/Textures/Buttons/T-Arrow-L-Inactive-32"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Border/t-border-1pxoutline.png",
+      "pkg": "Game/UI/Foundation/Textures/Border/T-Border-1pxOutline"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Border/t-border-bottom-box-square.png",
+      "pkg": "Game/UI/Foundation/Textures/Border/T-Border-Bottom-Box-Square"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Border/t-border-hud-hitpointbar-bg.png",
+      "pkg": "Game/UI/Foundation/Textures/Border/T-Border-HUD-HitPointBar-Bg"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Border/t-border-hud-hitpointbar-leadedge.png",
+      "pkg": "Game/UI/Foundation/Textures/Border/T-Border-HUD-HitPointBar-LeadEdge"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Border/t-border-hud-line-horz.png",
+      "pkg": "Game/UI/Foundation/Textures/Border/T-Border-HUD-Line-Horz"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Border/t-border-hud-line-vert.png",
+      "pkg": "Game/UI/Foundation/Textures/Border/T-Border-HUD-Line-Vert"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Buttons/t-button-primary-base-64.png",
+      "pkg": "Game/UI/Foundation/Textures/Buttons/T-Button-Primary-Base-64"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Buttons/t-button-square.png",
+      "pkg": "Game/UI/Foundation/Textures/Buttons/T-Button-Square"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Buttons/t-button-ubermenu-hb-active-64.png",
+      "pkg": "Game/UI/Foundation/Textures/Buttons/T-Button-UberMenu-HB-Active-64"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Buttons/t-button-ubermenu-hb-inactive-64.png",
+      "pkg": "Game/UI/Foundation/Textures/Buttons/T-Button-UberMenu-HB-Inactive-64"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Items/Textures/t-card-hero-anim-triangle.png",
+      "pkg": "Game/UI/Foundation/Items/Textures/T-Card-Hero-Anim-Triangle"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Buttons/t-hud-slider-arrow.png",
+      "pkg": "Game/UI/Foundation/Textures/Buttons/T-HUD-Slider-Arrow"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Ammo/t-icon-ammo-medium-64.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Ammo/T-Icon-Ammo-Medium-64"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/HUD/t-icon-backpack-64.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/HUD/T-Icon-Backpack-64"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Social/t-icon-chat-party-64.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Social/T-Icon-Chat-Party-XL"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Social/t-icon-chat-party-xl.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Social/T-Icon-Chat-Party-XL"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Checks/t-icon-check-32.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Checks/T-Icon-Check-32"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Social/t-icon-config-64.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Social/T-Icon-Config-XL"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Social/t-icon-config-xl.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Social/T-Icon-Config-XL"
+    },
+    {
+      "out": "exported/Game/UI/Friends_UI/Social/t-icon-epicgameslogo-64.png",
+      "pkg": "Game/UI/Friends_UI/Social/Epic_64x64"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Social/t-icon-exit-64.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Social/T-Icon-Exit-XL"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Social/t-icon-exit-xl.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Social/T-Icon-Exit-XL"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Modal/t-icon-feedback-64.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Modal/T-Icon-Feedback-XL"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Modal/t-icon-feedback-xl.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Modal/T-Icon-Feedback-XL"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Shell/Textures/t-icon-friends-s.png",
+      "pkg": "Game/UI/Foundation/Shell/Textures/T-Icon-Friends-S"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Items/t-icon-ibeam.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Items/T-Icon-IBeam"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Social/t-icon-legalinfo-52.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Social/T-Icon-LegalInfo-52"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Social/t-icon-legalinfo-64.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Social/T-Icon-LegalInfo-52"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Locks/t-icon-lock-64.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Locks/T-Icon-Lock-64"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Social/t-icon-logout-64.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Social/T-Icon-Logout-XL"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Social/t-icon-logout-xl.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Social/T-Icon-Logout-XL"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Items/t-icon-logs.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Items/T-Icon-Logs"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Items/t-icon-s-loot-stone.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Items/T-Icon-S-Loot-Stone"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Shell/Textures/t-icon-warning-64.png",
+      "pkg": "Game/UI/Foundation/Shell/Textures/T-Icon-Warning-72"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Shell/Textures/t-icon-warning-72.png",
+      "pkg": "Game/UI/Foundation/Shell/Textures/T-Icon-Warning-72"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Weapons/Items/t-icon-weapons-sk-pick.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Weapons/Items/T-Icon-Weapons-SK-Pick"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/Weapons/Items/t-icon-weapons-sk-pickaxe-basic.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/Weapons/Items/T-Icon-Weapons-SK-Pickaxe-Basic"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/PCButtons/t-pc-scrollwheel.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/PCButtons/T-PC-ScrollWheel"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Buttons/t-sloticon-remove-32.png",
+      "pkg": "Game/UI/Foundation/Textures/Buttons/T-SlotIcon-Remove-32"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Buttons/t-tab-secondary-base-32x64.png",
+      "pkg": "Game/UI/Foundation/Textures/Buttons/T-Tab-Secondary-Base-32x64"
+    },
+    {
+      "out": "exported/Game/Athena/Environments/Textures/t_athena_hf_grass_1_d.png",
+      "pkg": "Game/Athena/Environments/Textures/T_Athena_HF_Grass_1_D"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Calibration/t_brightnesscal.png",
+      "pkg": "Game/UI/Foundation/Textures/Calibration/T_BrightnessCal"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Calibration/t_brightnesscalibration.png",
+      "pkg": "Game/UI/Foundation/Textures/Calibration/T_BrightnessCalibration"
+    },
+    {
+      "out": "exported/Game/Athena/HUD/Phase/t_bus.png",
+      "pkg": "Game/Athena/HUD/Phase/T_Bus"
+    },
+    {
+      "out": "exported/Game/Athena/HUD/Phase/t_clock.png",
+      "pkg": "Game/Athena/HUD/Phase/T_Clock"
+    },
+    {
+      "out": "exported/Game/Athena/HUD/t_compass.png",
+      "pkg": "Game/Athena/HUD/T_Compass"
+    },
+    {
+      "out": "exported/Game/Athena/HUD/t_compassfeather.png",
+      "pkg": "Game/Athena/HUD/T_CompassFeather"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Female/Small/Heads/Legacy/F_SML_Head_12/Textures/t_f_sml_head_12_m2.png",
+      "pkg": "Game/Characters/Player/Female/Small/Heads/Legacy/F_SML_Head_12/Textures/T_F_SML_Head_12_M2"
+    },
+    {
+      "out": "exported/Game/Characters/Fortress_CharacterShader/Textures/t_fort_character_allblack.png",
+      "pkg": "Game/Characters/Fortress_CharacterShader/Textures/T_Fort_Character_AllBlack"
+    },
+    {
+      "out": "exported/Game/Packages/Fortnite_UniqueMaterials_1/Textures/t_fortnite_default_s.png",
+      "pkg": "Game/Packages/Fortnite_UniqueMaterials_1/Textures/T_Fortnite_Default_S"
+    },
+    {
+      "out": "exported/Game/Athena/HUD/Phase/t_gamephasebackground.png",
+      "pkg": "Game/Athena/HUD/Phase/T_GamePhaseBackground"
+    },
+    {
+      "out": "exported/Game/Packages/DS_Fortnite_Terrain_NoLOD/Textures/t_grasslands_d.png",
+      "pkg": "Game/Packages/DS_Fortnite_Terrain_NoLOD/Textures/T_Grasslands_D"
+    },
+    {
+      "out": "exported/Game/Athena/HUD/Phase/t_jump.png",
+      "pkg": "Game/Athena/HUD/Phase/T_Jump"
+    },
+    {
+      "out": "exported/Game/Effects/Fort_Effects/Gameplay/SmokeDustExplosions/Textures/t_noisepack_01.png",
+      "pkg": "Game/Effects/Fort_Effects/Gameplay/SmokeDustExplosions/Textures/T_NoisePack_01"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/PS4Buttons/t_ps4_l2_40.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/PS4Buttons/T_PS4_L2_40"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/PS4Buttons/t_ps4_r2_40.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/PS4Buttons/T_PS4_R2_40"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/PS4Buttons/t_ps4_rstick_40.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/PS4Buttons/T_PS4_RStick_40"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/PS4Buttons/t_ps4_rstick_up_40.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/PS4Buttons/T_PS4_RStick_Up_40"
+    },
+    {
+      "out": "exported/Game/Packages/Fortress_Sky/Textures/t_sky_stars_sharp.png",
+      "pkg": "Game/Packages/Fortress_Sky/Textures/T_Sky_Stars_Sharp"
+    },
+    {
+      "out": "exported/Game/VisualThreatManager/StormVisuals/LargeClouds/t_stormclouddetail01_m.png",
+      "pkg": "Game/VisualThreatManager/StormVisuals/LargeClouds/T_StormCloudDetail01_M"
+    },
+    {
+      "out": "exported/Game/Athena/HUD/Phase/t_stormholding.png",
+      "pkg": "Game/Athena/HUD/Phase/T_StormHolding"
+    },
+    {
+      "out": "exported/Game/Athena/HUD/Phase/t_stormmoving.png",
+      "pkg": "Game/Athena/HUD/Phase/T_StormMoving"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/XboxOneButtons/t_xb1_lt_40.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/XboxOneButtons/T_XB1_LT_40"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/XboxOneButtons/t_xb1_rstick_40.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/XboxOneButtons/T_XB1_RStick_40"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/XboxOneButtons/t_xb1_rstick_up_40.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/XboxOneButtons/T_XB1_RStick_Up_40"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/XboxOneButtons/t_xb1_rt_40.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/XboxOneButtons/T_XB1_RT_40"
+    },
+    {
+      "out": "exported/Game/UI/Style/tab1-m-_active_.png",
+      "pkg": "Game/UI/Style/Tab1-M-_active_"
+    },
+    {
+      "out": "exported/Game/UI/Style/tab1-m-_hover_.png",
+      "pkg": "Game/UI/Style/Tab1-M-_hover_"
+    },
+    {
+      "out": "exported/Game/UI/Style/tab1-m-_normal_.png",
+      "pkg": "Game/UI/Style/Tab1-M-_normal_"
+    },
+    {
+      "out": "exported/Game/UI/Style/tab1-m-_passive-hover_.png",
+      "pkg": "Game/UI/Style/Tab1-M-_passive-hover_"
+    },
+    {
+      "out": "exported/Game/UI/Style/tab1-m-_passive_.png",
+      "pkg": "Game/UI/Style/Tab1-M-_passive_"
+    },
+    {
+      "out": "exported/Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/test_tattoo.png",
+      "pkg": "Game/Characters/Player/Male/Medium/Bodies/M_Med_Soldier_04/Textures/Test_Tattoo"
+    },
+    {
+      "out": "exported/Game/UI/Tooltips/Textures/tooltip-default.png",
+      "pkg": "Game/UI/Tooltips/Textures/Tooltip-Default"
+    },
+    {
+      "out": "exported/Game/UI/Styles/TopOptionsButton/topoptionleftbutton.png",
+      "pkg": "Game/UI/Styles/TopOptionsButton/TopOptionLeftButton"
+    },
+    {
+      "out": "exported/Game/UI/Styles/TopOptionsButton/topoptionleftbuttonhovered.png",
+      "pkg": "Game/UI/Styles/TopOptionsButton/TopOptionLeftButtonHovered"
+    },
+    {
+      "out": "exported/Game/UI/Styles/TopOptionsButton/topoptionleftbuttonpressed.png",
+      "pkg": "Game/UI/Styles/TopOptionsButton/TopOptionLeftButtonPressed"
+    },
+    {
+      "out": "exported/Game/UI/Styles/TopOptionsButton/topoptionleftbuttonselected.png",
+      "pkg": "Game/UI/Styles/TopOptionsButton/TopOptionLeftButtonSelected"
+    },
+    {
+      "out": "exported/Game/UI/Styles/TopOptionsButton/topoptionmiddlebutton.png",
+      "pkg": "Game/UI/Styles/TopOptionsButton/TopOptionMiddleButton"
+    },
+    {
+      "out": "exported/Game/UI/Styles/TopOptionsButton/topoptionmiddlebuttonhovered.png",
+      "pkg": "Game/UI/Styles/TopOptionsButton/TopOptionMiddleButtonHovered"
+    },
+    {
+      "out": "exported/Game/UI/Styles/TopOptionsButton/topoptionmiddlebuttonpressed.png",
+      "pkg": "Game/UI/Styles/TopOptionsButton/TopOptionMiddleButtonPressed"
+    },
+    {
+      "out": "exported/Game/UI/Styles/TopOptionsButton/topoptionmiddlebuttonselected.png",
+      "pkg": "Game/UI/Styles/TopOptionsButton/TopOptionMiddleButtonSelected"
+    },
+    {
+      "out": "exported/Game/UI/Styles/TopOptionsButton/topoptionrightbutton.png",
+      "pkg": "Game/UI/Styles/TopOptionsButton/TopOptionRightButton"
+    },
+    {
+      "out": "exported/Game/UI/Styles/TopOptionsButton/topoptionrightbuttonhovered.png",
+      "pkg": "Game/UI/Styles/TopOptionsButton/TopOptionRightButtonHovered"
+    },
+    {
+      "out": "exported/Game/UI/Styles/TopOptionsButton/topoptionrightbuttonpressed.png",
+      "pkg": "Game/UI/Styles/TopOptionsButton/TopOptionRightButtonPressed"
+    },
+    {
+      "out": "exported/Game/UI/Styles/TopOptionsButton/topoptionrightbuttonselected.png",
+      "pkg": "Game/UI/Styles/TopOptionsButton/TopOptionRightButtonSelected"
+    },
+    {
+      "out": "exported/Game/UI/Fort_HUD/Radar/ui_radar_playerarrow.png",
+      "pkg": "Game/UI/Fort_HUD/Radar/UI_Radar_PlayerArrow"
+    },
+    {
+      "out": "exported/Game/UI/CodeReferenced/ui_squad_pin.png",
+      "pkg": "Game/UI/CodeReferenced/UI_Squad_Pin"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/XboxOneButtons/xb1_controllerconfig.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/XboxOneButtons/XB1_ControllerConfig"
+    },
+    {
+      "out": "exported/Game/UI/Foundation/Textures/Icons/XboxOneButtons/xb1_controllerconfig_lineoverlay.png",
+      "pkg": "Game/UI/Foundation/Textures/Icons/XboxOneButtons/XB1_ControllerConfig_LineOverlay"
+    },
+    {
+      "out": "exported/Game/UI/ZoneCompletion/NewVersion/CommanderXP/Textures/xp_bar_mask.png",
+      "pkg": "Game/UI/ZoneCompletion/NewVersion/CommanderXP/Textures/XP_bar_mask"
+    },
+    {
+      "out": "sky/Game/Packages/Fortress_Sky/Textures/Galaxy_Background.png",
+      "pkg": "Game/Packages/Fortress_Sky/Textures/Galaxy_Background"
+    },
+    {
+      "out": "sky/Game/Packages/Fortress_Sky/Textures/Galaxy_Background_Tiling.png",
+      "pkg": "Game/Packages/Fortress_Sky/Textures/Galaxy_Background_Tiling"
+    },
+    {
+      "out": "sky/Game/VisualThreatManager/StormVisuals/LargeClouds/T_StormCloudDetail01_M.png",
+      "pkg": "Game/VisualThreatManager/StormVisuals/LargeClouds/T_StormCloudDetail01_M"
+    },
+    {
+      "out": "sky/Game/Packages/Fortress_Sky/Textures/T_Sky_Stars_Sharp.png",
+      "pkg": "Game/Packages/Fortress_Sky/Textures/T_Sky_Stars_Sharp"
+    },
+    {
+      "out": "sky/Game/Packages/Fortress_Sky/Materials/Noise32x32.png",
+      "pkg": "Game/Packages/Fortress_Sky/Materials/Noise32x32"
+    },
+    {
+      "out": "sky/Game/Packages/Fortress_Sky/Materials/FinalCloudNormalAndHeightMap.png",
+      "pkg": "Game/Packages/Fortress_Sky/Materials/FinalCloudNormalAndHeightMap"
+    }
+  ]
+}

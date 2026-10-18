@@ -10,6 +10,7 @@
 //! | meshes     | `exported/<package>.gltf` + `.bin` (glTF 2.0, old convention)    |
 //! | materials  | `exported/<material package>.mat.json` for every mesh material   |
 //! | animations | the manifest `out` path with `.fnanim` instead of `.md5anim` (`--md5` also writes the old text format) |
+//! | terrain    | `terrain/heightmap.png` (16-bit), `terrain/coverage.png`, `terrain/terrain.json` (`fn-export terrain`) |
 //!
 //! Usage: `fn-export --paks <Paks dir> --manifest <asset-manifest.json> --out <assets dir>
 //!         [textures|meshes|animations|materials|all] [--jobs N] [--only substring] [--md5] [--verify <old assets dir>]`
@@ -22,6 +23,7 @@ mod mat;
 mod mesh_stage;
 mod props;
 mod source;
+mod terrain;
 mod tex_stage;
 
 use serde_json::{json, Value};
@@ -44,11 +46,15 @@ pub struct Args {
 
 fn parse_args() -> Result<Args, String> {
     let mut a = Args {
-        paks: PathBuf::from("C:/Users/Brady/Downloads/1.8/Fortnite/Fortnite/FortniteGame/Content/Paks"),
+        paks: PathBuf::from(
+            "C:/Users/Brady/Downloads/1.8/Fortnite/Fortnite/FortniteGame/Content/Paks",
+        ),
         manifest: PathBuf::new(),
         out: PathBuf::from("assets"),
         what: "all".into(),
-        jobs: std::thread::available_parallelism().map_or(4, |n| n.get()).min(8),
+        jobs: std::thread::available_parallelism()
+            .map_or(4, |n| n.get())
+            .min(8),
         only: None,
         md5: false,
         verify: None,
@@ -91,7 +97,12 @@ pub fn parallel<T: Sync, R: Send>(items: &[T], jobs: usize, f: impl Fn(&T) -> R 
             });
         }
     });
-    results.into_inner().unwrap().into_iter().map(|r| r.unwrap()).collect()
+    results
+        .into_inner()
+        .unwrap()
+        .into_iter()
+        .map(|r| r.unwrap())
+        .collect()
 }
 
 pub fn write_file(path: &Path, bytes: &[u8]) -> Result<(), String> {
@@ -109,6 +120,9 @@ fn main() {
     if raw.first().map(String::as_str) == Some("br-character") {
         std::process::exit(br_character::main(&raw[1..]));
     }
+    if raw.first().map(String::as_str) == Some("terrain") {
+        std::process::exit(terrain_main(&raw[1..]));
+    }
     let args = match parse_args() {
         Ok(a) => a,
         Err(e) => {
@@ -117,7 +131,10 @@ fn main() {
         }
     };
     let t0 = Instant::now();
-    let manifest: Value = match std::fs::read_to_string(&args.manifest).map_err(|e| e.to_string()).and_then(|s| serde_json::from_str(&s).map_err(|e| e.to_string())) {
+    let manifest: Value = match std::fs::read_to_string(&args.manifest)
+        .map_err(|e| e.to_string())
+        .and_then(|s| serde_json::from_str(&s).map_err(|e| e.to_string()))
+    {
         Ok(m) => m,
         Err(e) => {
             eprintln!("cannot read manifest {}: {e}", args.manifest.display());
@@ -131,7 +148,12 @@ fn main() {
             std::process::exit(2);
         }
     };
-    println!("opened {} paks, {} entries ({:.1}s)", src.set.paks().len(), src.set.len(), t0.elapsed().as_secs_f32());
+    println!(
+        "opened {} paks, {} entries ({:.1}s)",
+        src.set.paks().len(),
+        src.set.len(),
+        t0.elapsed().as_secs_f32()
+    );
     let mut report = serde_json::Map::new();
     let mut failures = 0usize;
     let want = |k: &str| args.what == "all" || args.what == k;
@@ -152,13 +174,69 @@ fn main() {
     }
     report.insert("failures".into(), json!(failures));
     report.insert("seconds".into(), json!(t0.elapsed().as_secs_f32()));
-    let rep_path = args.out.parent().map(|p| p.join("reports")).unwrap_or_else(|| PathBuf::from("reports")).join("export-assets.json");
-    if let Err(e) = write_file(&rep_path, serde_json::to_string_pretty(&Value::Object(report)).unwrap().as_bytes()) {
+    let rep_path = args
+        .out
+        .parent()
+        .map(|p| p.join("reports"))
+        .unwrap_or_else(|| PathBuf::from("reports"))
+        .join("export-assets.json");
+    if let Err(e) = write_file(
+        &rep_path,
+        serde_json::to_string_pretty(&Value::Object(report))
+            .unwrap()
+            .as_bytes(),
+    ) {
         eprintln!("report: {e}");
     }
-    println!("done in {:.1}s, {failures} failures; report {}", t0.elapsed().as_secs_f32(), rep_path.display());
+    println!(
+        "done in {:.1}s, {failures} failures; report {}",
+        t0.elapsed().as_secs_f32(),
+        rep_path.display()
+    );
     if failures > 0 {
         std::process::exit(1);
+    }
+}
+
+/// `fn-export terrain --paks <Paks> [--out <assets>]`: assemble the real Athena landscape heightmap.
+fn terrain_main(raw: &[String]) -> i32 {
+    let mut paks = PathBuf::new();
+    let mut out = PathBuf::from("assets");
+    let mut it = raw.iter();
+    while let Some(x) = it.next() {
+        let mut val = || it.next().cloned();
+        match x.as_str() {
+            "--paks" => paks = PathBuf::from(val().unwrap_or_default()),
+            "--out" => out = PathBuf::from(val().unwrap_or_default()),
+            "-h" | "--help" => {
+                println!(
+                    "usage: fn-export terrain --paks <Paks dir | install dir> [--out <assets dir>]"
+                );
+                return 0;
+            }
+            other => {
+                eprintln!("unknown argument {other}");
+                return 2;
+            }
+        }
+    }
+    if paks.as_os_str().is_empty() {
+        eprintln!("usage: fn-export terrain --paks <Paks dir | install dir> [--out <assets dir>]");
+        return 2;
+    }
+    let src = match Source::open(&paks) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("{e}");
+            return 2;
+        }
+    };
+    match terrain::run(&src, &out) {
+        Ok(_) => 0,
+        Err(e) => {
+            eprintln!("terrain: {e}");
+            1
+        }
     }
 }
 

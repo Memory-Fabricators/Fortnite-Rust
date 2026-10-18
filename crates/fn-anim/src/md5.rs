@@ -87,7 +87,11 @@ fn key_params(times: &[u32], frame: f32) -> (usize, usize, f32) {
         y = times.len() - 1;
         (x, y, 0.0)
     } else {
-        (x, y, (frame - times[x] as f32) / (times[y] as f32 - times[x] as f32))
+        (
+            x,
+            y,
+            (frame - times[x] as f32) / (times[y] as f32 - times[x] as f32),
+        )
     }
 }
 
@@ -100,7 +104,13 @@ struct UevTrack {
 }
 
 /// UEViewer `CAnimTrack::GetBonePosition(Frame, NumFrames, Loop = false)`; leaves `dst_*` untouched for empty channels.
-fn uev_get_bone_position(t: &UevTrack, frame: f32, num_frames: f32, dst_pos: &mut [f32; 3], dst_quat: &mut [f32; 4]) {
+fn uev_get_bone_position(
+    t: &UevTrack,
+    frame: f32,
+    num_frames: f32,
+    dst_pos: &mut [f32; 3],
+    dst_quat: &mut [f32; 4],
+) {
     if num_frames == 1.0 || frame == 0.0 {
         if let Some(p) = t.pos.first() {
             *dst_pos = *p;
@@ -144,7 +154,11 @@ fn uev_get_bone_position(t: &UevTrack, frame: f32, num_frames: f32, dst_pos: &mu
     };
     if pf > 0.0 {
         let (a, b) = (t.pos[px], t.pos[py]);
-        *dst_pos = [a[0] + pf * (b[0] - a[0]), a[1] + pf * (b[1] - a[1]), a[2] + pf * (b[2] - a[2])];
+        *dst_pos = [
+            a[0] + pf * (b[0] - a[0]),
+            a[1] + pf * (b[1] - a[1]),
+            a[2] + pf * (b[2] - a[2]),
+        ];
     } else if n_pos > 0 {
         *dst_pos = t.pos[px];
     }
@@ -174,8 +188,22 @@ fn to_uev_track(t: &Track, bone: usize, bake_scale: Option<[f32; 3]>, per_track:
     if per_track && rot.is_empty() {
         rot.push([0.0, 0.0, 0.0, 1.0]);
     }
-    let quat: Vec<[f32; 4]> = rot.iter().map(|q| if bone == 0 { *q } else { [-q[0], -q[1], -q[2], q[3]] }).collect();
-    UevTrack { pos, pos_times: t.pos_times.clone(), quat, quat_times: t.rot_times.clone() }
+    let quat: Vec<[f32; 4]> = rot
+        .iter()
+        .map(|q| {
+            if bone == 0 {
+                *q
+            } else {
+                [-q[0], -q[1], -q[2], q[3]]
+            }
+        })
+        .collect();
+    UevTrack {
+        pos,
+        pos_times: t.pos_times.clone(),
+        quat,
+        quat_times: t.rot_times.clone(),
+    }
 }
 
 fn joint_of(t: Option<&UevTrack>, frame: f32, num_frames: f32, bone: usize) -> Joint {
@@ -206,7 +234,9 @@ pub fn export(seq: &AnimSequence, skel: &SkeletonInfo) -> Md5Anim {
             if seq.retarget_source == "None" {
                 &seq.retarget_source_asset_pose
             } else {
-                skel.find_retarget_source(&seq.retarget_source).map(|s| s.pose.as_slice()).unwrap_or(&[])
+                skel.find_retarget_source(&seq.retarget_source)
+                    .map(|s| s.pose.as_slice())
+                    .unwrap_or(&[])
             }
         } else {
             &skel.ref_pose
@@ -239,16 +269,35 @@ pub fn export(seq: &AnimSequence, skel: &SkeletonInfo) -> Md5Anim {
         .map(|i| {
             retarget_pose.get(i).map(|p| {
                 let t = p.translation;
-                (rts[i].mode as u8, [t[0] * 0.01f32, t[2] * 0.01f32, t[1] * 0.01f32])
+                (
+                    rts[i].mode as u8,
+                    [t[0] * 0.01f32, t[2] * 0.01f32, t[1] * 0.01f32],
+                )
             })
         })
         .collect();
     let nf = seq.num_frames;
-    let frames: Vec<Vec<Joint>> = (0..nf).map(|f| (0..n).map(|b| joint_of(uev[b].as_ref(), f as f32, nf as f32, b)).collect()).collect();
-    let base_frame = if nf > 0 { frames[0].clone() } else { (0..n).map(|b| joint_of(uev[b].as_ref(), 0.0, nf as f32, b)).collect() };
+    let frames: Vec<Vec<Joint>> = (0..nf)
+        .map(|f| {
+            (0..n)
+                .map(|b| joint_of(uev[b].as_ref(), f as f32, nf as f32, b))
+                .collect()
+        })
+        .collect();
+    let base_frame = if nf > 0 {
+        frames[0].clone()
+    } else {
+        (0..n)
+            .map(|b| joint_of(uev[b].as_ref(), 0.0, nf as f32, b))
+            .collect()
+    };
     Md5Anim {
         num_frames: nf,
-        frame_rate: if seq.length > 0.0 { nf as f32 / seq.length * seq.rate_scale } else { 0.0 },
+        frame_rate: if seq.length > 0.0 {
+            nf as f32 / seq.length * seq.rate_scale
+        } else {
+            0.0
+        },
         bone_names: skel.bone_names.clone(),
         additive: seq.is_additive(),
         retarget_base: explicit_base,
@@ -264,10 +313,20 @@ pub fn export(seq: &AnimSequence, skel: &SkeletonInfo) -> Md5Anim {
 /// `printf("%g", v)` (6 significant digits).
 pub fn fmt_g(v: f64) -> String {
     if v == 0.0 {
-        return if v.is_sign_negative() { "-0".into() } else { "0".into() };
+        return if v.is_sign_negative() {
+            "-0".into()
+        } else {
+            "0".into()
+        };
     }
     if !v.is_finite() {
-        return if v.is_nan() { "nan".into() } else if v > 0.0 { "inf".into() } else { "-inf".into() };
+        return if v.is_nan() {
+            "nan".into()
+        } else if v > 0.0 {
+            "inf".into()
+        } else {
+            "-inf".into()
+        };
     }
     let e = format!("{:.5e}", v);
     let (mant, exp) = e.split_once('e').unwrap();
@@ -305,14 +364,30 @@ pub fn write(m: &Md5Anim, w: &mut impl Write) -> std::io::Result<()> {
     s.push_str(&format!("// retarget-base {}{nl}", m.retarget_base as i32));
     for b in 0..n {
         let (hp, hr) = m.track_flags[b];
-        s.push_str(&format!("// track \"{}\" {} {}{nl}", m.bone_names[b], hp as i32, hr as i32));
+        s.push_str(&format!(
+            "// track \"{}\" {} {}{nl}",
+            m.bone_names[b], hp as i32, hr as i32
+        ));
         if let Some(Some((mode, p))) = m.retarget.get(b) {
-            s.push_str(&format!("// retarget \"{}\" {} {} {} {}{nl}", m.bone_names[b], mode, fmt_g(p[0] as f64), fmt_g(p[1] as f64), fmt_g(p[2] as f64)));
+            s.push_str(&format!(
+                "// retarget \"{}\" {} {} {} {}{nl}",
+                m.bone_names[b],
+                mode,
+                fmt_g(p[0] as f64),
+                fmt_g(p[1] as f64),
+                fmt_g(p[2] as f64)
+            ));
         }
     }
     s.push_str(&format!("hierarchy {{{nl}"));
     for (i, name) in m.bone_names.iter().enumerate() {
-        s.push_str(&format!("\t\"{}\" {} {} {}{nl}", name, if i == 0 { -1 } else { 0 }, 63, i * 6));
+        s.push_str(&format!(
+            "\t\"{}\" {} {} {}{nl}",
+            name,
+            if i == 0 { -1 } else { 0 },
+            63,
+            i * 6
+        ));
     }
     s.push_str(&format!("}}{nl}{nl}bounds {{{nl}"));
     for _ in 0..m.num_frames {
@@ -321,13 +396,19 @@ pub fn write(m: &Md5Anim, w: &mut impl Write) -> std::io::Result<()> {
     s.push_str(&format!("}}{nl}{nl}"));
     s.push_str(&format!("baseframe {{{nl}"));
     for (p, q) in &m.base_frame {
-        s.push_str(&format!("\t( {:.6} {:.6} {:.6} ) ( {:.10} {:.10} {:.10} ){nl}", p[0] as f64, p[1] as f64, p[2] as f64, q[0] as f64, q[1] as f64, q[2] as f64));
+        s.push_str(&format!(
+            "\t( {:.6} {:.6} {:.6} ) ( {:.10} {:.10} {:.10} ){nl}",
+            p[0] as f64, p[1] as f64, p[2] as f64, q[0] as f64, q[1] as f64, q[2] as f64
+        ));
     }
     s.push_str(&format!("}}{nl}{nl}"));
     for (fi, f) in m.frames.iter().enumerate() {
         s.push_str(&format!("frame {fi} {{{nl}"));
         for (p, q) in f {
-            s.push_str(&format!("\t{:.6} {:.6} {:.6} {:.10} {:.10} {:.10}{nl}", p[0] as f64, p[1] as f64, p[2] as f64, q[0] as f64, q[1] as f64, q[2] as f64));
+            s.push_str(&format!(
+                "\t{:.6} {:.6} {:.6} {:.10} {:.10} {:.10}{nl}",
+                p[0] as f64, p[1] as f64, p[2] as f64, q[0] as f64, q[1] as f64, q[2] as f64
+            ));
         }
         s.push_str(&format!("}}{nl}{nl}"));
     }
@@ -335,7 +416,11 @@ pub fn write(m: &Md5Anim, w: &mut impl Write) -> std::io::Result<()> {
 }
 
 /// `fn_anim::md5::write_md5anim`: export `seq` on `skel` as md5anim text.
-pub fn write_md5anim(seq: &AnimSequence, skel: &SkeletonInfo, w: &mut impl Write) -> std::io::Result<()> {
+pub fn write_md5anim(
+    seq: &AnimSequence,
+    skel: &SkeletonInfo,
+    w: &mut impl Write,
+) -> std::io::Result<()> {
     write(&export(seq, skel), w)
 }
 
@@ -371,7 +456,13 @@ pub fn parse_md5anim(text: &str) -> Result<Md5Anim> {
                 return Err(bad(l));
             }
             let f = |i: usize| v[i].parse::<f32>().map_err(|_| bad(l));
-            retarget.insert(name.to_string(), (v[0].parse::<u8>().map_err(|_| bad(l))?, [f(1)?, f(2)?, f(3)?]));
+            retarget.insert(
+                name.to_string(),
+                (
+                    v[0].parse::<u8>().map_err(|_| bad(l))?,
+                    [f(1)?, f(2)?, f(3)?],
+                ),
+            );
         }
         if let Some(r) = l.strip_prefix("numFrames ") {
             m.num_frames = r.trim().parse().map_err(|_| bad(l))?;
@@ -409,11 +500,18 @@ pub fn parse_md5anim(text: &str) -> Result<Md5Anim> {
             continue;
         }
         if section == "hierarchy" && l.starts_with('"') {
-            m.bone_names.push(l.split('"').nth(1).ok_or_else(|| bad(l))?.to_string());
+            m.bone_names
+                .push(l.split('"').nth(1).ok_or_else(|| bad(l))?.to_string());
         }
         if in_base || in_frame {
-            let cleaned: String = l.chars().map(|c| if c == '(' || c == ')' { ' ' } else { c }).collect();
-            let v: Vec<f32> = cleaned.split_whitespace().map(|x| x.parse::<f32>().map_err(|_| bad(l))).collect::<Result<_>>()?;
+            let cleaned: String = l
+                .chars()
+                .map(|c| if c == '(' || c == ')' { ' ' } else { c })
+                .collect();
+            let v: Vec<f32> = cleaned
+                .split_whitespace()
+                .map(|x| x.parse::<f32>().map_err(|_| bad(l)))
+                .collect::<Result<_>>()?;
             if v.len() != 6 {
                 return Err(bad(l));
             }
@@ -423,8 +521,16 @@ pub fn parse_md5anim(text: &str) -> Result<Md5Anim> {
     if m.frames.is_empty() {
         return err("md5anim has no frames");
     }
-    m.track_flags = m.bone_names.iter().map(|n| flags.get(n).copied().unwrap_or((true, true))).collect();
-    m.retarget = m.bone_names.iter().map(|n| retarget.get(n).copied()).collect();
+    m.track_flags = m
+        .bone_names
+        .iter()
+        .map(|n| flags.get(n).copied().unwrap_or((true, true)))
+        .collect();
+    m.retarget = m
+        .bone_names
+        .iter()
+        .map(|n| retarget.get(n).copied())
+        .collect();
     Ok(m)
 }
 
@@ -476,12 +582,20 @@ mod tests {
     fn joint_conversion_flips_y_and_conjugates() {
         // stored UE quat (x,y,z,w); non-root export = (x, -y, z)
         let w = (1.0f32 - 0.14).sqrt();
-        let tr = Track { bone: 5, pos: vec![[1.0, 2.0, 3.0]], rot: vec![[0.1, -0.2, 0.3, w]], ..Default::default() };
+        let tr = Track {
+            bone: 5,
+            pos: vec![[1.0, 2.0, 3.0]],
+            rot: vec![[0.1, -0.2, 0.3, w]],
+            ..Default::default()
+        };
         for bone in [0usize, 5] {
             let t = to_uev_track(&tr, bone, None, false);
             let (p, q) = joint_of(Some(&t), 0.0, 1.0, bone);
             assert_eq!(p, [1.0, -2.0, 3.0]);
-            assert!((q[0] - 0.1).abs() < 1e-6 && (q[1] - 0.2).abs() < 1e-6 && (q[2] - 0.3).abs() < 1e-6, "{q:?}");
+            assert!(
+                (q[0] - 0.1).abs() < 1e-6 && (q[1] - 0.2).abs() < 1e-6 && (q[2] - 0.3).abs() < 1e-6,
+                "{q:?}"
+            );
         }
         // no track: identity at export (-0.0 artefacts aside)
         let (p, q) = joint_of(None, 0.0, 1.0, 3);
@@ -500,7 +614,10 @@ mod tests {
             track_flags: vec![(true, true), (false, true)],
             retarget: vec![Some((0, [0.0; 3])), Some((2, [0.5, 0.25, -1.0]))],
             base_frame: vec![([0.0; 3], [0.0; 3]), ([1.0, 2.0, 3.0], [0.1, 0.2, 0.3])],
-            frames: vec![vec![([0.0; 3], [0.0; 3]), ([1.0, 2.0, 3.0], [0.1, 0.2, 0.3])], vec![([0.0; 3], [0.0; 3]), ([1.5, 2.0, 3.0], [0.1, 0.2, 0.3])]],
+            frames: vec![
+                vec![([0.0; 3], [0.0; 3]), ([1.0, 2.0, 3.0], [0.1, 0.2, 0.3])],
+                vec![([0.0; 3], [0.0; 3]), ([1.5, 2.0, 3.0], [0.1, 0.2, 0.3])],
+            ],
         };
         let mut buf = Vec::new();
         write(&m, &mut buf).unwrap();

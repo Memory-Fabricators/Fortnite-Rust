@@ -1,4 +1,4 @@
-﻿//! Asset library: loads waves, cues, attenuation/concurrency/class assets from an install with caching, and feeds an
+//! Asset library: loads waves, cues, attenuation/concurrency/class assets from an install with caching, and feeds an
 //! [`EngineHandle`](crate::mixer::EngineHandle).
 
 use crate::attenuation::Attenuation;
@@ -37,7 +37,12 @@ struct LibResolver<'a> {
     conc: &'a mut HashMap<String, Option<Concurrency>>,
 }
 
-fn load_pkg_first(install: &Install, path: &str, class: &str, f: impl FnOnce(&fn_uasset::Package, usize) -> Option<fn_uasset::PropertyList>) -> Option<fn_uasset::PropertyList> {
+fn load_pkg_first(
+    install: &Install,
+    path: &str,
+    class: &str,
+    f: impl FnOnce(&fn_uasset::Package, usize) -> Option<fn_uasset::PropertyList>,
+) -> Option<fn_uasset::PropertyList> {
     let ap = to_pak_asset_path(path.split('.').next().unwrap_or(path));
     let data = PackageData::load(&install.paks, &ap).ok()?;
     let pkg = data.package().ok()?;
@@ -54,7 +59,9 @@ fn load_float_curve(install: &Install, path: &str) -> Option<crate::curve::Curve
             _ => None,
         }
     })?;
-    p.get("Keys").and_then(Value::as_array).map(crate::curve::Curve::from_keys)
+    p.get("Keys")
+        .and_then(Value::as_array)
+        .map(crate::curve::Curve::from_keys)
 }
 
 impl CueResolver for LibResolver<'_> {
@@ -75,16 +82,24 @@ impl CueResolver for LibResolver<'_> {
                 _ => fn_uasset::PropertyList::new(),
             };
             let mut a = Attenuation::from_props(&props);
-            if a.algorithm == crate::attenuation::DistanceModel::Custom && a.custom_curve.is_empty() {
-                if let Some(ext) = props.get("CustomAttenuationCurve").and_then(|c| c.field("ExternalCurve")).and_then(Value::as_object).filter(|i| !i.is_null()) {
-                    a.custom_curve = load_float_curve(self.install, &pkg.object_path(ext)).unwrap_or_default();
+            if a.algorithm == crate::attenuation::DistanceModel::Custom && a.custom_curve.is_empty()
+            {
+                if let Some(ext) = props
+                    .get("CustomAttenuationCurve")
+                    .and_then(|c| c.field("ExternalCurve"))
+                    .and_then(Value::as_object)
+                    .filter(|i| !i.is_null())
+                {
+                    a.custom_curve =
+                        load_float_curve(self.install, &pkg.object_path(ext)).unwrap_or_default();
                 }
             }
             Some(a)
         })();
         self.att.insert(key, v.clone());
         v
-    }    fn concurrency(&mut self, object_path: &str) -> Option<Concurrency> {
+    }
+    fn concurrency(&mut self, object_path: &str) -> Option<Concurrency> {
         let key = asset_key(object_path);
         if let Some(c) = self.conc.get(&key) {
             return c.clone();
@@ -136,7 +151,9 @@ impl Library {
         if let Some(w) = self.waves.get(&key) {
             return Ok(w.clone());
         }
-        let asset = self.install.load_soundwave(path.split('.').next().unwrap_or(path))?;
+        let asset = self
+            .install
+            .load_soundwave(path.split('.').next().unwrap_or(path))?;
         let mut streamed = None;
         if let Some(min) = self.stream_min_seconds {
             // long Opus / Ogg waves are decoded incrementally on a worker thread instead of whole (see crate::stream);
@@ -156,7 +173,12 @@ impl Library {
             }
             None => {
                 let pcm = crate::codec::decode_asset(&asset)?;
-                Arc::new(LoadedWave { pcm, volume: asset.info.volume.unwrap_or(1.0), pitch: asset.info.pitch.unwrap_or(1.0), stream: None })
+                Arc::new(LoadedWave {
+                    pcm,
+                    volume: asset.info.volume.unwrap_or(1.0),
+                    pitch: asset.info.pitch.unwrap_or(1.0),
+                    stream: None,
+                })
             }
         };
         self.waves.insert(key, w.clone());
@@ -176,7 +198,11 @@ impl Library {
             let i = pkg.exports_of_class("DialogueWave").next()?;
             let o = pkg.read_export(i).ok()?;
             let maps = o.get("ContextMappings")?.as_array()?;
-            let sw = maps.first()?.field("SoundWave")?.as_object().filter(|i| !i.is_null())?;
+            let sw = maps
+                .first()?
+                .field("SoundWave")?
+                .as_object()
+                .filter(|i| !i.is_null())?;
             Some(pkg.object_path(sw).split('.').next()?.to_string())
         })();
         self.dialogue.insert(key, r.clone());
@@ -193,7 +219,11 @@ impl Library {
         let data = PackageData::load(&self.install.paks, &ap)?;
         let pkg = data.package()?;
         let mut cue = {
-            let mut r = LibResolver { install: &self.install, att: &mut self.att_cache, conc: &mut self.conc_cache };
+            let mut r = LibResolver {
+                install: &self.install,
+                att: &mut self.att_cache,
+                conc: &mut self.conc_cache,
+            };
             parse_cue(&pkg, &mut r)?
         };
         drop(pkg);
@@ -233,29 +263,31 @@ impl Library {
         let mut dialogue = Vec::new();
         if let Some(r) = &cue.root {
             r.walk(&mut |n| {
-                if let NodeKind::Dialogue { dialogue_wave: Some(d) } = &n.kind {
+                if let NodeKind::Dialogue {
+                    dialogue_wave: Some(d),
+                } = &n.kind
+                {
                     dialogue.push(d.clone());
                 }
             });
         }
         for d in dialogue {
             match self.resolve_dialogue(&d) {
-                Some(w) => {
-                    match self.load_wave(&w) {
-                        Ok(lw) => {
-                            if sent_waves.insert(asset_key(&d)) {
-                                engine.add_wave_arc(&d, lw)?;
-                            }
-                        }
-                        Err(e) => {
-                            missing += 1;
-                            self.warnings.push((w, e.to_string()));
+                Some(w) => match self.load_wave(&w) {
+                    Ok(lw) => {
+                        if sent_waves.insert(asset_key(&d)) {
+                            engine.add_wave_arc(&d, lw)?;
                         }
                     }
-                }
+                    Err(e) => {
+                        missing += 1;
+                        self.warnings.push((w, e.to_string()));
+                    }
+                },
                 None => {
                     missing += 1;
-                    self.warnings.push((d, "dialogue wave has no sound wave".into()));
+                    self.warnings
+                        .push((d, "dialogue wave has no sound wave".into()));
                 }
             }
         }
@@ -281,14 +313,20 @@ impl Library {
 
     /// Counters (underruns, decoded frames, loop wraps, ...) of every wave held in streamed form, by asset key.
     pub fn stream_stats(&self) -> Vec<(String, crate::stream::StreamStatsSnapshot)> {
-        let mut v: Vec<_> = self.waves.iter().filter_map(|(k, w)| w.stream.as_ref().map(|s| (k.clone(), s.stats()))).collect();
+        let mut v: Vec<_> = self
+            .waves
+            .iter()
+            .filter_map(|(k, w)| w.stream.as_ref().map(|s| (k.clone(), s.stats())))
+            .collect();
         v.sort_by(|a, b| a.0.cmp(&b.0));
         v
     }
 
     /// Whether the wave `path` is held in streamed form.
     pub fn is_streamed(&self, path: &str) -> bool {
-        self.waves.get(&asset_key(path)).map_or(false, |w| w.stream.is_some())
+        self.waves
+            .get(&asset_key(path))
+            .map_or(false, |w| w.stream.is_some())
     }
 
     /// Number of decoded waves held (cache size).
@@ -301,6 +339,3 @@ impl Library {
         read_ubulk(&self.install.paks, asset_path)
     }
 }
-
-
-

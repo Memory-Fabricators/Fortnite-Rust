@@ -1,4 +1,4 @@
-﻿//! `USoundCue` node graphs (UE 4.16) parsed from cooked exports into an owned tree.
+//! `USoundCue` node graphs (UE 4.16) parsed from cooked exports into an owned tree.
 //!
 //! Every node is an export of the cue's package whose tagged properties hold everything (`ChildNodes` = array of
 //! export references, `FirstNode` on the cue). Properties missing from an export take the engine defaults noted at
@@ -54,20 +54,33 @@ pub struct Concurrency {
 
 impl Concurrency {
     pub fn from_props(group: &str, p: &PropertyList) -> Concurrency {
-        let rule = match p.get("ResolutionRule").and_then(Value::as_str).map(|s| s.rsplit("::").next().unwrap_or(s)) {
+        let rule = match p
+            .get("ResolutionRule")
+            .and_then(Value::as_str)
+            .map(|s| s.rsplit("::").next().unwrap_or(s))
+        {
             Some("PreventNew") => ResolutionRule::PreventNew,
             Some("StopOldest") => ResolutionRule::StopOldest,
             Some("StopFarthestThenOldest") => ResolutionRule::StopFarthestThenOldest,
             Some("StopLowestPriority") => ResolutionRule::StopLowestPriority,
             Some("StopQuietest") => ResolutionRule::StopQuietest,
-            Some("StopLowestPriorityThenPreventNew") => ResolutionRule::StopLowestPriorityThenPreventNew,
+            Some("StopLowestPriorityThenPreventNew") => {
+                ResolutionRule::StopLowestPriorityThenPreventNew
+            }
             _ => ResolutionRule::StopFarthestThenPreventNew,
         };
         Concurrency {
             group: group.to_string(),
-            max_count: p.get("MaxCount").and_then(Value::as_i64).map(|v| v.max(1) as u32).unwrap_or(16),
+            max_count: p
+                .get("MaxCount")
+                .and_then(Value::as_i64)
+                .map(|v| v.max(1) as u32)
+                .unwrap_or(16),
             rule,
-            limit_to_owner: p.get("bLimitToOwner").and_then(Value::as_bool).unwrap_or(false),
+            limit_to_owner: p
+                .get("bLimitToOwner")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
             volume_scale: p.get("VolumeScale").and_then(Value::as_f32).unwrap_or(1.0),
         }
     }
@@ -112,13 +125,19 @@ pub enum NodeKind {
     /// `SoundNodeDialoguePlayer`: plays the SoundWave of the dialogue wave (resolved lazily by the library).
     Dialogue { dialogue_wave: Option<String> },
     /// `SoundNodeRandom`. Default weights 1.0; `bRandomizeWithoutReplacement` default false.
-    Random { weights: Vec<f32>, without_replacement: bool },
+    Random {
+        weights: Vec<f32>,
+        without_replacement: bool,
+    },
     /// `SoundNodeMixer`: plays all children; `InputVolume` default 1.0 each.
     Mixer { input_volume: Vec<f32> },
     /// `SoundNodeConcatenator`: children back to back.
     Concatenator { input_volume: Vec<f32> },
     /// `SoundNodeModulator`; engine defaults Pitch 0.95..1.05, Volume 0.95..1.05 (applied when a property is absent).
-    Modulator { pitch: (f32, f32), volume: (f32, f32) },
+    Modulator {
+        pitch: (f32, f32),
+        volume: (f32, f32),
+    },
     /// `SoundNodeModulatorContinuous`: parameter-driven; this crate plays it at the parameter-less value (1.0).
     ModulatorContinuous,
     /// `SoundNodeAttenuation`: distance attenuation for the subtree.
@@ -132,19 +151,31 @@ pub enum NodeKind {
     /// `SoundNodeBranch`: child 0/1/2 by a bool parameter (not present in 1.8).
     Branch { param: String },
     /// `SoundNodeParamCrossFade`: child gains from a float parameter.
-    ParamCrossFade { param: String, inputs: Vec<FadeRange> },
+    ParamCrossFade {
+        param: String,
+        inputs: Vec<FadeRange>,
+    },
     /// `SoundNodeDistanceCrossFade`: child gains from the listener distance.
     DistanceCrossFade { inputs: Vec<FadeRange> },
     /// `SoundNodeDoppler`: intensity only (no pitch shift is applied).
     Doppler { intensity: f32 },
     /// `SoundNodeEnveloper`: volume/pitch envelopes over time since the node started.
-    Enveloper { volume: Curve, pitch: Curve, looping: bool, loop_start: f32, loop_end: f32 },
+    Enveloper {
+        volume: Curve,
+        pitch: Curve,
+        looping: bool,
+        loop_start: f32,
+        loop_end: f32,
+    },
     /// `SoundNodeGroupControl`: played as a Mixer here (documented simplification).
     GroupControl { sizes: Vec<i32> },
     /// `SoundNodeQualityLevel`: one child per audio quality level.
     QualityLevel,
     /// `SoundNodeSoundClass`: overrides the SoundClass of the subtree.
-    SoundClass { class: String, info: Option<ClassInfo> },
+    SoundClass {
+        class: String,
+        info: Option<ClassInfo>,
+    },
     /// Anything else (class name kept); played like a Mixer so no sound is silently lost.
     Unknown(String),
 }
@@ -210,7 +241,9 @@ pub struct SoundCue {
 }
 
 fn f32s(v: Option<&Value>) -> Vec<f32> {
-    v.and_then(Value::as_array).map(|a| a.iter().filter_map(Value::as_f32).collect()).unwrap_or_default()
+    v.and_then(Value::as_array)
+        .map(|a| a.iter().filter_map(Value::as_f32).collect())
+        .unwrap_or_default()
 }
 
 fn fade_ranges(v: Option<&Value>) -> Vec<FadeRange> {
@@ -219,7 +252,13 @@ fn fade_ranges(v: Option<&Value>) -> Vec<FadeRange> {
             a.iter()
                 .map(|d| {
                     let g = |n: &str, def: f32| d.field(n).and_then(Value::as_f32).unwrap_or(def);
-                    FadeRange { fade_in_start: g("FadeInDistanceStart", 0.0), fade_in_end: g("FadeInDistanceEnd", 0.0), fade_out_start: g("FadeOutDistanceStart", 0.0), fade_out_end: g("FadeOutDistanceEnd", 0.0), volume: g("Volume", 1.0) }
+                    FadeRange {
+                        fade_in_start: g("FadeInDistanceStart", 0.0),
+                        fade_in_end: g("FadeInDistanceEnd", 0.0),
+                        fade_out_start: g("FadeOutDistanceStart", 0.0),
+                        fade_out_end: g("FadeOutDistanceEnd", 0.0),
+                        volume: g("Volume", 1.0),
+                    }
                 })
                 .collect()
         })
@@ -248,13 +287,19 @@ struct Builder<'a, 'p> {
 
 impl Builder<'_, '_> {
     fn attenuation_of(&mut self, props: &PropertyList) -> Option<Arc<Attenuation>> {
-        let over = props.get("bOverrideAttenuation").and_then(Value::as_bool).unwrap_or(false);
+        let over = props
+            .get("bOverrideAttenuation")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
         if over {
             if let Some(Value::Struct { props: p, .. }) = props.get("AttenuationOverrides") {
                 return Some(Arc::new(Attenuation::from_props(p)));
             }
         }
-        let obj = props.get("AttenuationSettings").and_then(Value::as_object).filter(|i| !i.is_null())?;
+        let obj = props
+            .get("AttenuationSettings")
+            .and_then(Value::as_object)
+            .filter(|i| !i.is_null())?;
         let path = self.pkg.object_path(obj);
         self.resolver.attenuation(&path).map(Arc::new)
     }
@@ -273,23 +318,80 @@ impl Builder<'_, '_> {
         let p = &o.props;
         let f = |n: &str, d: f32| p.get(n).and_then(Value::as_f32).unwrap_or(d);
         let kind = match class.as_str() {
-            "SoundNodeWavePlayer" => NodeKind::WavePlayer { wave: soft_or_object_path(self.pkg, p.get("SoundWaveAssetPtr")).map(|s| long_package(&s).to_string()), looping: p.get("bLooping").and_then(Value::as_bool).unwrap_or(false) },
-            "SoundNodeDialoguePlayer" => NodeKind::Dialogue {
-                dialogue_wave: p.get("DialogueWaveParameter").and_then(|d| d.field("DialogueWave")).and_then(|v| soft_or_object_path(self.pkg, Some(v))).map(|s| long_package(&s).to_string()),
+            "SoundNodeWavePlayer" => NodeKind::WavePlayer {
+                wave: soft_or_object_path(self.pkg, p.get("SoundWaveAssetPtr"))
+                    .map(|s| long_package(&s).to_string()),
+                looping: p.get("bLooping").and_then(Value::as_bool).unwrap_or(false),
             },
-            "SoundNodeRandom" => NodeKind::Random { weights: f32s(p.get("Weights")), without_replacement: p.get("bRandomizeWithoutReplacement").and_then(Value::as_bool).unwrap_or(false) },
-            "SoundNodeMixer" => NodeKind::Mixer { input_volume: f32s(p.get("InputVolume")) },
-            "SoundNodeConcatenator" => NodeKind::Concatenator { input_volume: f32s(p.get("InputVolume")) },
-            "SoundNodeModulator" => NodeKind::Modulator { pitch: (f("PitchMin", 0.95), f("PitchMax", 1.05)), volume: (f("VolumeMin", 0.95), f("VolumeMax", 1.05)) },
+            "SoundNodeDialoguePlayer" => NodeKind::Dialogue {
+                dialogue_wave: p
+                    .get("DialogueWaveParameter")
+                    .and_then(|d| d.field("DialogueWave"))
+                    .and_then(|v| soft_or_object_path(self.pkg, Some(v)))
+                    .map(|s| long_package(&s).to_string()),
+            },
+            "SoundNodeRandom" => NodeKind::Random {
+                weights: f32s(p.get("Weights")),
+                without_replacement: p
+                    .get("bRandomizeWithoutReplacement")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+            },
+            "SoundNodeMixer" => NodeKind::Mixer {
+                input_volume: f32s(p.get("InputVolume")),
+            },
+            "SoundNodeConcatenator" => NodeKind::Concatenator {
+                input_volume: f32s(p.get("InputVolume")),
+            },
+            "SoundNodeModulator" => NodeKind::Modulator {
+                pitch: (f("PitchMin", 0.95), f("PitchMax", 1.05)),
+                volume: (f("VolumeMin", 0.95), f("VolumeMax", 1.05)),
+            },
             "SoundNodeModulatorContinuous" => NodeKind::ModulatorContinuous,
             "SoundNodeAttenuation" => NodeKind::Attenuation(self.attenuation_of(p)),
-            "SoundNodeLooping" => NodeKind::Looping { count: p.get("LoopCount").and_then(Value::as_i64).map(|v| v.max(0) as u32).unwrap_or(1_000_000), indefinite: p.get("bLoopIndefinitely").and_then(Value::as_bool).unwrap_or(true) },
-            "SoundNodeDelay" => NodeKind::Delay { min: f("DelayMin", 0.0), max: f("DelayMax", 0.0) },
-            "SoundNodeSwitch" => NodeKind::Switch { param: p.get("IntParameterName").and_then(Value::as_str).unwrap_or("").to_string() },
-            "SoundNodeBranch" => NodeKind::Branch { param: p.get("BoolParameterName").and_then(Value::as_str).unwrap_or("").to_string() },
-            "SoundNodeParamCrossFade" => NodeKind::ParamCrossFade { param: p.get("ParamName").and_then(Value::as_str).unwrap_or("").to_string(), inputs: fade_ranges(p.get("CrossFadeInput")) },
-            "SoundNodeDistanceCrossFade" => NodeKind::DistanceCrossFade { inputs: fade_ranges(p.get("CrossFadeInput")) },
-            "SoundNodeDoppler" => NodeKind::Doppler { intensity: f("DopplerIntensity", 1.0) },
+            "SoundNodeLooping" => NodeKind::Looping {
+                count: p
+                    .get("LoopCount")
+                    .and_then(Value::as_i64)
+                    .map(|v| v.max(0) as u32)
+                    .unwrap_or(1_000_000),
+                indefinite: p
+                    .get("bLoopIndefinitely")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(true),
+            },
+            "SoundNodeDelay" => NodeKind::Delay {
+                min: f("DelayMin", 0.0),
+                max: f("DelayMax", 0.0),
+            },
+            "SoundNodeSwitch" => NodeKind::Switch {
+                param: p
+                    .get("IntParameterName")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string(),
+            },
+            "SoundNodeBranch" => NodeKind::Branch {
+                param: p
+                    .get("BoolParameterName")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string(),
+            },
+            "SoundNodeParamCrossFade" => NodeKind::ParamCrossFade {
+                param: p
+                    .get("ParamName")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string(),
+                inputs: fade_ranges(p.get("CrossFadeInput")),
+            },
+            "SoundNodeDistanceCrossFade" => NodeKind::DistanceCrossFade {
+                inputs: fade_ranges(p.get("CrossFadeInput")),
+            },
+            "SoundNodeDoppler" => NodeKind::Doppler {
+                intensity: f("DopplerIntensity", 1.0),
+            },
             "SoundNodeEnveloper" => NodeKind::Enveloper {
                 volume: Curve::from_runtime_curve(p.get("VolumeCurve")),
                 pitch: Curve::from_runtime_curve(p.get("PitchCurve")),
@@ -297,9 +399,28 @@ impl Builder<'_, '_> {
                 loop_start: f("LoopStart", 0.0),
                 loop_end: f("LoopEnd", 0.0),
             },
-            "SoundNodeGroupControl" => NodeKind::GroupControl { sizes: p.get("GroupSizes").and_then(Value::as_array).map(|a| a.iter().filter_map(Value::as_i64).map(|v| v as i32).collect()).unwrap_or_default() },
+            "SoundNodeGroupControl" => NodeKind::GroupControl {
+                sizes: p
+                    .get("GroupSizes")
+                    .and_then(Value::as_array)
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(Value::as_i64)
+                            .map(|v| v as i32)
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+            },
             "SoundNodeQualityLevel" => NodeKind::QualityLevel,
-            "SoundNodeSoundClass" => NodeKind::SoundClass { class: p.get("SoundClassOverride").and_then(Value::as_object).filter(|i| !i.is_null()).map(|i| object_name(&self.pkg.object_path(i)).to_string()).unwrap_or_default(), info: None },
+            "SoundNodeSoundClass" => NodeKind::SoundClass {
+                class: p
+                    .get("SoundClassOverride")
+                    .and_then(Value::as_object)
+                    .filter(|i| !i.is_null())
+                    .map(|i| object_name(&self.pkg.object_path(i)).to_string())
+                    .unwrap_or_default(),
+                info: None,
+            },
             other => NodeKind::Unknown(other.to_string()),
         };
         let mut children = Vec::new();
@@ -314,7 +435,11 @@ impl Builder<'_, '_> {
             }
         }
         self.active.pop();
-        Ok(Some(CueNode { name: o.name.clone(), kind, children }))
+        Ok(Some(CueNode {
+            name: o.name.clone(),
+            kind,
+            children,
+        }))
     }
 }
 
@@ -333,20 +458,36 @@ pub fn parse_cue(pkg: &Package, resolver: &mut dyn CueResolver) -> Result<SoundC
         return malformed("SoundCue properties", e.to_string());
     }
     let p = &obj.props;
-    let mut b = Builder { pkg, resolver, active: Vec::new(), nodes_built: 0 };
-    let root = match p.get("FirstNode").and_then(Value::as_object).and_then(export_of) {
+    let mut b = Builder {
+        pkg,
+        resolver,
+        active: Vec::new(),
+        nodes_built: 0,
+    };
+    let root = match p
+        .get("FirstNode")
+        .and_then(Value::as_object)
+        .and_then(export_of)
+    {
         Some(i) => b.build(i, 0)?,
         None => None,
     };
     let attenuation = b.attenuation_of(p);
     // Concurrency: inline override wins, otherwise the shared asset.
-    let concurrency = if p.get("bOverrideConcurrency").and_then(Value::as_bool).unwrap_or(false) {
+    let concurrency = if p
+        .get("bOverrideConcurrency")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+    {
         match p.get("ConcurrencyOverrides") {
             Some(Value::Struct { props, .. }) => Some(Concurrency::from_props(&obj.name, props)),
             _ => None,
         }
     } else {
-        p.get("SoundConcurrencySettings").and_then(Value::as_object).filter(|i| !i.is_null()).and_then(|i| b.resolver.concurrency(&pkg.object_path(i)))
+        p.get("SoundConcurrencySettings")
+            .and_then(Value::as_object)
+            .filter(|i| !i.is_null())
+            .and_then(|i| b.resolver.concurrency(&pkg.object_path(i)))
     };
     let f = |n: &str, d: f32| p.get(n).and_then(Value::as_f32).unwrap_or(d);
     Ok(SoundCue {
@@ -357,7 +498,11 @@ pub fn parse_cue(pkg: &Package, resolver: &mut dyn CueResolver) -> Result<SoundC
         pitch_multiplier: f("PitchMultiplier", 1.0),
         priority: f("Priority", 1.0),
         duration: f("Duration", 0.0),
-        class_name: p.get("SoundClassObject").and_then(Value::as_object).filter(|i| !i.is_null()).map(|i| object_name(&pkg.object_path(i)).to_string()),
+        class_name: p
+            .get("SoundClassObject")
+            .and_then(Value::as_object)
+            .filter(|i| !i.is_null())
+            .map(|i| object_name(&pkg.object_path(i)).to_string()),
         class: ClassInfo::default(),
         attenuation,
         concurrency,
@@ -385,19 +530,53 @@ impl SoundCue {
         fn rec(n: &CueNode, d: usize, out: &mut String) {
             let pad = "  ".repeat(d);
             let detail = match &n.kind {
-                NodeKind::WavePlayer { wave, looping } => format!(" {}{}", wave.as_deref().unwrap_or("<null>"), if *looping { " (looping)" } else { "" }),
-                NodeKind::Random { weights, without_replacement } => format!(" weights={weights:?}{}", if *without_replacement { " without-replacement" } else { "" }),
-                NodeKind::Mixer { input_volume } | NodeKind::Concatenator { input_volume } => format!(" input_volume={input_volume:?}"),
-                NodeKind::Modulator { pitch, volume } => format!(" pitch={:.2}..{:.2} volume={:.2}..{:.2}", pitch.0, pitch.1, volume.0, volume.1),
+                NodeKind::WavePlayer { wave, looping } => format!(
+                    " {}{}",
+                    wave.as_deref().unwrap_or("<null>"),
+                    if *looping { " (looping)" } else { "" }
+                ),
+                NodeKind::Random {
+                    weights,
+                    without_replacement,
+                } => format!(
+                    " weights={weights:?}{}",
+                    if *without_replacement {
+                        " without-replacement"
+                    } else {
+                        ""
+                    }
+                ),
+                NodeKind::Mixer { input_volume } | NodeKind::Concatenator { input_volume } => {
+                    format!(" input_volume={input_volume:?}")
+                }
+                NodeKind::Modulator { pitch, volume } => format!(
+                    " pitch={:.2}..{:.2} volume={:.2}..{:.2}",
+                    pitch.0, pitch.1, volume.0, volume.1
+                ),
                 NodeKind::Attenuation(a) => match a {
-                    Some(a) => format!(" {:?} inner={} falloff={} omni={} spread={} lpf={} spatialize={}", a.algorithm, a.inner_radius(), a.falloff_distance, a.omni_radius, a.stereo_spread, a.lpf_enabled, a.spatialize),
+                    Some(a) => format!(
+                        " {:?} inner={} falloff={} omni={} spread={} lpf={} spatialize={}",
+                        a.algorithm,
+                        a.inner_radius(),
+                        a.falloff_distance,
+                        a.omni_radius,
+                        a.stereo_spread,
+                        a.lpf_enabled,
+                        a.spatialize
+                    ),
                     None => " <unresolved>".into(),
                 },
-                NodeKind::Looping { count, indefinite } => format!(" count={count} indefinite={indefinite}"),
+                NodeKind::Looping { count, indefinite } => {
+                    format!(" count={count} indefinite={indefinite}")
+                }
                 NodeKind::Delay { min, max } => format!(" {min}..{max}s"),
-                NodeKind::Switch { param } | NodeKind::Branch { param } | NodeKind::ParamCrossFade { param, .. } => format!(" param={param}"),
+                NodeKind::Switch { param }
+                | NodeKind::Branch { param }
+                | NodeKind::ParamCrossFade { param, .. } => format!(" param={param}"),
                 NodeKind::SoundClass { class, .. } => format!(" class={class}"),
-                NodeKind::Dialogue { dialogue_wave } => format!(" {}", dialogue_wave.as_deref().unwrap_or("<null>")),
+                NodeKind::Dialogue { dialogue_wave } => {
+                    format!(" {}", dialogue_wave.as_deref().unwrap_or("<null>"))
+                }
                 _ => String::new(),
             };
             out.push_str(&format!("{pad}{} [{}]{detail}\n", n.class_label(), n.name));
@@ -410,7 +589,12 @@ impl SoundCue {
             self.name, self.path, self.class_name, self.class.bus, self.class.base_volume, self.volume_multiplier, self.pitch_multiplier, self.duration, self.priority
         );
         if let Some(a) = &self.attenuation {
-            s.push_str(&format!("  cue attenuation: {:?} inner={} falloff={}\n", a.algorithm, a.inner_radius(), a.falloff_distance));
+            s.push_str(&format!(
+                "  cue attenuation: {:?} inner={} falloff={}\n",
+                a.algorithm,
+                a.inner_radius(),
+                a.falloff_distance
+            ));
         }
         if let Some(c) = &self.concurrency {
             s.push_str(&format!("  concurrency: {c:?}\n"));
@@ -421,4 +605,3 @@ impl SoundCue {
         s
     }
 }
-

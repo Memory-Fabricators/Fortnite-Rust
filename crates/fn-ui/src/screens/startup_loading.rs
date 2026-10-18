@@ -27,7 +27,13 @@ use crate::screens::{art, put_text, Snap};
 use crate::text::FontId;
 
 /// Textures this screen draws (decoded before it appears): Athena key art, the plate, the progress-bar brushes, the throbber piece.
-pub const PAK_TEXTURES: [&str; 5] = [ART_FILE, BADGE_FILE, BAR_BACKGROUND_FILE, BAR_FILL_FILE, THROBBER_PIECE_FILE];
+pub const PAK_TEXTURES: [&str; 5] = [
+    ART_FILE,
+    BADGE_FILE,
+    BAR_BACKGROUND_FILE,
+    BAR_FILL_FILE,
+    THROBBER_PIECE_FILE,
+];
 /// Athena / Battle Royale key art in the slot where the exe draws `FORT_Load_Atlas` (Save the World art: never decoded by this BR runtime).
 pub const ART_FILE: &str = "T_BattleRoyaleKeyArt.png";
 pub const BADGE_FILE: &str = sl::BADGE_FILE;
@@ -45,7 +51,10 @@ pub const LOADING_COLOR: [f32; 4] = sl::LOADING_COLOR;
 
 /// One throbber piece: centre (window px), rotation (radians, clockwise) and side of the square drawn.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ThrobberPiece { pub centre: [f32; 2], pub angle: f32 }
+pub struct ThrobberPiece {
+    pub centre: [f32; 2],
+    pub angle: f32,
+}
 
 /// Piece layout of `SCircularThrobber` (INFERRED from the engine's `OnPaint`, which is not in the exe analysis: `NumPieces` pieces `2*PI/NumPieces` apart, each drawn at the
 /// top of the widget (its outer edge on the circle of `radius`) and rotated about the widget centre by `i * 2*PI/NumPieces + phase * 2*PI`; one revolution per `Period`).
@@ -53,11 +62,16 @@ pub struct ThrobberPiece { pub centre: [f32; 2], pub angle: f32 }
 pub fn throbber_pieces(center: [f32; 2], radius: f32, piece_h: f32, t: f32) -> Vec<ThrobberPiece> {
     let delta = std::f32::consts::TAU / sl::THROBBER_PIECES as f32;
     let phase = sl::throbber_phase(t) * std::f32::consts::TAU;
-    (0..sl::THROBBER_PIECES).map(|i| {
-        let angle = delta * i as f32 + phase;
-        let r = radius - piece_h * 0.5;
-        ThrobberPiece { centre: [center[0] + r * angle.sin(), center[1] - r * angle.cos()], angle }
-    }).collect()
+    (0..sl::THROBBER_PIECES)
+        .map(|i| {
+            let angle = delta * i as f32 + phase;
+            let r = radius - piece_h * 0.5;
+            ThrobberPiece {
+                centre: [center[0] + r * angle.sin(), center[1] - r * angle.cos()],
+                angle,
+            }
+        })
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -67,21 +81,50 @@ impl StartupLoadingScreen {
     /// `art_ready` = the pak textures were delivered, `fade` = black overlay (0..1) while the screen leaves (the flow's own fade), `t` = seconds since the screen appeared
     /// (drives the throbber).
     #[allow(clippy::too_many_arguments)]
-    pub fn build(&self, ctx: &mut UiContext, w: f32, h: f32, t: f32, progress: f32, art_ready: bool, fade: f32, out: &mut RenderList) {
+    pub fn build(
+        &self,
+        ctx: &mut UiContext,
+        w: f32,
+        h: f32,
+        t: f32,
+        progress: f32,
+        art_ready: bool,
+        fade: f32,
+        out: &mut RenderList,
+    ) {
         self.build_layers(ctx, w, h, t, progress, art_ready, 1., 1., out);
-        if fade > 0. { out.fill(Rect::new(0., 0., w, h), [0., 0., 0., fade.min(1.)]); }
+        if fade > 0. {
+            out.fill(Rect::new(0., 0., w, h), [0., 0., 0., fade.min(1.)]);
+        }
     }
 
     /// The exe's two fade layers: `fg_alpha` = plate + EARLY ACCESS + LOADING subtree (`bFlag == 0`, curve 0.2 s), `atlas_alpha` = the key art (`bFlag == 1`). While
     /// `fg_alpha < 1` the fade curve is playing and the bar shows 1.0. Nothing is drawn behind the screen when `atlas_alpha < 1` (the caller composites it over its scene).
     #[allow(clippy::too_many_arguments)]
-    pub fn build_layers(&self, ctx: &mut UiContext, w: f32, h: f32, t: f32, progress: f32, art_ready: bool, fg_alpha: f32, atlas_alpha: f32, out: &mut RenderList) {
+    pub fn build_layers(
+        &self,
+        ctx: &mut UiContext,
+        w: f32,
+        h: f32,
+        t: f32,
+        progress: f32,
+        art_ready: bool,
+        fg_alpha: f32,
+        atlas_alpha: f32,
+        out: &mut RenderList,
+    ) {
         let l = StartupLayout::new(w, h);
         let s = l.scale;
-        if atlas_alpha >= 1. { out.fill(Rect::new(0., 0., w, h), [0., 0., 0., 1.]); }
+        if atlas_alpha >= 1. {
+            out.fill(Rect::new(0., 0., w, h), [0., 0., 0., 1.]);
+        }
         let a = |c: [f32; 4]| [c[0], c[1], c[2], c[3] * fg_alpha];
-        if art_ready && atlas_alpha > 0. { out.sprite(art(ctx, ART_FILE).id, l.atlas, [1., 1., 1., atlas_alpha]); }
-        if fg_alpha <= 0. { return; }
+        if art_ready && atlas_alpha > 0. {
+            out.sprite(art(ctx, ART_FILE).id, l.atlas, [1., 1., 1., atlas_alpha]);
+        }
+        if fg_alpha <= 0. {
+            return;
+        }
         let px = l.font_px;
         if art_ready {
             out.sprite(art(ctx, BADGE_FILE).id, l.plate, [1., 1., 1., fg_alpha]);
@@ -89,24 +132,56 @@ impl StartupLoadingScreen {
             let desc = crate::screens::line_height(ctx, FONT, px) - asc;
             let tw = crate::screens::text_width(ctx, FONT, BADGE_TEXT, px);
             let [x, base] = l.badge_text_origin(tw, asc, desc);
-            put_text(ctx, out, FONT, px, x, base, BADGE_TEXT, a(BADGE_COLOR), None, Snap::PerGlyph);
+            put_text(
+                ctx,
+                out,
+                FONT,
+                px,
+                x,
+                base,
+                BADGE_TEXT,
+                a(BADGE_COLOR),
+                None,
+                Snap::PerGlyph,
+            );
         }
         // LOADING + throbber
         let asc = crate::screens::ascent(ctx, FONT, px);
         let desc = crate::screens::line_height(ctx, FONT, px) - asc;
         let tw = crate::screens::text_width(ctx, FONT, LOADING_TEXT, px);
         let row = l.loading_row(tw, asc, desc);
-        put_text(ctx, out, FONT, px, row.text_x, row.baseline, LOADING_TEXT, a(LOADING_COLOR), None, Snap::PerGlyph);
+        put_text(
+            ctx,
+            out,
+            FONT,
+            px,
+            row.text_x,
+            row.baseline,
+            LOADING_TEXT,
+            a(LOADING_COLOR),
+            None,
+            Snap::PerGlyph,
+        );
         if art_ready {
             let piece = art(ctx, THROBBER_PIECE_FILE);
             let size = (piece.w as f32 * s, piece.h as f32 * s);
-            for p in throbber_pieces(row.throbber_center, row.throbber_radius, size.1, t) { out.rotated(piece.id, (p.centre[0], p.centre[1]), size, p.angle, [1., 1., 1., fg_alpha]); }
+            for p in throbber_pieces(row.throbber_center, row.throbber_radius, size.1, t) {
+                out.rotated(
+                    piece.id,
+                    (p.centre[0], p.centre[1]),
+                    size,
+                    p.angle,
+                    [1., 1., 1., fg_alpha],
+                );
+            }
             // the bar: Box brushes, margin 5/12 on every side, drawn at texture size * scale
             let frac = sl::bar_fraction(progress, fg_alpha < 1.);
             let (bg, fill) = (art(ctx, BAR_BACKGROUND_FILE), art(ctx, BAR_FILL_FILE));
             let m = [sl::BAR_BOX_MARGIN; 4];
             out.nine_slice(bg, l.bar, m, s, [1., 1., 1., fg_alpha]);
-            if frac > 0. { out.nine_slice(fill, l.bar_fill(frac), m, s, [1., 1., 1., fg_alpha]); }
+            if frac > 0. {
+                out.nine_slice(fill, l.bar_fill(frac), m, s, [1., 1., 1., fg_alpha]);
+            }
         }
     }
 }
@@ -114,20 +189,42 @@ impl StartupLoadingScreen {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn texts_and_files_are_the_exe_ones() {
+    #[test]
+    fn texts_and_files_are_the_exe_ones() {
         assert_eq!((BADGE_TEXT, LOADING_TEXT), ("EARLY ACCESS", "LOADING"));
         assert_eq!(FONT, FontId::BurbankBold);
-        assert_eq!(PAK_TEXTURES, ["T_BattleRoyaleKeyArt.png", "T-Loading-EarlyAccessPlate.png", "ProgressBar_Background.png", "ProgressBar_Fill.png", "Throbber_Piece.png"]);
+        assert_eq!(
+            PAK_TEXTURES,
+            [
+                "T_BattleRoyaleKeyArt.png",
+                "T-Loading-EarlyAccessPlate.png",
+                "ProgressBar_Background.png",
+                "ProgressBar_Fill.png",
+                "Throbber_Piece.png"
+            ]
+        );
         assert_eq!(BADGE_COLOR, [0., 0., 0., 1.]);
     }
-    #[test] fn throbber_has_six_pieces_on_one_circle_and_makes_one_turn_per_period() {
+    #[test]
+    fn throbber_has_six_pieces_on_one_circle_and_makes_one_turn_per_period() {
         let c = [100., 100.];
         let p0 = throbber_pieces(c, 20., 12., 0.);
         assert_eq!(p0.len(), 6);
-        for p in &p0 { let d = ((p.centre[0] - c[0]).powi(2) + (p.centre[1] - c[1]).powi(2)).sqrt(); assert!((d - 14.).abs() < 1e-3); }
+        for p in &p0 {
+            let d = ((p.centre[0] - c[0]).powi(2) + (p.centre[1] - c[1]).powi(2)).sqrt();
+            assert!((d - 14.).abs() < 1e-3);
+        }
         let p1 = throbber_pieces(c, 20., 12., sl::THROBBER_PERIOD);
-        for (a, b) in p0.iter().zip(&p1) { assert!((a.centre[0] - b.centre[0]).abs() < 1e-3 && (a.centre[1] - b.centre[1]).abs() < 1e-3); }
+        for (a, b) in p0.iter().zip(&p1) {
+            assert!(
+                (a.centre[0] - b.centre[0]).abs() < 1e-3
+                    && (a.centre[1] - b.centre[1]).abs() < 1e-3
+            );
+        }
         let q = throbber_pieces(c, 20., 12., sl::THROBBER_PERIOD / 6.);
-        assert!((q[0].centre[0] - p0[1].centre[0]).abs() < 1e-3, "a sixth of a period moves every piece onto its neighbour");
+        assert!(
+            (q[0].centre[0] - p0[1].centre[0]).abs() < 1e-3,
+            "a sixth of a period moves every piece onto its neighbour"
+        );
     }
 }

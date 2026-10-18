@@ -8,22 +8,37 @@ fn walk(v: &Value, filter: &str, path: &str, limit: &mut usize) {
         Value::Unparsed { ty, bytes, reason } => {
             if ty.contains(filter) && *limit > 0 {
                 *limit -= 1;
-                println!("{path}: {ty} size={} reason={reason}\n   {}", bytes.len(), bytes.iter().take(256).map(|x| format!("{x:02x}")).collect::<Vec<_>>().join(""));
+                println!(
+                    "{path}: {ty} size={} reason={reason}\n   {}",
+                    bytes.len(),
+                    bytes
+                        .iter()
+                        .take(256)
+                        .map(|x| format!("{x:02x}"))
+                        .collect::<Vec<_>>()
+                        .join("")
+                );
             }
         }
-        Value::Array(a) | Value::Set(a) => a.iter().enumerate().for_each(|(i, x)| walk(x, filter, &format!("{path}[{i}]"), limit)),
+        Value::Array(a) | Value::Set(a) => a
+            .iter()
+            .enumerate()
+            .for_each(|(i, x)| walk(x, filter, &format!("{path}[{i}]"), limit)),
         Value::Map(m) => m.iter().enumerate().for_each(|(i, (k, x))| {
             walk(k, filter, &format!("{path}.k{i}"), limit);
             walk(x, filter, &format!("{path}.v{i}"), limit)
         }),
-        Value::Struct { props, .. } => props.iter().for_each(|p| walk(&p.value, filter, &format!("{path}.{}", p.name), limit)),
+        Value::Struct { props, .. } => props
+            .iter()
+            .for_each(|p| walk(&p.value, filter, &format!("{path}.{}", p.name), limit)),
         _ => {}
     }
 }
 
 fn main() {
     let a: Vec<String> = std::env::args().collect();
-    let root = std::env::var("FN_ROOT").unwrap_or_else(|_| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
+    let root = std::env::var("FN_ROOT")
+        .unwrap_or_else(|_| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into());
     let set = PakSet::open_install(&root).unwrap();
     let d = PackageData::load(&set, &a[1]).unwrap();
     let p = d.package().unwrap();

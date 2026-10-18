@@ -5,8 +5,11 @@ fn main() {
     let store = Store::open(&install).unwrap();
     let l = store.locres().expect("locres");
     for t in std::env::args().skip(1) {
-        let mut v = l.find_containing(&t); v.sort();
+        let mut v = l.find_containing(&t);
+        v.sort();
         println!("{t:?}: {} hits", v.len());
-        for (ns, k, text) in v.iter().take(60) { println!("  [{ns}] {k} = {text:?}"); }
+        for (ns, k, text) in v.iter().take(60) {
+            println!("  [{ns}] {k} = {text:?}");
+        }
     }
 }

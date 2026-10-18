@@ -90,12 +90,24 @@ impl PixelFormat {
 
     /// `true` if the format is a 4x4 block compressed format.
     pub fn is_block_compressed(&self) -> bool {
-        matches!(self, PixelFormat::Dxt1 | PixelFormat::Dxt3 | PixelFormat::Dxt5 | PixelFormat::Bc4 | PixelFormat::Bc5 | PixelFormat::Bc6h | PixelFormat::Bc7)
+        matches!(
+            self,
+            PixelFormat::Dxt1
+                | PixelFormat::Dxt3
+                | PixelFormat::Dxt5
+                | PixelFormat::Bc4
+                | PixelFormat::Bc5
+                | PixelFormat::Bc6h
+                | PixelFormat::Bc7
+        )
     }
 
     /// `true` if decoding yields half-float output ([`crate::Pixels::RgbaF16`]).
     pub fn is_float(&self) -> bool {
-        matches!(self, PixelFormat::Bc6h | PixelFormat::FloatRGBA | PixelFormat::R16F | PixelFormat::R32F)
+        matches!(
+            self,
+            PixelFormat::Bc6h | PixelFormat::FloatRGBA | PixelFormat::R16F | PixelFormat::R32F
+        )
     }
 
     /// Bytes of one 4x4 block (block formats) or one pixel (linear formats); `None` for unsupported formats and
@@ -103,8 +115,15 @@ impl PixelFormat {
     pub fn bytes_per_unit(&self) -> Option<usize> {
         Some(match self {
             PixelFormat::Dxt1 | PixelFormat::Bc4 => 8,
-            PixelFormat::Dxt3 | PixelFormat::Dxt5 | PixelFormat::Bc5 | PixelFormat::Bc6h | PixelFormat::Bc7 => 16,
-            PixelFormat::B8G8R8A8 | PixelFormat::A8R8G8B8 | PixelFormat::R8G8B8A8 | PixelFormat::R32F => 4,
+            PixelFormat::Dxt3
+            | PixelFormat::Dxt5
+            | PixelFormat::Bc5
+            | PixelFormat::Bc6h
+            | PixelFormat::Bc7 => 16,
+            PixelFormat::B8G8R8A8
+            | PixelFormat::A8R8G8B8
+            | PixelFormat::R8G8B8A8
+            | PixelFormat::R32F => 4,
             PixelFormat::G8 => 1,
             PixelFormat::G16 | PixelFormat::R16F | PixelFormat::V8U8 => 2,
             PixelFormat::FloatRGBA => 8,
@@ -118,6 +137,10 @@ impl PixelFormat {
             return Some(w.div_ceil(8) * h);
         }
         let unit = self.bytes_per_unit()?;
-        Some(if self.is_block_compressed() { w.div_ceil(4) * h.div_ceil(4) * unit } else { w * h * unit })
+        Some(if self.is_block_compressed() {
+            w.div_ceil(4) * h.div_ceil(4) * unit
+        } else {
+            w * h * unit
+        })
     }
 }

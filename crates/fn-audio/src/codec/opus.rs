@@ -1,4 +1,4 @@
-﻿//! UE's Opus container (`OPUS` format, `UE4OPUS`): used for streaming SoundWaves in 1.8.
+//! UE's Opus container (`OPUS` format, `UE4OPUS`): used for streaming SoundWaves in 1.8.
 //!
 //! Layout (from `FOpusAudioInfo` in UE 4.16, confirmed on the install):
 //!
@@ -31,7 +31,10 @@ pub struct OpusHeader {
 }
 
 pub fn parse_header(b: &[u8]) -> Result<OpusHeader> {
-    let bad = |d: &str| AudioError::Decode { codec: "ue-opus", detail: d.to_string() };
+    let bad = |d: &str| AudioError::Decode {
+        codec: "ue-opus",
+        detail: d.to_string(),
+    };
     if b.len() < 17 || &b[..8] != UE_OPUS_ID {
         return Err(bad("missing UE4OPUS header"));
     }
@@ -112,26 +115,43 @@ pub fn split_code3(packet: &[u8]) -> Option<Vec<Vec<u8>>> {
 /// Decode a UE4OPUS elementary stream to interleaved f32.
 pub fn decode_ue_opus(bytes: &[u8]) -> Result<DecodedWave> {
     guarded("ue-opus", || {
-        let bad = |d: String| AudioError::Decode { codec: "ue-opus", detail: d };
+        let bad = |d: String| AudioError::Decode {
+            codec: "ue-opus",
+            detail: d,
+        };
         let h = parse_header(bytes)?;
         let ch = h.channels as usize;
         if !(1..=2).contains(&ch) {
             return Err(bad(format!("unsupported channel count {ch}")));
         }
-        let mut dec = OpusDecoder::new(h.sample_rate, ch).map_err(|e| bad(format!("decoder init: {e:?}")))?;
+        let mut dec =
+            OpusDecoder::new(h.sample_rate, ch).map_err(|e| bad(format!("decoder init: {e:?}")))?;
         // 120 ms is the largest legal Opus packet.
         let max_frames = (h.sample_rate as usize / 1000) * 120;
         let mut pcm = vec![0f32; max_frames * ch];
-        let mut samples: Vec<f32> = Vec::with_capacity((h.true_sample_count as usize).min(1 << 26) * ch);
+        let mut samples: Vec<f32> =
+            Vec::with_capacity((h.true_sample_count as usize).min(1 << 26) * ch);
         let mut p = 17usize;
         let mut decoded_frames = 0u16;
         while decoded_frames < h.frame_count {
-            let Some(size_bytes) = bytes.get(p..p + 2) else { break };
+            let Some(size_bytes) = bytes.get(p..p + 2) else {
+                break;
+            };
             let size = u16::from_le_bytes([size_bytes[0], size_bytes[1]]) as usize;
             p += 2;
-            let Some(packet) = bytes.get(p..p + size) else { break };
+            let Some(packet) = bytes.get(p..p + size) else {
+                break;
+            };
             p += size;
-            let parts: Vec<Vec<u8>> = if packet.len() > 1500 { split_code3(packet).ok_or_else(|| bad(format!("packet {decoded_frames}: oversize and not splittable")))? } else { vec![packet.to_vec()] };
+            let parts: Vec<Vec<u8>> = if packet.len() > 1500 {
+                split_code3(packet).ok_or_else(|| {
+                    bad(format!(
+                        "packet {decoded_frames}: oversize and not splittable"
+                    ))
+                })?
+            } else {
+                vec![packet.to_vec()]
+            };
             let mut failed = None;
             for part in &parts {
                 match dec.decode_float(part, &mut pcm, false) {
@@ -166,10 +186,20 @@ mod tests {
         // VBR, 3 frames, sizes 3 and 2 coded, last = remainder
         let p = [0xDF, 0x83, 3, 2, 1, 1, 1, 2, 2, 3, 3, 3, 3];
         let parts = split_code3(&p).unwrap();
-        assert_eq!(parts, vec![vec![0xDC, 1, 1, 1], vec![0xDC, 2, 2], vec![0xDC, 3, 3, 3, 3]]);
+        assert_eq!(
+            parts,
+            vec![
+                vec![0xDC, 1, 1, 1],
+                vec![0xDC, 2, 2],
+                vec![0xDC, 3, 3, 3, 3]
+            ]
+        );
         // CBR, 2 frames of 2 bytes
         let p = [0xFF, 0x02, 9, 9, 8, 8];
-        assert_eq!(split_code3(&p).unwrap(), vec![vec![0xFC, 9, 9], vec![0xFC, 8, 8]]);
+        assert_eq!(
+            split_code3(&p).unwrap(),
+            vec![vec![0xFC, 9, 9], vec![0xFC, 8, 8]]
+        );
         // padding (1 pad byte at the end)
         let p = [0xFF, 0x42, 1, 7, 7, 0];
         assert_eq!(split_code3(&p).unwrap(), vec![vec![0xFC, 7], vec![0xFC, 7]]);
@@ -193,7 +223,15 @@ mod tests {
         v.push(2);
         v.extend_from_slice(&335u16.to_le_bytes());
         let h = parse_header(&v).unwrap();
-        assert_eq!((h.sample_rate, h.true_sample_count, h.channels, h.frame_count), (24000, 481881, 2, 335));
+        assert_eq!(
+            (
+                h.sample_rate,
+                h.true_sample_count,
+                h.channels,
+                h.frame_count
+            ),
+            (24000, 481881, 2, 335)
+        );
         // header only -> zero frames available, not a panic
         assert_eq!(decode_ue_opus(&v).map(|w| w.frames()).unwrap_or(0), 0);
         assert!(decode_ue_opus(b"short").is_err());
@@ -201,4 +239,3 @@ mod tests {
         let _ = decode_ue_opus(&v);
     }
 }
-

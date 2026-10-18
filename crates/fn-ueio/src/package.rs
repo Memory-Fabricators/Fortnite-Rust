@@ -64,7 +64,13 @@ impl BulkData {
         let element_count = r.i32()?;
         let size_on_disk = r.i32()?;
         let offset_in_file = r.i64()?;
-        Ok(BulkData { flags, element_count, size_on_disk, offset_in_file, header_end: r.tell() })
+        Ok(BulkData {
+            flags,
+            element_count,
+            size_on_disk,
+            offset_in_file,
+            header_end: r.tell(),
+        })
     }
     pub fn is_unused(&self) -> bool {
         self.flags & BULK_UNUSED != 0 || self.element_count == 0
@@ -87,8 +93,15 @@ pub struct Package {
 fn read_fname(r: &mut Reader, names: &[String]) -> Result<String> {
     let idx = r.i32()?;
     let num = r.i32()?;
-    let base = names.get(idx as usize).cloned().ok_or_else(|| Error::Invalid(format!("bad name index {idx}")))?;
-    Ok(if num > 0 { format!("{}_{}", base, num - 1) } else { base })
+    let base = names
+        .get(idx as usize)
+        .cloned()
+        .ok_or_else(|| Error::Invalid(format!("bad name index {idx}")))?;
+    Ok(if num > 0 {
+        format!("{}_{}", base, num - 1)
+    } else {
+        base
+    })
 }
 
 impl Package {
@@ -102,7 +115,10 @@ impl Package {
         if tag != 0x9E2A83C1 {
             return invalid(format!("bad package tag {tag:#x}"));
         }
-        let mut s = Summary { legacy_version: r.i32()?, ..Default::default() };
+        let mut s = Summary {
+            legacy_version: r.i32()?,
+            ..Default::default()
+        };
         if s.legacy_version != -4 {
             r.i32()?; // UE3 version
         }
@@ -203,7 +219,12 @@ impl Package {
             let class_name = read_fname(&mut r, &names)?;
             let outer_index = r.i32()?;
             let object_name = read_fname(&mut r, &names)?;
-            imports.push(Import { class_package, class_name, outer_index, object_name });
+            imports.push(Import {
+                class_package,
+                class_name,
+                outer_index,
+                object_name,
+            });
         }
         // exports
         r.seek(s.export_offset as usize)?;
@@ -234,17 +255,38 @@ impl Package {
             if s.file_version >= 507 {
                 r.skip(20)?;
             }
-            exports.push(Export { class_index, super_index, outer_index, object_name, object_flags, serial_size, serial_offset });
+            exports.push(Export {
+                class_index,
+                super_index,
+                outer_index,
+                object_name,
+                object_flags,
+                serial_size,
+                serial_offset,
+            });
         }
-        Ok(Package { summary: s, names, imports, exports, data, ubulk: ubulk.to_vec() })
+        Ok(Package {
+            summary: s,
+            names,
+            imports,
+            exports,
+            data,
+            ubulk: ubulk.to_vec(),
+        })
     }
 
     /// Resolve a package index (positive export, negative import, 0 null) to `Class'Name'`-like text.
     pub fn index_name(&self, idx: i32) -> String {
         if idx > 0 {
-            self.exports.get(idx as usize - 1).map(|e| e.object_name.clone()).unwrap_or_default()
+            self.exports
+                .get(idx as usize - 1)
+                .map(|e| e.object_name.clone())
+                .unwrap_or_default()
         } else if idx < 0 {
-            self.imports.get((-idx) as usize - 1).map(|i| i.object_name.clone()).unwrap_or_default()
+            self.imports
+                .get((-idx) as usize - 1)
+                .map(|i| i.object_name.clone())
+                .unwrap_or_default()
         } else {
             String::new()
         }
@@ -271,13 +313,18 @@ impl Package {
     pub fn export_bytes(&self, i: usize) -> Result<&[u8]> {
         let e = &self.exports[i];
         let (o, s) = (e.serial_offset as usize, e.serial_size as usize);
-        self.data.get(o..o + s).ok_or_else(|| Error::Invalid(format!("export {i} out of range")))
+        self.data
+            .get(o..o + s)
+            .ok_or_else(|| Error::Invalid(format!("export {i} out of range")))
     }
 
     /// Start offset of export `i` inside `self.data` (the reader position base).
     pub fn export_range(&self, i: usize) -> (usize, usize) {
         let e = &self.exports[i];
-        (e.serial_offset as usize, (e.serial_offset + e.serial_size) as usize)
+        (
+            e.serial_offset as usize,
+            (e.serial_offset + e.serial_size) as usize,
+        )
     }
 
     pub fn find_export(&self, class: &str) -> Option<usize> {
@@ -292,22 +339,35 @@ impl Package {
         }
         let size = b.size_on_disk as usize;
         if b.flags & BULK_FORCE_INLINE != 0 {
-            let s = self.data.get(b.header_end..b.header_end + size).ok_or_else(|| Error::Invalid("inline bulk out of range".into()))?;
+            let s = self
+                .data
+                .get(b.header_end..b.header_end + size)
+                .ok_or_else(|| Error::Invalid("inline bulk out of range".into()))?;
             return Ok(Some(s));
         }
         if b.in_ubulk() {
             let o = (b.offset_in_file + self.summary.bulk_data_start_offset) as usize;
-            let s = self.ubulk.get(o..o + size).ok_or_else(|| Error::Invalid(format!("ubulk bulk out of range ({o}+{size} > {})", self.ubulk.len())))?;
+            let s = self.ubulk.get(o..o + size).ok_or_else(|| {
+                Error::Invalid(format!(
+                    "ubulk bulk out of range ({o}+{size} > {})",
+                    self.ubulk.len()
+                ))
+            })?;
             return Ok(Some(s));
         }
         if b.flags & BULK_AT_END != 0 {
             let o = (b.offset_in_file + self.summary.bulk_data_start_offset) as usize;
-            let s = self.data.get(o..o + size).ok_or_else(|| Error::Invalid("end-of-file bulk out of range".into()))?;
+            let s = self
+                .data
+                .get(o..o + size)
+                .ok_or_else(|| Error::Invalid("end-of-file bulk out of range".into()))?;
             return Ok(Some(s));
         }
         // inline right after header (legacy)
-        let s = self.data.get(b.header_end..b.header_end + size).ok_or_else(|| Error::Invalid("legacy inline bulk out of range".into()))?;
+        let s = self
+            .data
+            .get(b.header_end..b.header_end + size)
+            .ok_or_else(|| Error::Invalid("legacy inline bulk out of range".into()))?;
         Ok(Some(s))
     }
 }
-

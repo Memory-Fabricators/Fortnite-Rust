@@ -2,15 +2,53 @@
 use crate::config::{item_grade, Grade};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Area { Movement, Camera, Animation, Lighting, Hud, Menus, Loading, Audio, Performance }
+pub enum Area {
+    Movement,
+    Camera,
+    Animation,
+    Lighting,
+    Hud,
+    Menus,
+    Loading,
+    Audio,
+    Performance,
+}
 impl Area {
-    pub const ALL: [Area; 9] = [Area::Movement, Area::Camera, Area::Animation, Area::Lighting, Area::Hud, Area::Menus, Area::Loading, Area::Audio, Area::Performance];
-    pub fn name(&self) -> &'static str { match self { Area::Movement => "Movement", Area::Camera => "Camera", Area::Animation => "Animation", Area::Lighting => "Lighting", Area::Hud => "HUD", Area::Menus => "Menus", Area::Loading => "Loading", Area::Audio => "Audio", Area::Performance => "Performance" } }
-    pub fn id(&self) -> String { self.name().to_ascii_lowercase() }
+    pub const ALL: [Area; 9] = [
+        Area::Movement,
+        Area::Camera,
+        Area::Animation,
+        Area::Lighting,
+        Area::Hud,
+        Area::Menus,
+        Area::Loading,
+        Area::Audio,
+        Area::Performance,
+    ];
+    pub fn name(&self) -> &'static str {
+        match self {
+            Area::Movement => "Movement",
+            Area::Camera => "Camera",
+            Area::Animation => "Animation",
+            Area::Lighting => "Lighting",
+            Area::Hud => "HUD",
+            Area::Menus => "Menus",
+            Area::Loading => "Loading",
+            Area::Audio => "Audio",
+            Area::Performance => "Performance",
+        }
+    }
+    pub fn id(&self) -> String {
+        self.name().to_ascii_lowercase()
+    }
 }
 
 #[derive(Clone, Debug)]
-pub struct Metric { pub name: String, pub value: String, pub grade: Grade }
+pub struct Metric {
+    pub name: String,
+    pub value: String,
+    pub grade: Grade,
+}
 
 #[derive(Clone, Debug)]
 pub struct Item {
@@ -31,19 +69,53 @@ pub struct Item {
     pub note: String,
 }
 impl Item {
-    pub fn new(id: impl Into<String>, area: Area, group: impl Into<String>, label: impl Into<String>) -> Item {
-        Item { id: id.into(), area, group: group.into(), label: label.into(), score: None, grade: Grade::Na, weight: 1., headline: String::new(), metrics: vec![], evidence: None, thumb: None, note: String::new() }
+    pub fn new(
+        id: impl Into<String>,
+        area: Area,
+        group: impl Into<String>,
+        label: impl Into<String>,
+    ) -> Item {
+        Item {
+            id: id.into(),
+            area,
+            group: group.into(),
+            label: label.into(),
+            score: None,
+            grade: Grade::Na,
+            weight: 1.,
+            headline: String::new(),
+            metrics: vec![],
+            evidence: None,
+            thumb: None,
+            note: String::new(),
+        }
     }
-    pub fn scored(mut self, score: f64) -> Item { self.score = Some(score); self.grade = item_grade(score); self }
-    pub fn na(mut self, why: impl Into<String>) -> Item { self.score = None; self.grade = Grade::Na; self.note = why.into(); self }
-    pub fn metric(mut self, name: &str, value: String, grade: Grade) -> Item { self.metrics.push(Metric { name: name.to_owned(), value, grade }); self }
+    pub fn scored(mut self, score: f64) -> Item {
+        self.score = Some(score);
+        self.grade = item_grade(score);
+        self
+    }
+    pub fn na(mut self, why: impl Into<String>) -> Item {
+        self.score = None;
+        self.grade = Grade::Na;
+        self.note = why.into();
+        self
+    }
+    pub fn metric(mut self, name: &str, value: String, grade: Grade) -> Item {
+        self.metrics.push(Metric {
+            name: name.to_owned(),
+            value,
+            grade,
+        });
+        self
+    }
 }
 
 /// One executed process (old exe mode, new tool, cargo build, ...).
 #[derive(Clone, Debug, Default)]
 pub struct RunRecord {
     pub id: String,
-    pub side: String,        // "old" | "new" | "build"
+    pub side: String, // "old" | "new" | "build"
     pub cmd: String,
     pub exit: Option<i32>,
     pub timed_out: bool,
@@ -58,7 +130,15 @@ pub struct RunRecord {
 }
 
 #[derive(Clone, Debug)]
-pub struct AreaScore { pub area: Area, pub score: Option<f64>, pub grade: Grade, pub items: usize, pub scored: usize, pub worst: Vec<usize> /* indices into items */, pub note: String }
+pub struct AreaScore {
+    pub area: Area,
+    pub score: Option<f64>,
+    pub grade: Grade,
+    pub items: usize,
+    pub scored: usize,
+    pub worst: Vec<usize>, /* indices into items */
+    pub note: String,
+}
 
 pub fn area_scores(items: &[Item], cfg: &crate::config::Config) -> Vec<AreaScore> {
     Area::ALL.iter().map(|&a| {

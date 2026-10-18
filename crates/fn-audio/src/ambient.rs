@@ -39,7 +39,8 @@ pub const END_PLAY_FADE_S: f32 = 3.0;
 pub const LPF_INTERP_SPEED: f32 = 1.0;
 /// `Trace`: `Start + Direction * 2000`.
 pub const TRACE_LEN_CM: f32 = 2000.0;
-pub const INSIDE_MIX: &str = "/Game/Sounds/FortSoundClassesAndModes/Fort_InsideAmbient_Athena_MixMod";
+pub const INSIDE_MIX: &str =
+    "/Game/Sounds/FortSoundClassesAndModes/Fort_InsideAmbient_Athena_MixMod";
 /// `SetFade`: `FadeIn(5, 1, 0)` / `FadeOut(5, 0)` of the three river components.
 pub const RIVER_FADE_S: f32 = 5.0;
 /// `VInterpTo(FollowLoc, ClosestPoint + projection, DeltaSeconds, 5)`.
@@ -55,7 +56,11 @@ fn f(v: &J, k: &str) -> Option<f32> {
 }
 fn v3(v: Option<&J>) -> Option<[f64; 3]> {
     let a = v?.as_array()?;
-    Some([a.first()?.as_f64()?, a.get(1)?.as_f64()?, a.get(2)?.as_f64()?])
+    Some([
+        a.first()?.as_f64()?,
+        a.get(1)?.as_f64()?,
+        a.get(2)?.as_f64()?,
+    ])
 }
 fn tail(s: &str) -> &str {
     s.rsplit("::").next().unwrap_or(s)
@@ -215,8 +220,17 @@ impl Layout {
     pub fn parse(text: &str) -> Result<Layout, String> {
         let j: J = serde_json::from_str(text).map_err(|e| e.to_string())?;
         let c = &j["controller"];
-        let lp = |k: &str| c["loops"][k].as_str().map(pkg_of).ok_or_else(|| format!("controller loop {k}"));
-        let num = |k: &str| c[k].as_f64().map(|x| x as f32).ok_or_else(|| format!("controller {k}"));
+        let lp = |k: &str| {
+            c["loops"][k]
+                .as_str()
+                .map(pkg_of)
+                .ok_or_else(|| format!("controller loop {k}"))
+        };
+        let num = |k: &str| {
+            c[k].as_f64()
+                .map(|x| x as f32)
+                .ok_or_else(|| format!("controller {k}"))
+        };
         let ch = &j["time_of_day"]["child"];
         let ph = |i: usize, k: &str| ch["phases"][i][k].as_f64().map(|x| x as f32);
         let b0 = ph(0, "time_phase_begins_h").ok_or("morning begin")?;
@@ -224,23 +238,45 @@ impl Layout {
         let l1 = ph(1, "phase_length_h").ok_or("day length")?;
         let l3 = ph(3, "phase_length_h").ok_or("night length")?;
         let tod = Tod {
-            begins: [b0, b1, ph(2, "time_phase_begins_h").unwrap_or(b1 + l1), ph(3, "time_phase_begins_h").unwrap_or((b0 - l3).rem_euclid(24.0))],
-            derived: [false, false, ph(2, "time_phase_begins_h").is_none(), ph(3, "time_phase_begins_h").is_none()],
-            start_hour: j["time_of_day"]["parent"]["start_time_of_day_in_game"].as_f64().ok_or("start time")? as f32,
-            default_speed: j["time_of_day"]["parent"]["default_time_of_day_speed"].as_f64().ok_or("tod speed")? as f32,
+            begins: [
+                b0,
+                b1,
+                ph(2, "time_phase_begins_h").unwrap_or(b1 + l1),
+                ph(3, "time_phase_begins_h").unwrap_or((b0 - l3).rem_euclid(24.0)),
+            ],
+            derived: [
+                false,
+                false,
+                ph(2, "time_phase_begins_h").is_none(),
+                ph(3, "time_phase_begins_h").is_none(),
+            ],
+            start_hour: j["time_of_day"]["parent"]["start_time_of_day_in_game"]
+                .as_f64()
+                .ok_or("start time")? as f32,
+            default_speed: j["time_of_day"]["parent"]["default_time_of_day_speed"]
+                .as_f64()
+                .ok_or("tod speed")? as f32,
         };
         let mut cues = HashMap::new();
         for (k, v) in j["cues"].as_object().into_iter().flatten() {
             let a = &v["attenuation"];
             cues.insert(
                 pkg_of(k).to_ascii_lowercase(),
-                CueInfo { attenuate: a["attenuate"].as_bool().unwrap_or(false), spatialize: a["spatialize"].as_bool().unwrap_or(false), max_distance: a["max_distance_cm"].as_f64().map(|x| x as f32) },
+                CueInfo {
+                    attenuate: a["attenuate"].as_bool().unwrap_or(false),
+                    spatialize: a["spatialize"].as_bool().unwrap_or(false),
+                    max_distance: a["max_distance_cm"].as_f64().map(|x| x as f32),
+                },
             );
         }
         let sound = |v: &J| v.as_str().filter(|s| !s.is_empty()).map(pkg_of);
         let mut lakes = vec![];
         for l in j["lakes"].as_array().into_iter().flatten() {
-            let att = l.get("attenuation").filter(|a| a.is_object()).map(atten_from_json).unwrap_or_default();
+            let att = l
+                .get("attenuation")
+                .filter(|a| a.is_object())
+                .map(atten_from_json)
+                .unwrap_or_default();
             let mut sph = att.clone();
             let half = sph.extents;
             sph.shape = Shape::Sphere;
@@ -258,7 +294,12 @@ impl Layout {
         for r in j["rivers"].as_array().into_iter().flatten() {
             rivers.push(River {
                 name: r["name"].as_str().unwrap_or("").into(),
-                samples_ue: r["samples"].as_array().into_iter().flatten().filter_map(|p| v3(Some(p))).collect(),
+                samples_ue: r["samples"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|p| v3(Some(p)))
+                    .collect(),
                 cue_closest: sound(&r["sounds"]["SoundClosest"]),
                 cue_next: sound(&r["sounds"]["SoundNextClosest"]),
                 cue_mid: sound(&r["sounds"]["SoundMidpoint"]),
@@ -271,11 +312,22 @@ impl Layout {
         for e in j["emitters"].as_array().into_iter().flatten() {
             let oc = e["owner_class"].as_str().unwrap_or("");
             // lake / river components are handled by their actors above; components that are not auto-activated are started by gameplay (hydrants, toilets, ...)
-            if oc.starts_with("BP_AmbientLake") || oc.starts_with("BP_AmbientSpline") || e["auto_activate"].as_bool() != Some(true) {
+            if oc.starts_with("BP_AmbientLake")
+                || oc.starts_with("BP_AmbientSpline")
+                || e["auto_activate"].as_bool() != Some(true)
+            {
                 continue;
             }
-            let Some(cue) = sound(&e["sound"]) else { continue };
-            let over = (e["override_attenuation"].as_bool() == Some(true)).then(|| e.get("attenuation").filter(|a| a.is_object()).map(atten_from_json)).flatten();
+            let Some(cue) = sound(&e["sound"]) else {
+                continue;
+            };
+            let over = (e["override_attenuation"].as_bool() == Some(true))
+                .then(|| {
+                    e.get("attenuation")
+                        .filter(|a| a.is_object())
+                        .map(atten_from_json)
+                })
+                .flatten();
             emitters.push(Emitter {
                 level: e["level"].as_str().unwrap_or("").into(),
                 owner: e["owner"].as_str().unwrap_or("").into(),
@@ -291,7 +343,13 @@ impl Layout {
             });
         }
         Ok(Layout {
-            loops: [lp("morning")?, lp("day")?, lp("evening")?, lp("night")?, lp("indoors")?],
+            loops: [
+                lp("morning")?,
+                lp("day")?,
+                lp("evening")?,
+                lp("night")?,
+                lp("indoors")?,
+            ],
             check_frequency: num("check_frequency_s")?,
             outside_lpf: num("outside_lpf_hz")?,
             inside_lpf: num("inside_lpf_hz")?,
@@ -338,7 +396,13 @@ impl Layout {
 /// The ambient cues as `&'static str` (for the audio pack's cue list).
 pub fn cue_paths() -> &'static [&'static str] {
     static P: OnceLock<Vec<&'static str>> = OnceLock::new();
-    P.get_or_init(|| Layout::embedded().cue_list().into_iter().map(|s| &*Box::leak(s.into_boxed_str())).collect())
+    P.get_or_init(|| {
+        Layout::embedded()
+            .cue_list()
+            .into_iter()
+            .map(|s| &*Box::leak(s.into_boxed_str()))
+            .collect()
+    })
 }
 
 /// UE world cm (left handed, Z up) <-> audio space cm (`x, y up, z`): `audio = anchor + (ue.x - c.x, ue.z - c.z, ue.y - c.y)`, the same placement as the game's real props
@@ -352,18 +416,29 @@ pub struct WorldMap {
 impl WorldMap {
     pub fn to_audio(&self, ue: [f64; 3]) -> Vec3 {
         let (c, a) = (self.center_ue_cm, self.anchor_cm);
-        Vec3::new(a[0] + (ue[0] as f32 - c[0]), a[1] + (ue[2] as f32 - c[2]), a[2] + (ue[1] as f32 - c[1]))
+        Vec3::new(
+            a[0] + (ue[0] as f32 - c[0]),
+            a[1] + (ue[2] as f32 - c[2]),
+            a[2] + (ue[1] as f32 - c[1]),
+        )
     }
     pub fn to_ue(&self, p: Vec3) -> [f64; 3] {
         let (c, a) = (self.center_ue_cm, self.anchor_cm);
-        [(p.x - a[0] + c[0]) as f64, (p.z - a[2] + c[1]) as f64, (p.y - a[1] + c[2]) as f64]
+        [
+            (p.x - a[0] + c[0]) as f64,
+            (p.z - a[2] + c[1]) as f64,
+            (p.y - a[1] + c[2]) as f64,
+        ]
     }
 }
 
 /// Distance (cm) from `p` to an oriented box (centre, FRotator degrees, half extents), 0 inside. All UE space.
 pub fn box_distance(p: [f64; 3], center: [f64; 3], rot_deg: [f64; 3], half: [f32; 3]) -> f32 {
     let q = rot_to_quat(rot_deg);
-    let l = qrot([-q[0], -q[1], -q[2], q[3]], [p[0] - center[0], p[1] - center[1], p[2] - center[2]]);
+    let l = qrot(
+        [-q[0], -q[1], -q[2], q[3]],
+        [p[0] - center[0], p[1] - center[1], p[2] - center[2]],
+    );
     let d = |i: usize| ((l[i].abs() - half[i] as f64).max(0.0)) as f32;
     (d(0) * d(0) + d(1) * d(1) + d(2) * d(2)).sqrt()
 }
@@ -372,9 +447,21 @@ pub fn box_distance(p: [f64; 3], center: [f64; 3], rot_deg: [f64; 3], half: [f32
 #[derive(Clone, Debug)]
 pub enum Act {
     /// Start `cue` (`position` None = 2D) at `volume` / `pitch`, then apply `adjust` (initial gain, attenuation override, ...).
-    Play { key: Key, cue: String, position: Option<Vec3>, volume: f32, pitch: f32, adjust: Adjust },
-    Adjust { key: Key, adjust: Adjust },
-    Stop { key: Key },
+    Play {
+        key: Key,
+        cue: String,
+        position: Option<Vec3>,
+        volume: f32,
+        pitch: f32,
+        adjust: Adjust,
+    },
+    Adjust {
+        key: Key,
+        adjust: Adjust,
+    },
+    Stop {
+        key: Key,
+    },
     PushMix(&'static str),
     PopMix(&'static str),
 }
@@ -472,14 +559,33 @@ impl Director {
             enabled: false,
             hour: layout.tod.start_hour,
             speed_hours_per_s: 0.0,
-            bed: Bed { lpf_cur: layout.initial_lpf, lpf_target: layout.outside_lpf, lpf_sent: layout.initial_lpf, active_is_a: false, ..Default::default() },
+            bed: Bed {
+                lpf_cur: layout.initial_lpf,
+                lpf_target: layout.outside_lpf,
+                lpf_sent: layout.initial_lpf,
+                active_is_a: false,
+                ..Default::default()
+            },
             lakes: layout.lakes.iter().map(|_| LakeState::default()).collect(),
             rivers: layout
                 .rivers
                 .iter()
-                .map(|r| RiverState { active: false, timer: r.check_far_s, period: r.check_far_s, closest: Vec3::default(), next: Vec3::default(), follow: Vec3::default(), closest_index: 0, keys: [None; 3] })
+                .map(|r| RiverState {
+                    active: false,
+                    timer: r.check_far_s,
+                    period: r.check_far_s,
+                    closest: Vec3::default(),
+                    next: Vec3::default(),
+                    follow: Vec3::default(),
+                    closest_index: 0,
+                    keys: [None; 3],
+                })
                 .collect(),
-            emitters: layout.emitters.iter().map(|_| EmitterState::default()).collect(),
+            emitters: layout
+                .emitters
+                .iter()
+                .map(|_| EmitterState::default())
+                .collect(),
             disabled_owners: vec![],
             next_key: 1,
             rng: 0x2545F4914F6CDD1D,
@@ -498,7 +604,9 @@ impl Director {
     }
     /// The bed cue currently fading in / playing (None until started).
     pub fn bed_cue(&self) -> Option<&'static str> {
-        self.bed.phase.map(|p| self.layout.loops[p as usize].as_str())
+        self.bed
+            .phase
+            .map(|p| self.layout.loops[p as usize].as_str())
     }
     /// Emitter plays alive right now.
     pub fn active_emitters(&self) -> usize {
@@ -526,8 +634,21 @@ impl Director {
         self.enabled = on;
         if !on {
             // ReceiveEndPlay: FadeOut(3, 0) of A, B and the indoor loop, pop the inside mix
-            for k in [self.bed.slot_a.take(), self.bed.slot_b.take(), self.bed.indoor.take()].into_iter().flatten() {
-                self.out.push(Act::Adjust { key: k, adjust: Adjust { gain: Some((None, 0.0, END_PLAY_FADE_S, true)), ..Default::default() } });
+            for k in [
+                self.bed.slot_a.take(),
+                self.bed.slot_b.take(),
+                self.bed.indoor.take(),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                self.out.push(Act::Adjust {
+                    key: k,
+                    adjust: Adjust {
+                        gain: Some((None, 0.0, END_PLAY_FADE_S, true)),
+                        ..Default::default()
+                    },
+                });
             }
             if self.bed.inside_cur {
                 self.out.push(Act::PopMix(INSIDE_MIX));
@@ -574,8 +695,17 @@ impl Director {
 
     /// `Crossfade(NewSound)`: the previous loops fade out over 5 s, the new one is spawned 2D and fades in over 5 s (low-pass enabled at the current frequency).
     fn crossfade(&mut self, phase: Phase) {
-        for k in [self.bed.slot_a.take(), self.bed.slot_b.take()].into_iter().flatten() {
-            self.out.push(Act::Adjust { key: k, adjust: Adjust { gain: Some((None, 0.0, CROSSFADE_S, true)), ..Default::default() } });
+        for k in [self.bed.slot_a.take(), self.bed.slot_b.take()]
+            .into_iter()
+            .flatten()
+        {
+            self.out.push(Act::Adjust {
+                key: k,
+                adjust: Adjust {
+                    gain: Some((None, 0.0, CROSSFADE_S, true)),
+                    ..Default::default()
+                },
+            });
         }
         let key = self.key();
         let lpf = (self.bed.lpf_cur < 19_999.0).then_some(self.bed.lpf_cur);
@@ -585,7 +715,11 @@ impl Director {
             position: None,
             volume: 1.0,
             pitch: 1.0,
-            adjust: Adjust { gain: Some((Some(0.0), 1.0, CROSSFADE_S, false)), lpf_hz: Some(lpf), ..Default::default() },
+            adjust: Adjust {
+                gain: Some((Some(0.0), 1.0, CROSSFADE_S, false)),
+                lpf_hz: Some(lpf),
+                ..Default::default()
+            },
         });
         if self.bed.active_is_a {
             self.bed.slot_b = Some(key);
@@ -600,10 +734,26 @@ impl Director {
     fn indoor(&mut self, on: bool) {
         if on {
             let key = self.key();
-            self.out.push(Act::Play { key, cue: self.layout.loops[4].clone(), position: Some(Vec3::default()), volume: 1.0, pitch: 1.0, adjust: Adjust { gain: Some((Some(0.0), 1.0, INDOOR_FADE_S, false)), ..Default::default() } });
+            self.out.push(Act::Play {
+                key,
+                cue: self.layout.loops[4].clone(),
+                position: Some(Vec3::default()),
+                volume: 1.0,
+                pitch: 1.0,
+                adjust: Adjust {
+                    gain: Some((Some(0.0), 1.0, INDOOR_FADE_S, false)),
+                    ..Default::default()
+                },
+            });
             self.bed.indoor = Some(key);
         } else if let Some(k) = self.bed.indoor.take() {
-            self.out.push(Act::Adjust { key: k, adjust: Adjust { gain: Some((None, 0.0, INDOOR_FADE_S, true)), ..Default::default() } });
+            self.out.push(Act::Adjust {
+                key: k,
+                adjust: Adjust {
+                    gain: Some((None, 0.0, INDOOR_FADE_S, true)),
+                    ..Default::default()
+                },
+            });
         }
     }
 
@@ -648,7 +798,13 @@ impl Director {
             let up = Vec3::new(0.0, 1.0, 0.0);
             let fwd = fr.forward;
             let right = fwd.cross(up).normalized();
-            let dirs = [fwd, Vec3::new(-fwd.x, -fwd.y, -fwd.z), Vec3::new(-right.x, -right.y, -right.z), right, up];
+            let dirs = [
+                fwd,
+                Vec3::new(-fwd.x, -fwd.y, -fwd.z),
+                Vec3::new(-right.x, -right.y, -right.z),
+                right,
+                up,
+            ];
             let hit = (fr.trace)(fr.pawn, dirs[step], TRACE_LEN_CM);
             if !hit {
                 self.bed.probe = None;
@@ -662,12 +818,23 @@ impl Director {
             }
         }
         // ReceiveTick: CurrentLPFFreq = FInterpTo(Current, Target, dt, 1); SetLowPassFilterFrequency on A and B
-        self.bed.lpf_cur = finterp_to(self.bed.lpf_cur, self.bed.lpf_target, fr.dt, LPF_INTERP_SPEED);
+        self.bed.lpf_cur = finterp_to(
+            self.bed.lpf_cur,
+            self.bed.lpf_target,
+            fr.dt,
+            LPF_INTERP_SPEED,
+        );
         if (self.bed.lpf_cur - self.bed.lpf_sent).abs() > 1.0 {
             self.bed.lpf_sent = self.bed.lpf_cur;
             let hz = (self.bed.lpf_cur < 19_999.0).then_some(self.bed.lpf_cur);
             for k in [self.bed.slot_a, self.bed.slot_b].into_iter().flatten() {
-                self.out.push(Act::Adjust { key: k, adjust: Adjust { lpf_hz: Some(hz), ..Default::default() } });
+                self.out.push(Act::Adjust {
+                    key: k,
+                    adjust: Adjust {
+                        lpf_hz: Some(hz),
+                        ..Default::default()
+                    },
+                });
             }
         }
     }
@@ -676,7 +843,9 @@ impl Director {
         let lis_ue = self.map.to_ue(fr.listener);
         for i in 0..self.layout.lakes.len() {
             let lake = &self.layout.lakes[i];
-            let Some(cue) = lake.cue.clone() else { continue };
+            let Some(cue) = lake.cue.clone() else {
+                continue;
+            };
             let d = box_distance(lis_ue, lake.center_ue, lake.rot_deg, lake.half_extents);
             let reach = lake.atten.falloff_distance;
             let st = &mut self.lakes[i];
@@ -693,7 +862,12 @@ impl Director {
                         position: Some(pos),
                         volume: 1.0,
                         pitch: 1.0,
-                        adjust: Adjust { position: Some(Some(pos)), atten: Some(Some(lake.atten.clone())), dist: Some(Some(d)), ..Default::default() },
+                        adjust: Adjust {
+                            position: Some(Some(pos)),
+                            atten: Some(Some(lake.atten.clone())),
+                            dist: Some(Some(d)),
+                            ..Default::default()
+                        },
                     });
                 }
                 Some(k) if d > reach * 1.1 + 100.0 => {
@@ -702,7 +876,13 @@ impl Director {
                 }
                 Some(k) if (d - st.last_dist).abs() > 1.0 => {
                     st.last_dist = d;
-                    self.out.push(Act::Adjust { key: k, adjust: Adjust { dist: Some(Some(d)), ..Default::default() } });
+                    self.out.push(Act::Adjust {
+                        key: k,
+                        adjust: Adjust {
+                            dist: Some(Some(d)),
+                            ..Default::default()
+                        },
+                    });
                 }
                 _ => {}
             }
@@ -717,16 +897,28 @@ impl Director {
             let e = &self.layout.emitters[i];
             let info = self.layout.cues.get(&e.cue.to_ascii_lowercase());
             let (d, reach) = match &e.over {
-                Some(a) if a.shape == Shape::Box => (box_distance(lis_ue, e.pos_ue, e.rot_deg, a.extents), a.falloff_distance),
+                Some(a) if a.shape == Shape::Box => (
+                    box_distance(lis_ue, e.pos_ue, e.rot_deg, a.extents),
+                    a.falloff_distance,
+                ),
                 Some(a) => {
                     let c = self.map.to_ue(self.map.to_audio(e.pos_ue));
-                    let dd = ((lis_ue[0] - c[0]).powi(2) + (lis_ue[1] - c[1]).powi(2) + (lis_ue[2] - c[2]).powi(2)).sqrt() as f32;
+                    let dd = ((lis_ue[0] - c[0]).powi(2)
+                        + (lis_ue[1] - c[1]).powi(2)
+                        + (lis_ue[2] - c[2]).powi(2))
+                    .sqrt() as f32;
                     (dd, a.max_distance())
                 }
                 None => {
-                    let dd = ((lis_ue[0] - e.pos_ue[0]).powi(2) + (lis_ue[1] - e.pos_ue[1]).powi(2) + (lis_ue[2] - e.pos_ue[2]).powi(2)).sqrt() as f32;
+                    let dd = ((lis_ue[0] - e.pos_ue[0]).powi(2)
+                        + (lis_ue[1] - e.pos_ue[1]).powi(2)
+                        + (lis_ue[2] - e.pos_ue[2]).powi(2))
+                    .sqrt() as f32;
                     // no attenuation (or none that culls): audible everywhere; the cue's own range otherwise
-                    (dd, info.and_then(|c| c.max_distance).unwrap_or(f32::INFINITY))
+                    (
+                        dd,
+                        info.and_then(|c| c.max_distance).unwrap_or(f32::INFINITY),
+                    )
                 }
             };
             let off = self.disabled_owners.iter().any(|o| *o == e.id());
@@ -751,16 +943,27 @@ impl Director {
             alive += 1;
             let e = self.layout.emitters[i].clone();
             if let Some(k) = self.emitters[i].key {
-                if (d - self.emitters[i].last_dist).abs() > 1.0 && matches!(&e.over, Some(a) if a.shape == Shape::Box) {
+                if (d - self.emitters[i].last_dist).abs() > 1.0
+                    && matches!(&e.over, Some(a) if a.shape == Shape::Box)
+                {
                     self.emitters[i].last_dist = d;
-                    self.out.push(Act::Adjust { key: k, adjust: Adjust { dist: Some(Some(d)), ..Default::default() } });
+                    self.out.push(Act::Adjust {
+                        key: k,
+                        adjust: Adjust {
+                            dist: Some(Some(d)),
+                            ..Default::default()
+                        },
+                    });
                 }
                 continue;
             }
             let key = self.key();
             self.emitters[i].key = Some(key);
             self.emitters[i].last_dist = d;
-            let mut adjust = Adjust { position: Some(Some(self.map.to_audio(e.pos_ue))), ..Default::default() };
+            let mut adjust = Adjust {
+                position: Some(Some(self.map.to_audio(e.pos_ue))),
+                ..Default::default()
+            };
             if let Some(a) = &e.over {
                 let mut a2 = a.clone();
                 if a.shape == Shape::Box {
@@ -770,8 +973,19 @@ impl Director {
                 }
                 adjust.atten = Some(Some(Arc::new(a2)));
             }
-            let pitch = if e.pitch_max > e.pitch_min { e.pitch_min + (e.pitch_max - e.pitch_min) * self.rand01() } else { e.pitch_min };
-            self.out.push(Act::Play { key, cue: e.cue.clone(), position: Some(self.map.to_audio(e.pos_ue)), volume: e.volume, pitch, adjust });
+            let pitch = if e.pitch_max > e.pitch_min {
+                e.pitch_min + (e.pitch_max - e.pitch_min) * self.rand01()
+            } else {
+                e.pitch_min
+            };
+            self.out.push(Act::Play {
+                key,
+                cue: e.cue.clone(),
+                position: Some(self.map.to_audio(e.pos_ue)),
+                volume: e.volume,
+                pitch,
+                adjust,
+            });
         }
     }
 
@@ -800,7 +1014,13 @@ impl Director {
                 let nb = |k: isize| (k >= 0 && (k as usize) < pts.len()).then(|| pts[k as usize]);
                 let (a, b) = (nb(ci as isize + 1), nb(ci as isize - 1));
                 st.next = match (a, b) {
-                    (Some(a), Some(b)) => if dist2(a, target) < dist2(b, target) { a } else { b },
+                    (Some(a), Some(b)) => {
+                        if dist2(a, target) < dist2(b, target) {
+                            a
+                        } else {
+                            b
+                        }
+                    }
                     (Some(a), None) => a,
                     (None, Some(b)) => b,
                     _ => pts[ci],
@@ -812,24 +1032,50 @@ impl Director {
                     st.active = true;
                     st.period = r.check_close_s;
                     st.follow = st.closest;
-                    for (slot, cue, pos) in [(0, &r.cue_closest, st.closest), (1, &r.cue_next, st.next), (2, &r.cue_mid, st.follow)] {
+                    for (slot, cue, pos) in [
+                        (0, &r.cue_closest, st.closest),
+                        (1, &r.cue_next, st.next),
+                        (2, &r.cue_mid, st.follow),
+                    ] {
                         if let Some(c) = cue {
                             let key = self.next_key;
                             self.next_key += 1;
                             st.keys[slot] = Some(key);
-                            self.out.push(Act::Play { key, cue: c.clone(), position: Some(pos), volume: 1.0, pitch: 1.0, adjust: Adjust { gain: Some((Some(0.0), 1.0, RIVER_FADE_S, false)), ..Default::default() } });
+                            self.out.push(Act::Play {
+                                key,
+                                cue: c.clone(),
+                                position: Some(pos),
+                                volume: 1.0,
+                                pitch: 1.0,
+                                adjust: Adjust {
+                                    gain: Some((Some(0.0), 1.0, RIVER_FADE_S, false)),
+                                    ..Default::default()
+                                },
+                            });
                         }
                     }
                 } else if !near && st.active {
                     st.active = false;
                     st.period = r.check_far_s;
                     for k in st.keys.iter_mut().filter_map(|k| k.take()) {
-                        self.out.push(Act::Adjust { key: k, adjust: Adjust { gain: Some((None, 0.0, RIVER_FADE_S, true)), ..Default::default() } });
+                        self.out.push(Act::Adjust {
+                            key: k,
+                            adjust: Adjust {
+                                gain: Some((None, 0.0, RIVER_FADE_S, true)),
+                                ..Default::default()
+                            },
+                        });
                     }
                 } else if st.active {
                     for (slot, pos) in [(0, st.closest), (1, st.next)] {
                         if let Some(k) = st.keys[slot] {
-                            self.out.push(Act::Adjust { key: k, adjust: Adjust { position: Some(Some(pos)), ..Default::default() } });
+                            self.out.push(Act::Adjust {
+                                key: k,
+                                adjust: Adjust {
+                                    position: Some(Some(pos)),
+                                    ..Default::default()
+                                },
+                            });
                         }
                     }
                 }
@@ -840,7 +1086,11 @@ impl Director {
                 let l2 = seg.dot(seg);
                 let goal = if l2 > 1e-6 {
                     let t = target.sub(st.closest).dot(seg) / l2;
-                    Vec3::new(st.closest.x + seg.x * t, st.closest.y + seg.y * t, st.closest.z + seg.z * t)
+                    Vec3::new(
+                        st.closest.x + seg.x * t,
+                        st.closest.y + seg.y * t,
+                        st.closest.z + seg.z * t,
+                    )
                 } else {
                     st.closest
                 };
@@ -848,10 +1098,20 @@ impl Director {
                     st.follow = st.closest;
                 } else {
                     let k = (fr.dt * RIVER_FOLLOW_SPEED).clamp(0.0, 1.0);
-                    st.follow = Vec3::new(st.follow.x + (goal.x - st.follow.x) * k, st.follow.y + (goal.y - st.follow.y) * k, st.follow.z + (goal.z - st.follow.z) * k);
+                    st.follow = Vec3::new(
+                        st.follow.x + (goal.x - st.follow.x) * k,
+                        st.follow.y + (goal.y - st.follow.y) * k,
+                        st.follow.z + (goal.z - st.follow.z) * k,
+                    );
                 }
                 if let Some(key) = st.keys[2] {
-                    self.out.push(Act::Adjust { key, adjust: Adjust { position: Some(Some(st.follow)), ..Default::default() } });
+                    self.out.push(Act::Adjust {
+                        key,
+                        adjust: Adjust {
+                            position: Some(Some(st.follow)),
+                            ..Default::default()
+                        },
+                    });
                 }
             }
         }
@@ -879,20 +1139,50 @@ mod tests {
         d.set_enabled(true);
         d
     }
-    fn frame<'a>(dt: f32, at: Vec3, trace: &'a mut dyn FnMut(Vec3, Vec3, f32) -> bool) -> Frame<'a> {
-        Frame { dt, listener: at, pawn: at, forward: Vec3::new(0.0, 0.0, -1.0), trace }
+    fn frame<'a>(
+        dt: f32,
+        at: Vec3,
+        trace: &'a mut dyn FnMut(Vec3, Vec3, f32) -> bool,
+    ) -> Frame<'a> {
+        Frame {
+            dt,
+            listener: at,
+            pawn: at,
+            forward: Vec3::new(0.0, 0.0, -1.0),
+            trace,
+        }
     }
 
     #[test]
     fn the_embedded_layout_parses_and_matches_the_scan() {
         let l = Layout::embedded();
-        assert!(l.loops[1].ends_with("Temperate_Grasslands_Hills_Day_Athena_Cue"), "{:?}", l.loops);
+        assert!(
+            l.loops[1].ends_with("Temperate_Grasslands_Hills_Day_Athena_Cue"),
+            "{:?}",
+            l.loops
+        );
         assert!(l.loops[4].ends_with("Amb_RoomTone_Athena_Cue"));
-        assert_eq!((l.check_frequency, l.outside_lpf, l.inside_lpf), (1.5, 20_000.0, 5_000.0));
+        assert_eq!(
+            (l.check_frequency, l.outside_lpf, l.inside_lpf),
+            (1.5, 20_000.0, 5_000.0)
+        );
         assert_eq!(l.lakes.len(), 4);
-        assert_eq!(l.lakes.iter().filter(|x| x.cue.is_some()).count(), 3, "BP_AmbientLakeAudioActor3 has no Sound set");
+        assert_eq!(
+            l.lakes.iter().filter(|x| x.cue.is_some()).count(),
+            3,
+            "BP_AmbientLakeAudioActor3 has no Sound set"
+        );
         assert_eq!(l.rivers.len(), 5);
-        assert_eq!(l.rivers.iter().map(|r| r.samples_ue.len() - 1).collect::<Vec<_>>().iter().filter(|n| **n == 60 || **n == 15 || **n == 10 || **n == 80 || **n == 40).count(), 5);
+        assert_eq!(
+            l.rivers
+                .iter()
+                .map(|r| r.samples_ue.len() - 1)
+                .collect::<Vec<_>>()
+                .iter()
+                .filter(|n| **n == 60 || **n == 15 || **n == 10 || **n == 80 || **n == 40)
+                .count(),
+            5
+        );
         assert!(l.emitters.iter().all(|e| !e.cue.is_empty()));
         assert!(l.cues.contains_key(&l.loops[1].to_ascii_lowercase()));
     }
@@ -905,17 +1195,35 @@ mod tests {
         assert_eq!(t.begins[1], 7.0);
         assert_eq!((t.begins[2], t.derived[2]), (19.0, true));
         assert_eq!((t.begins[3], t.derived[3]), (22.0, true));
-        for (h, p) in [(7.0, Phase::Day), (6.99, Phase::Morning), (2.99, Phase::Night), (3.0, Phase::Morning), (18.9, Phase::Day), (19.0, Phase::Evening), (22.0, Phase::Night), (23.9, Phase::Night)] {
+        for (h, p) in [
+            (7.0, Phase::Day),
+            (6.99, Phase::Morning),
+            (2.99, Phase::Night),
+            (3.0, Phase::Morning),
+            (18.9, Phase::Day),
+            (19.0, Phase::Evening),
+            (22.0, Phase::Night),
+            (23.9, Phase::Night),
+        ] {
             assert_eq!(t.phase_at(h), p, "{h}");
         }
     }
 
     #[test]
-    fn the_bed_starts_with_the_day_loop_fading_in_over_five_seconds_and_crossfades_on_a_phase_change() {
+    fn the_bed_starts_with_the_day_loop_fading_in_over_five_seconds_and_crossfades_on_a_phase_change(
+    ) {
         let mut d = dir();
         let mut miss = |_: Vec3, _: Vec3, _: f32| false;
         let acts = d.update(&mut frame(0.016, Vec3::default(), &mut miss));
-        let Some(Act::Play { cue, adjust, position, .. }) = acts.first() else { panic!("{acts:?}") };
+        let Some(Act::Play {
+            cue,
+            adjust,
+            position,
+            ..
+        }) = acts.first()
+        else {
+            panic!("{acts:?}")
+        };
         assert!(cue.ends_with("Temperate_Grasslands_Hills_Day_Athena_Cue"));
         assert_eq!(*position, None, "SpawnSound2D");
         assert_eq!(adjust.gain, Some((Some(0.0), 1.0, 5.0, false)));
@@ -923,7 +1231,9 @@ mod tests {
         d.hour = 19.0;
         let acts = d.update(&mut frame(0.016, Vec3::default(), &mut miss));
         assert!(acts.iter().any(|a| matches!(a, Act::Adjust { adjust, .. } if adjust.gain == Some((None, 0.0, 5.0, true)))));
-        assert!(acts.iter().any(|a| matches!(a, Act::Play { cue, .. } if cue.ends_with("Evening_Athena_Cue"))));
+        assert!(acts
+            .iter()
+            .any(|a| matches!(a, Act::Play { cue, .. } if cue.ends_with("Evening_Athena_Cue"))));
     }
 
     #[test]
@@ -938,7 +1248,10 @@ mod tests {
             inside |= d.is_inside();
         }
         assert!(inside && pushed == 1, "pushed {pushed}");
-        assert!(d.bed.lpf_target == 5_000.0 && d.bed.lpf_cur < 20_000.0, "the low-pass eases toward 5 kHz");
+        assert!(
+            d.bed.lpf_target == 5_000.0 && d.bed.lpf_cur < 20_000.0,
+            "the low-pass eases toward 5 kHz"
+        );
         let mut none = |_: Vec3, _: Vec3, _: f32| false;
         let mut popped = 0;
         for _ in 0..200 {
@@ -951,19 +1264,46 @@ mod tests {
 
     #[test]
     fn a_box_attenuation_is_one_inside_and_falls_off_linearly_over_the_falloff_distance() {
-        assert_eq!(box_distance([0.0, 0.0, 0.0], [0.0; 3], [0.0; 3], [100.0, 200.0, 50.0]), 0.0);
-        assert!((box_distance([100.0 + 300.0, 0.0, 0.0], [0.0; 3], [0.0; 3], [100.0, 200.0, 50.0]) - 300.0).abs() < 1e-3);
+        assert_eq!(
+            box_distance([0.0, 0.0, 0.0], [0.0; 3], [0.0; 3], [100.0, 200.0, 50.0]),
+            0.0
+        );
+        assert!(
+            (box_distance(
+                [100.0 + 300.0, 0.0, 0.0],
+                [0.0; 3],
+                [0.0; 3],
+                [100.0, 200.0, 50.0]
+            ) - 300.0)
+                .abs()
+                < 1e-3
+        );
         // yawed 90 degrees: the long axis now points along world X
-        assert!(box_distance([150.0, 0.0, 0.0], [0.0; 3], [0.0, 90.0, 0.0], [100.0, 200.0, 50.0]) < 1e-3);
+        assert!(
+            box_distance(
+                [150.0, 0.0, 0.0],
+                [0.0; 3],
+                [0.0, 90.0, 0.0],
+                [100.0, 200.0, 50.0]
+            ) < 1e-3
+        );
         let l = &Layout::embedded().lakes[0];
         assert_eq!(l.atten.extents, [0.0; 3]);
-        assert!((l.atten.gain(500.0) - 0.5).abs() < 1e-5, "Linear, falloff 1000");
+        assert!(
+            (l.atten.gain(500.0) - 0.5).abs() < 1e-5,
+            "Linear, falloff 1000"
+        );
     }
 
     #[test]
     fn a_lake_plays_inside_its_box_and_stops_far_away_and_a_river_follows_the_listener() {
         let mut d = dir();
-        let lake = Layout::embedded().lakes.iter().find(|l| l.cue.is_some()).unwrap().clone();
+        let lake = Layout::embedded()
+            .lakes
+            .iter()
+            .find(|l| l.cue.is_some())
+            .unwrap()
+            .clone();
         let inside = d.map.to_audio(lake.center_ue);
         let mut miss = |_: Vec3, _: Vec3, _: f32| false;
         let acts = d.update(&mut frame(0.016, inside, &mut miss));
@@ -980,6 +1320,9 @@ mod tests {
         for _ in 0..400 {
             played += d.update(&mut frame(0.016, at, &mut miss)).iter().filter(|a| matches!(a, Act::Play { adjust, .. } if adjust.gain == Some((Some(0.0), 1.0, 5.0, false)) )).count();
         }
-        assert!(played >= 3 || d.active_rivers() >= 1, "river sounds started ({played})");
+        assert!(
+            played >= 3 || d.active_rivers() >= 1,
+            "river sounds started ({played})"
+        );
     }
 }

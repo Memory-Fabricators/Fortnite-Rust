@@ -1,4 +1,4 @@
-﻿//! `USoundWave` (UE 4.16, cooked) parsing: tagged properties + the native tail.
+//! `USoundWave` (UE 4.16, cooked) parsing: tagged properties + the native tail.
 //!
 //! Native layout after the tagged property list and the 4-byte `bHasGuid` flag (verified on the whole 1.8 install,
 //! see the crate README):
@@ -48,10 +48,18 @@ pub struct BulkHeader {
 
 impl BulkHeader {
     pub fn read(r: &mut Reader) -> Result<BulkHeader> {
-        Ok(BulkHeader { flags: r.u32()?, element_count: r.i32()?, size_on_disk: r.i32()?, offset_in_file: r.i64()? })
+        Ok(BulkHeader {
+            flags: r.u32()?,
+            element_count: r.i32()?,
+            size_on_disk: r.i32()?,
+            offset_in_file: r.i64()?,
+        })
     }
     pub fn placement(&self) -> Placement {
-        if self.flags & BULK_UNUSED != 0 || self.size_on_disk <= 0 || self.flags & BULK_OPTIONAL != 0 {
+        if self.flags & BULK_UNUSED != 0
+            || self.size_on_disk <= 0
+            || self.flags & BULK_OPTIONAL != 0
+        {
             // OptionalPayload (0x800) lives in a `.uptnl` file, which is not read; none exists in the 1.8 install
             Placement::Unused
         } else if self.flags & BULK_SEPARATE != 0 {
@@ -157,20 +165,34 @@ pub fn read_info(pkg: &Package, props: &fn_uasset::PropertyList, name: &str) -> 
     SoundWaveInfo {
         name: name.to_string(),
         duration: g("Duration").and_then(Value::as_f64),
-        sample_rate: g("SampleRate").and_then(Value::as_i64).and_then(|v| u32::try_from(v).ok()),
-        channels: g("NumChannels").and_then(Value::as_i64).and_then(|v| u16::try_from(v).ok()),
-        raw_pcm_data_size: g("RawPCMDataSize").and_then(Value::as_i64).and_then(|v| u32::try_from(v).ok()),
+        sample_rate: g("SampleRate")
+            .and_then(Value::as_i64)
+            .and_then(|v| u32::try_from(v).ok()),
+        channels: g("NumChannels")
+            .and_then(Value::as_i64)
+            .and_then(|v| u16::try_from(v).ok()),
+        raw_pcm_data_size: g("RawPCMDataSize")
+            .and_then(Value::as_i64)
+            .and_then(|v| u32::try_from(v).ok()),
         looping: g("bLooping").and_then(Value::as_bool).unwrap_or(false),
         streaming: g("bStreaming").and_then(Value::as_bool).unwrap_or(false),
         volume: g("Volume").and_then(Value::as_f32),
         pitch: g("Pitch").and_then(Value::as_f32),
-        compression_quality: g("CompressionQuality").and_then(Value::as_i64).map(|v| v as i32),
+        compression_quality: g("CompressionQuality")
+            .and_then(Value::as_i64)
+            .map(|v| v as i32),
         sound_group: g("SoundGroup").and_then(Value::as_str).map(str::to_string),
         sound_class: g("SoundClassObject").and_then(|v| obj_path(pkg, v)),
         attenuation: g("AttenuationSettings").and_then(|v| obj_path(pkg, v)),
-        override_attenuation: g("bOverrideAttenuation").and_then(Value::as_bool).unwrap_or(false),
-        virtualize_when_silent: g("bVirtualizeWhenSilent").and_then(Value::as_bool).unwrap_or(false),
-        total_samples: g("TotalSamples").and_then(Value::as_i64).and_then(|v| u32::try_from(v).ok()),
+        override_attenuation: g("bOverrideAttenuation")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        virtualize_when_silent: g("bVirtualizeWhenSilent")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        total_samples: g("TotalSamples")
+            .and_then(Value::as_i64)
+            .and_then(|v| u32::try_from(v).ok()),
     }
 }
 
@@ -181,7 +203,10 @@ pub fn parse_soundwave(pkg: &Package, export: usize, ubulk: &[u8]) -> Result<Sou
         return malformed("SoundWave properties", e.to_string());
     }
     let info = read_info(pkg, &obj.props, &obj.name);
-    let mut asset = SoundWaveAsset { info, ..Default::default() };
+    let mut asset = SoundWaveAsset {
+        info,
+        ..Default::default()
+    };
     let mut r = Reader::new(obj.trailing);
     if let Err(e) = read_tail(pkg, &mut r, ubulk, &mut asset) {
         asset.tail_error = Some(e.to_string());
@@ -207,7 +232,12 @@ fn resolve_bulk(pkg: &Package, r: &mut Reader, ubulk: &[u8], bulk: &BulkHeader) 
             let o = abs as usize;
             match o.checked_add(size).and_then(|e| ubulk.get(o..e)) {
                 Some(s) => s.to_vec(),
-                None => return malformed("SoundWave .ubulk payload", format!("{o}+{size} beyond {}", ubulk.len())),
+                None => {
+                    return malformed(
+                        "SoundWave .ubulk payload",
+                        format!("{o}+{size} beyond {}", ubulk.len()),
+                    )
+                }
             }
         }
     })
@@ -233,7 +263,13 @@ fn read_tail(pkg: &Package, r: &mut Reader, ubulk: &[u8], a: &mut SoundWaveAsset
             let payload = resolve_bulk(pkg, r, ubulk, &bulk)?;
             let data_size = r.i32()?;
             let audio_data_size = r.i32()?;
-            chunks.push(StreamChunk { bulk, placement: bulk.placement(), data_size, audio_data_size, payload });
+            chunks.push(StreamChunk {
+                bulk,
+                placement: bulk.placement(),
+                data_size,
+                audio_data_size,
+                payload,
+            });
         }
         a.streamed = Some(StreamedAudio { format, chunks });
         return Ok(());
@@ -246,7 +282,12 @@ fn read_tail(pkg: &Package, r: &mut Reader, ubulk: &[u8], a: &mut SoundWaveAsset
         let name = pkg.fname(r.i32()?, r.i32()?)?;
         let bulk = BulkHeader::read(r)?;
         let payload = resolve_bulk(pkg, r, ubulk, &bulk)?;
-        a.formats.push(FormatBlock { name, bulk, placement: bulk.placement(), payload });
+        a.formats.push(FormatBlock {
+            name,
+            bulk,
+            placement: bulk.placement(),
+            payload,
+        });
     }
     a.guid = Some(r.guid()?);
     Ok(())
@@ -254,15 +295,16 @@ fn read_tail(pkg: &Package, r: &mut Reader, ubulk: &[u8], a: &mut SoundWaveAsset
 impl SoundWaveAsset {
     /// Name of the audio codec (`OGG`, `OPUS`, ...).
     pub fn format_name(&self) -> Option<&str> {
-        self.streamed.as_ref().map(|s| s.format.as_str()).or_else(|| self.primary().map(|f| f.name.as_str()))
+        self.streamed
+            .as_ref()
+            .map(|s| s.format.as_str())
+            .or_else(|| self.primary().map(|f| f.name.as_str()))
     }
     /// First non-empty format block.
     pub fn primary(&self) -> Option<&FormatBlock> {
         self.formats.iter().find(|f| !f.payload.is_empty())
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -279,13 +321,26 @@ mod tests {
 
     #[test]
     fn placements_of_the_flag_sets_seen_in_the_install() {
-        let h = |flags| BulkHeader { flags, element_count: 1, size_on_disk: 10, offset_in_file: 0 };
+        let h = |flags| BulkHeader {
+            flags,
+            element_count: 1,
+            size_on_disk: 10,
+            offset_in_file: 0,
+        };
         assert_eq!(h(0x48).placement(), Placement::Inline); // OGG: SingleUse | ForceInline
         assert_eq!(h(0x40).placement(), Placement::Inline); // Opus chunk 0
         assert_eq!(h(0x501).placement(), Placement::UbulkFile); // Opus chunks 1..: AtEnd | Separate | Force_NOT_Inline
         assert_eq!(h(0x1).placement(), Placement::EndOfFile);
         assert_eq!(h(0x20).placement(), Placement::Unused);
-        assert_eq!(BulkHeader { flags: 0x40, element_count: 0, size_on_disk: 0, offset_in_file: 0 }.placement(), Placement::Unused);
+        assert_eq!(
+            BulkHeader {
+                flags: 0x40,
+                element_count: 0,
+                size_on_disk: 0,
+                offset_in_file: 0
+            }
+            .placement(),
+            Placement::Unused
+        );
     }
 }
-

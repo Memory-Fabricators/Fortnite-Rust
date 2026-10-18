@@ -5,13 +5,19 @@
 use std::path::PathBuf;
 
 fn fn_root() -> PathBuf {
-    PathBuf::from(std::env::var("FN_ROOT").unwrap_or_else(|_| r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into()))
+    PathBuf::from(
+        std::env::var("FN_ROOT").unwrap_or_else(|_| {
+            r"C:\Users\Brady\Downloads\1.8\Fortnite\Fortnite\FortniteGame".into()
+        }),
+    )
 }
 fn reports() -> PathBuf {
     if let Ok(p) = std::env::var("FN_REPORTS") {
         return PathBuf::from(p);
     }
-    PathBuf::from(r"C:\Users\Brady\Documents\Codex\2026-10-02\im-seeing-titkoks-where-people-are-2\FortniteRuntime\reports")
+    PathBuf::from(
+        r"C:\Users\Brady\Documents\Codex\2026-10-02\im-seeing-titkoks-where-people-are-2\FortniteRuntime\reports",
+    )
 }
 
 #[test]
@@ -24,8 +30,15 @@ fn matches_node_pak_index() {
     }
     let t = std::time::Instant::now();
     let set = fn_pak::PakSet::open_install(&root).expect("open install");
-    eprintln!("mounted {} paks, {} entries, {} effective in {:?}", set.paks().len(), set.total_entries(), set.len(), t.elapsed());
-    let json: serde_json::Value = serde_json::from_slice(&std::fs::read(&idx_path).unwrap()).unwrap();
+    eprintln!(
+        "mounted {} paks, {} entries, {} effective in {:?}",
+        set.paks().len(),
+        set.total_entries(),
+        set.len(),
+        t.elapsed()
+    );
+    let json: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&idx_path).unwrap()).unwrap();
     let arr = json.as_array().unwrap();
     assert_eq!(arr.len(), set.total_entries(), "entry count");
     // pak-index.json is in alphabetical pak order, entry order within pak.
@@ -38,10 +51,26 @@ fn matches_node_pak_index() {
             assert_eq!(j["pak"].as_str().unwrap(), pf.name, "pak @{i}");
             assert_eq!(j["file"].as_str().unwrap(), e.path, "file @{i}");
             assert_eq!(j["offset"].as_u64().unwrap(), e.offset, "offset @{i}");
-            assert_eq!(j["compressed"].as_u64().unwrap(), e.compressed_size, "compressed @{i}");
-            assert_eq!(j["uncompressed"].as_u64().unwrap(), e.size, "uncompressed @{i}");
-            assert_eq!(j["method"].as_u64().unwrap(), e.method as u64, "method @{i}");
-            assert_eq!(j["encrypted"].as_u64().unwrap() != 0, e.encrypted, "encrypted @{i}");
+            assert_eq!(
+                j["compressed"].as_u64().unwrap(),
+                e.compressed_size,
+                "compressed @{i}"
+            );
+            assert_eq!(
+                j["uncompressed"].as_u64().unwrap(),
+                e.size,
+                "uncompressed @{i}"
+            );
+            assert_eq!(
+                j["method"].as_u64().unwrap(),
+                e.method as u64,
+                "method @{i}"
+            );
+            assert_eq!(
+                j["encrypted"].as_u64().unwrap() != 0,
+                e.encrypted,
+                "encrypted @{i}"
+            );
             i += 1;
         }
     }
@@ -77,14 +106,26 @@ fn mounts_1_10_pak_v4() {
     let set = fn_pak::PakSet::open_install(&root).expect("open 1.10 install");
     assert!(set.skipped.is_empty(), "skipped: {:?}", set.skipped);
     assert!(set.paks().iter().all(|p| p.info.version == 4));
-    assert!(set.paks().iter().any(|p| p.mount != "../../../"), "expected non-default mount points");
-    assert_eq!(set.total_entries(), set.len(), "no shadowed duplicates expected");
+    assert!(
+        set.paks().iter().any(|p| p.mount != "../../../"),
+        "expected non-default mount points"
+    );
+    assert_eq!(
+        set.total_entries(),
+        set.len(),
+        "no shadowed duplicates expected"
+    );
     let hits = set.glob("FortniteGame/Content/TimeOfDay/TODM/TODM_A_Child_Athena.uasset");
     assert_eq!(hits.len(), 1);
     let b = set.read(hits[0].1.rel_path()).unwrap();
     assert_eq!(&b[0..4], &[0xC1, 0x83, 0x2A, 0x9E]);
     // every stored entry of the mount-point-prefixed paks resolves to the same bytes by its full path
-    let (pf, e) = set.paks().iter().find(|p| p.mount.contains("L10N/de")).map(|p| (p, &p.entries[0])).unwrap();
+    let (pf, e) = set
+        .paks()
+        .iter()
+        .find(|p| p.mount.contains("L10N/de"))
+        .map(|p| (p, &p.entries[0]))
+        .unwrap();
     assert_eq!(pf.read(e).unwrap().len() as u64, e.size);
     assert!(set.contains(&e.path));
 }

@@ -53,9 +53,11 @@ impl DecodedImage {
             Pixels::Rgba8(v) => {
                 if self.is_opaque() {
                     let rgb: Vec<u8> = v.chunks_exact(4).flat_map(|p| [p[0], p[1], p[2]]).collect();
-                    enc.write_image(&rgb, wd, ht, image::ExtendedColorType::Rgb8).map_err(map)
+                    enc.write_image(&rgb, wd, ht, image::ExtendedColorType::Rgb8)
+                        .map_err(map)
                 } else {
-                    enc.write_image(v, wd, ht, image::ExtendedColorType::Rgba8).map_err(map)
+                    enc.write_image(v, wd, ht, image::ExtendedColorType::Rgba8)
+                        .map_err(map)
                 }
             }
             Pixels::RgbaF16(v) => {
@@ -65,7 +67,8 @@ impl DecodedImage {
                     bytes.extend_from_slice(&u.to_ne_bytes());
                 }
                 // `image` expects native-endian samples for 16 bit data
-                enc.write_image(&bytes, wd, ht, image::ExtendedColorType::Rgba16).map_err(map)
+                enc.write_image(&bytes, wd, ht, image::ExtendedColorType::Rgba16)
+                    .map_err(map)
             }
         }
     }
